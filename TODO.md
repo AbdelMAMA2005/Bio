@@ -9,16 +9,16 @@
 
 ### Cadrage commun (Semaine 1 — doc de répartition)
 
-- [ ] Choix définitif du stack : Firebase (MVP rapide) vs NestJS (scalabilité) — **Ensemble**
+- [x] Choix définitif du stack : Firebase (MVP rapide) vs NestJS (scalabilité) — **Ensemble**
 - [ ] Choix des API IA (Plant.id / Google Vision) : comparatif coût / précision / quotas — **Ensemble**
-- [ ] Wireframes des 3 onglets (Figma) — **Djawad**
+- [x] Wireframes des 3 onglets (Figma) — **Djawad**
 - [ ] Modélisation de la base de données (schéma PostgreSQL) — **Abdel**
 - [ ] Contrat d'API partagé (format des endpoints défini avant de coder) — **Ensemble**
 
 ### Dépôt & outillage
 
-- [ ] Créer le dépôt GitHub `planai` (monorepo) — **Ensemble**
-- [ ] Initialiser les workspaces (`apps/*`, `packages/*`) — **Djawad**
+- [x] Créer le dépôt GitHub `planai` (monorepo) — **Ensemble**
+- [x] Initialiser les workspaces (`apps/*`, `packages/*`) — **Djawad**
 - [ ] Bootstrap `apps/mobile` (create-expo-app) — **Djawad**
 - [ ] Bootstrap `apps/api` (NestJS CLI) — **Abdel**
 - [ ] Créer `packages/shared` (types communs) — **Abdel**
