@@ -1,0 +1,8 @@
+{
+  "name": "planai",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

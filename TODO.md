@@ -1,0 +1,177 @@
+# PlanAI — Suivi des tâches (TODO)
+
+> Cochez `[x]` chaque tâche terminée. Une tâche = idéalement une branche + une PR.
+> Priorités MVP : Phase 1 → 2 → 3. Les phases 4+ viennent après validation du MVP.
+
+---
+
+## Phase 0 — Mise en place du projet
+
+### Cadrage commun (Semaine 1 — doc de répartition)
+
+- [ ] Choix définitif du stack : Firebase (MVP rapide) vs NestJS (scalabilité) — **Ensemble**
+- [ ] Choix des API IA (Plant.id / Google Vision) : comparatif coût / précision / quotas — **Ensemble**
+- [ ] Wireframes des 3 onglets (Figma) — **Djawad**
+- [ ] Modélisation de la base de données (schéma PostgreSQL) — **Abdel**
+- [ ] Contrat d'API partagé (format des endpoints défini avant de coder) — **Ensemble**
+
+### Dépôt & outillage
+
+- [ ] Créer le dépôt GitHub `planai` (monorepo) — **Ensemble**
+- [ ] Initialiser les workspaces (`apps/*`, `packages/*`) — **Djawad**
+- [ ] Bootstrap `apps/mobile` (create-expo-app) — **Djawad**
+- [ ] Bootstrap `apps/api` (NestJS CLI) — **Abdel**
+- [ ] Créer `packages/shared` (types communs) — **Abdel**
+- [ ] `.gitignore` + `.env.example` (aucun secret commité) — **Djawad**
+- [ ] Protéger les branches `main` et `dev` (PR obligatoire) — **Ensemble**
+- [ ] CI GitHub Actions : lint + tests sur chaque PR — **Abdel**
+- [ ] README : instructions d'installation et de lancement — **Djawad**
+
+### Base de données
+
+- [ ] Installer PostgreSQL (local ou Supabase/Neon) — **Abdel**
+- [ ] Schéma Prisma/TypeORM : `users`, `plants`, `collection`, `posts` — **Abdel**
+- [ ] Champ clé `collection.type` : `'owned'` (Jardin) / `'discovered'` (Herbarium) — **Abdel**
+- [ ] Champs Geo-Tag : `latitude`, `longitude` (nullables) — **Abdel**
+- [ ] Champs clones : `etat_sante` (enum), `historique_photos` (json) — **Abdel**
+- [ ] Première migration + seed du référentiel plantes (~20 espèces de test) — **Abdel**
+
+---
+
+## Phase 1 — MVP : Scan & Identification 🎯
+
+### Back-end
+
+- [ ] Module `auth` : inscription, connexion, JWT — **Abdel**
+- [ ] Module `users` : profil, niveau, XP — **Ensemble** (modèle : Abdel / écran : Djawad)
+- [ ] Module `plants` : CRUD référentiel (nom, famille, toxicité, rareté, conseils JSON) — **Abdel**
+- [ ] Module `identification` : endpoint POST photo → proxy Plant.id / Google Vision — **Abdel**
+- [ ] Retour d'identification : espèce + famille + toxicité + rareté + XP — **Abdel**
+- [ ] Module `collection` : ajout d'une plante (type owned/discovered) — **Abdel**
+- [ ] Enregistrement optionnel des coordonnées GPS (Geo-Tag) — **Abdel**
+- [ ] Attribution d'XP à la capture selon la rareté — **Abdel**
+
+### Front mobile
+
+- [ ] Tab bar 3 onglets : Mon Jardin / **Scan** (central) / Communauté — **Djawad**
+- [ ] Écran Scan : caméra plein écran + cadre de visée (style Snap) — **Djawad**
+- [ ] Appel API identification + affichage résultat (nom, famille, rareté) — **Djawad**
+- [ ] Badge toxicité : rouge « Toxique » / vert « Non toxique » / orange « Incertaine » — **Djawad**
+- [ ] Ajout contextuel : boutons « Mon Jardin » et « Mon Herbarium » — **Djawad**
+- [ ] Pop-up Geo-Tag : « Partager la localisation ? » (accepter / refuser) — **Djawad**
+- [ ] Animation « +45 XP » qui flotte et disparaît — **Djawad**
+- [ ] Écrans auth : inscription / connexion — **Djawad**
+
+---
+
+## Phase 2 — Mon Jardin (split Quotidien / Herbarium)
+
+### Back-end
+
+- [ ] Endpoint liste Jardin (type=owned) et Herbarium (type=discovered) — **Abdel**
+- [ ] Module `diagnosis` : photo feuille → diagnostic maladie (CNN PlantVillage ou API) — **Abdel**
+- [ ] Mise à jour `etat_sante` après diagnostic — **Abdel**
+- [ ] Ajout de photos de suivi (`historique_photos`) — **Abdel**
+- [ ] Module `notifications` : rappels programmés (arrosage, traitement J+5) — **Ensemble** (back : Abdel / push client : Djawad)
+
+### Front mobile
+
+- [ ] Sous-onglets segmentés : « Mon Quotidien » / « Mon Herbarium » — **Djawad**
+- [ ] **Quotidien** : cartes clones avec indicateur santé (vert/orange/rouge) — **Djawad**
+- [ ] Fiche d'entretien dynamique : arrosage, lumière, température, rempotage — **Djawad**
+- [ ] Bouton « Photo de suivi » (upload + timeline d'évolution) — **Djawad**
+- [ ] Bouton « Vérifier la santé » → diagnostic IA + traitement recommandé — **Djawad**
+- [ ] Bouton « Programmer un rappel » (notification push) — **Djawad**
+- [ ] Bandeau rappels du jour (« 2 arrosages prévus aujourd'hui ») — **Djawad**
+- [ ] **Herbarium** : grille compacte type collection de cartes — **Djawad**
+- [ ] Badge rareté (Commun / Rare / Épique) sur chaque carte — **Djawad**
+- [ ] Geo-tag affiché : lieu de capture ou distance (« à 3 km ») — **Djawad**
+- [ ] Date de capture (« il y a 3 jours ») — **Djawad**
+- [ ] Fiche plante consultable (sans actions d'entretien) — **Djawad**
+
+---
+
+## Phase 3 — Communauté
+
+### Back-end
+
+- [ ] Module `feed` : CRUD publications (texte + image + plante taguée optionnelle) — **Abdel**
+- [ ] Likes, commentaires, partages — **Abdel**
+- [ ] Stories éphémères (24 h) — **Abdel**
+- [ ] Endpoint « Près de moi » : posts geo-tagués dans un rayon 5/10 km — **Ensemble** (requête géo : Abdel / filtre UI : Djawad)
+
+### Front mobile
+
+- [ ] Fil d'actualité : cartes publication (auteur, photo, tag plante, interactions) — **Djawad**
+- [ ] Création de publication : photo + texte + tag d'une plante de sa collection — **Djawad**
+- [ ] Stories : bulles en haut du feed + création — **Djawad**
+- [ ] Filtre segmenté « Tout le fil » / « Près de moi · 5 km » — **Djawad**
+- [ ] Encart « Découverte à X km de toi » sous les posts geo-tagués — **Djawad**
+
+---
+
+## Phase 4 — Gamification
+
+### Back-end
+
+- [ ] Module `quests` : défis quotidiens (scanner 3 plantes, publier un conseil, 5 likes…) — **Abdel**
+- [ ] Défis « Exploration » avec Geo-Tag (plante rare à + de 1 km…) — **Abdel**
+- [ ] Récompenses : XP, pièces virtuelles, badges exclusifs — **Abdel**
+- [ ] Calcul de niveau (paliers d'XP) — **Abdel**
+
+### Front mobile
+
+- [ ] Carte « Défis du jour » avec progression et récompenses — **Djawad**
+- [ ] Solde de pièces virtuelles — **Djawad**
+- [ ] Écran badges (« Botaniste débutant », « Chasseur d'épiques »…) — **Djawad**
+- [ ] Feedback haptique (vibration) pour les découvertes rares — **Djawad**
+
+---
+
+## Phase 5 — Finitions & Qualité
+
+- [ ] Thème sombre / clair complet (bascule + respect du système) — **Djawad**
+- [ ] Transitions fluides entre onglets — **Djawad**
+- [ ] États vides (jardin vide, herbarium vide, feed vide) — **Djawad**
+- [ ] États de chargement + gestion des erreurs réseau — **Djawad**
+- [ ] Tests unitaires back (services identification, collection, quests) — **Abdel** (revue croisée : Djawad)
+- [ ] Tests front (composants critiques : ScanResult, PlantCard) — **Djawad** (revue croisée : Abdel)
+- [ ] Icône d'app + splash screen — **Djawad**
+- [ ] Onboarding première ouverture (3 écrans max) — **Djawad**
+- [ ] RGPD : consentement localisation + suppression de compte — **Abdel**
+- [ ] Build EAS + publication TestFlight / Play Console (beta) — **Abdel**
+
+---
+
+## Répartition (à remplir)
+
+| Tâche / Domaine                        | Qui ?  |
+| -------------------------------------- | ------ |
+| Front — Scan & Jardin                  | Djawad |
+| Front — Communauté & Gamification      | Djawad |
+| Back — Auth, Users, Collection         | Abdel  |
+| Back — Identification & Diagnosis (IA) | Abdel  |
+| Back — Feed & Quests                   | Abdel  |
+| DB & CI/CD                             | Abdel  |
+
+---
+
+## Méthode de travail (doc de répartition)
+
+- **Point hebdomadaire** : avancement + déblocage des dépendances front/back.
+- **Contrat d'API partagé** : format des endpoints défini ensemble avant de coder.
+- **Environnement de test commun** : back de dev partagé (ou mocké) pour que Djawad avance sans attendre chaque endpoint.
+- **Revue de code croisée** : chacun relit les PR de l'autre avant fusion.
+- **Priorité au MVP** : Scan + Mon Jardin d'abord ; Communauté/Gamification reportables.
+
+## Planning suggéré
+
+| Période      | Objectif                               |
+| ------------ | -------------------------------------- |
+| Semaine 1    | Cadrage, wireframes, modèle de données |
+| Semaines 2-3 | Scan + identification IA               |
+| Semaines 4-5 | Mon Jardin (Quotidien + Herbarium)     |
+| Semaine 6    | Authentification & profils             |
+| Semaines 7-8 | Communauté (feed, « Près de moi »)     |
+| Semaine 9    | Gamification                           |
+| Semaine 10   | Tests, corrections, déploiement (beta) |
