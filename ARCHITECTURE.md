@@ -5,6 +5,7 @@
 
 ---
 
+
 ## 1. Organisation des dépôts
 
 Pour démarrer à deux, un **monorepo** est le plus simple : un seul dépôt, une seule CI, des types partagés entre le front et le back.
@@ -84,13 +85,13 @@ apps/api/
 ├── src/
 │   ├── modules/
 │   │   ├── auth/               # JWT, inscription, connexion
-│   │   ├── users/              # profil, niveau, XP, badges, pièces
-│   │   ├── plants/             # référentiel espèces (nom, famille, toxicité, rareté, conseils JSON)
+│   │   ├── users/              # profil, niveau, XP, insignes
+│   │   ├── plants/             # référentiel espèces (nomScientifique, nomCommun, famille, toxicite, conseilsEntretien, badgeRarete)
 │   │   ├── collection/         # Jardin / Herbarium
 │   │   │                       #   type: 'owned' | 'discovered'  ← champ clé
 │   │   │                       #   latitude/longitude si Geo-Tag accepté
-│   │   │                       #   etat_sante: 'sain'|'alerte'|'malade' (clones)
-│   │   │                       #   historique_photos (JSON array)
+│   │   │                       #   etatSante: 'green'|'orange'|'red' (clones)
+│   │   │                       #   historiquePhotos (JSON array)
 │   │   ├── identification/     # proxy vers Plant.id / Google Vision
 │   │   ├── diagnosis/          # détection maladies (CNN PlantVillage)
 │   │   ├── feed/               # publications, likes, commentaires, stories
@@ -100,8 +101,18 @@ apps/api/
 │   ├── common/                 # guards, pipes, interceptors, filters
 │   ├── config/                 # env, base de données
 │   └── main.ts
-├── prisma/ (ou typeorm)        # schéma + migrations
-│   └── schema.prisma
+├── src/entities/               # 📌 Toutes les entités TypeORM
+│   ├── enums/
+│   │   ├── toxicity-level.enum.ts
+│   │   ├── plant-type.enum.ts
+│   │   └── health-status.enum.ts
+│   ├── user.entity.ts
+│   ├── plant.entity.ts
+│   ├── collection.entity.ts
+│   ├── posts.entity.ts
+│   ├── like.entity.ts
+│   ├── comment.entity.ts
+│   └── reminder.entity.ts
 ├── test/
 └── package.json
 ```
@@ -112,18 +123,127 @@ apps/api/
 - Chaque module est autonome → migration future vers microservices (Auth, IA, Feed, Notifications) sans refonte.
 - Les DTOs sont validés (`class-validator`) et leurs types exportés vers `packages/shared`.
 
-### Modèle de données (rappel du cahier des charges §4.2)
+---
 
-| Table        | Champs clés                                                                                                                              |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `users`      | id, pseudo, email, niveau, xp, badges                                                                                                    |
-| `plants`     | id, nom_scientifique, nom_commun, famille, toxicite (bool), rarete (enum), conseils_entretien (json)                                     |
-| `collection` | id_utilisateur, id_plante, date_ajout, **type ('owned'/'discovered')**, latitude, longitude, historique_photos (json), etat_sante (enum) |
-| `posts`      | id, id_utilisateur, id_plante_taguee?, contenu_texte, image_url, likes, commentaires                                                     |
+## 4. Modèle de données (Mise à jour finale)
+
+Voici la structure exacte des entités utilisées par le back-end NestJS. **Les noms ci-dessous sont ceux que Djawad recevra dans les réponses JSON des API** (tout est en **camelCase français**).  
+Les noms de tables PostgreSQL sont en anglais (`users`, `plants`, `collection`, `posts`, `likes`, `comments`, `reminders`) mais les attributs en JSON sont en camelCase français.
 
 ---
 
-## 4. Conventions Git
+### Table `users`
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` (UUID) | Identifiant unique |
+| `email` | `string` | Adresse email (unique) |
+| `motDePasseHache` | `string` | Mot de passe hashé (argon2) |
+| `nomUtilisateur` | `string` | Pseudo (unique) |
+| `experience` | `number` | Points d'expérience cumulés |
+| `niveau` | `number` | Niveau actuel (calculé) |
+| `urlAvatar` | `string \| null` | URL de l'avatar |
+| `insignes` | `string[]` (JSONB) | Liste des badges débloqués |
+| `dateSuppression` | `Date \| null` | Date de suppression logique (soft delete) |
+
+---
+
+### Table `plants` (référentiel des espèces)
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` (UUID) | Identifiant unique |
+| `nomScientifique` | `string` | Nom latin / scientifique |
+| `nomCommun` | `string` | Nom vernaculaire (affiché) |
+| `famille` | `string \| null` | Famille botanique |
+| `toxicite` | `'green' \| 'orange' \| 'red'` | Niveau de toxicité (enum) |
+| `conseilsEntretien` | `{ arrosage?, lumiere?, temperature?, rempotage? }` | Conseils en JSON |
+| `urlImage` | `string \| null` | URL d'illustration |
+| `badgeRarete` | `string \| null` | Ex: "Commun", "Rare", "Épique" |
+
+---
+
+### Table `collection` (Jardin / Herbarium)
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` (UUID) | Identifiant unique |
+| `idUtilisateur` | `string` (UUID) | Clé étrangère → `users.id` |
+| `idPlante` | `string` (UUID) | Clé étrangère → `plants.id` |
+| `type` | `'owned' \| 'discovered'` | *owned* = Mon Jardin ; *discovered* = Herbarium |
+| `etatSante` | `'green' \| 'orange' \| 'red'` | Indicateur de santé |
+| `historiquePhotos` | `string[]` (JSONB) | URLs des photos de suivi |
+| `dateAjout` | `Date` | Date d'ajout à la collection |
+| `latitude` | `number \| null` | Geo-tag (optionnel) |
+| `longitude` | `number \| null` | Geo-tag (optionnel) |
+
+---
+
+### Table `posts` (Feed communautaire)
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` (UUID) | Identifiant unique |
+| `idUtilisateur` | `string` (UUID) | Clé étrangère → `users.id` |
+| `idCollection` | `string \| null` (UUID) | Optionnel → `collection.id` (plante taguée) |
+| `contenuTexte` | `string` | Texte de la publication |
+| `urlImage` | `string \| null` | Image associée |
+| `dateCreation` | `Date` | Horodatage |
+
+---
+
+### Table `likes`
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` (UUID) | Identifiant unique |
+| `idPost` | `string` (UUID) | Clé étrangère → `posts.id` |
+| `idUtilisateur` | `string` (UUID) | Clé étrangère → `users.id` |
+| `dateCreation` | `Date` | Horodatage |
+
+---
+
+### Table `comments`
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` (UUID) | Identifiant unique |
+| `idPost` | `string` (UUID) | Clé étrangère → `posts.id` |
+| `idUtilisateur` | `string` (UUID) | Clé étrangère → `users.id` |
+| `contenu` | `string` | Texte du commentaire |
+| `dateCreation` | `Date` | Horodatage |
+
+---
+
+### Table `reminders` (Rappels intelligents)
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` (UUID) | Identifiant unique |
+| `idUtilisateur` | `string` (UUID) | Clé étrangère → `users.id` |
+| `idCollection` | `string` (UUID) | Clé étrangère → `collection.id` |
+| `typeRappel` | `string` | Ex: "arrosage", "rempotage" |
+| `datePlanification` | `Date` | Date programmée |
+| `estNotifie` | `boolean` | Flag d'envoi |
+
+---
+
+## 5. Enums réutilisables (côté front comme back)
+
+Ces énumérations sont partagées via `packages/shared` pour éviter les doublons.
+
+```typescript
+// ToxicityLevel
+GREEN = 'green'
+ORANGE = 'orange'
+RED = 'red'
+
+// PlantType
+OWNED = 'owned'        // Mon Jardin
+DISCOVERED = 'discovered' // Herbarium
+
+// HealthStatus
+GOOD = 'green'
+WARNING = 'orange'
+DANGER = 'red'
+```
+
+---
+
+## 6. Conventions Git
 
 ### Branches
 
@@ -171,7 +291,7 @@ dist/
 
 ---
 
-## 5. Mise en place — pas à pas
+## 7. Mise en place — pas à pas
 
 ```bash
 # 1. Initialiser le dépôt
@@ -203,9 +323,21 @@ git checkout -b dev && git push -u origin dev
 
 ---
 
-## 6. Priorités MVP (cahier des charges §7)
+## 8. Priorités MVP (cahier des charges §7)
 
 1. **Scan** : identification IA + toxicité + ajout contextuel Jardin/Herbarium.
 2. **Mon Jardin** : split Quotidien/Herbarium, indicateurs de santé.
 3. **Auth + XP** : comptes, gain d'XP à la capture.
 4. Feed communauté, puis "Près de moi", puis défis.
+
+---
+
+## ✅ Ce que Djawad doit retenir
+
+- Les **noms des propriétés** à utiliser dans `react-query` et dans les écrans sont ceux du tableau **Modèle de données** (ex: `nomUtilisateur`, `dateAjout`, `etatSante`, `contenuTexte`).
+- Les **types d'énumération** sont les mêmes qu'il devra afficher (ex: `toxicite: 'green'` → afficher "Non toxique" ; `type: 'owned'` → afficher dans "Mon Jardin").
+- Les relations principales :  
+  - Une `Collection` appartient à un `User` et à une `Plant`.  
+  - Un `Post` appartient à un `User` et peut taguer une `Collection`.  
+  - Les `Like` et `Comment` sont rattachés à un `Post`.
+
