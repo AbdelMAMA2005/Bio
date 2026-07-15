@@ -104,3 +104,76 @@ export class LoginResponseDto {
   accessToken!: string;
   user!: RegisterResponseDto;
 }
+
+// ----- DTOs pour le Feed -----
+
+import { Type } from 'class-transformer';
+
+export class CreatePostRequestDto {
+  @IsOptional()
+  @IsUUID()
+  collectionId?: string; // Plante taguée (optionnelle)
+
+  @IsNotEmpty()
+  @IsString()
+  contenuTexte!: string;
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string; // Pour les publications avec image (upload séparé)
+}
+
+export class CreatePostResponseDto {
+  id!: string;
+  idUtilisateur!: string;
+  idCollection?: string;
+  contenuTexte!: string;
+  imageUrl?: string;
+  dateCreation!: Date;
+  auteur!: {
+    id: string;
+    nomUtilisateur: string;
+    urlAvatar?: string | null;
+  };
+  plante?: {
+    id: string;
+    nomScientifique: string;
+    nomCommun: string;
+    badgeRarete?: string | null;
+    urlImage?: string | null;
+  };
+  likesCount!: number;
+  commentairesCount!: number;
+  estLikedParUtilisateur!: boolean;
+}
+
+export class CreateCommentRequestDto {
+  @IsNotEmpty()
+  @IsString()
+  contenu!: string;
+}
+
+export class CreateCommentResponseDto {
+  id!: string;
+  idPost!: string;
+  idUtilisateur!: string;
+  contenu!: string;
+  dateCreation!: Date;
+  auteur!: {
+    id: string;
+    nomUtilisateur: string;
+    urlAvatar?: string | null;
+  };
+}
+
+export class FeedQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  limit?: number = 20;
+}

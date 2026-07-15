@@ -22,7 +22,7 @@ export class Post {
   userId!: string;
 
   @Column('uuid', { nullable: true })
-  collectionId!: string;
+  collectionId!: string | null;
 
   @ManyToOne(() => User, (utilisateur) => utilisateur.publicationsUtilisateur, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'userId' })
@@ -35,8 +35,9 @@ export class Post {
   @Column({ type: 'text' })
   contenuTexte!: string;
 
-  @Column({ nullable: true })
-  urlImage!: string;
+  @Column({ type: 'text', nullable: true })
+  urlImage!: string | null;
+
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   dateCreation!: Date;

@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { IdentificationModule } from './modules/identification/identification.module';
 import { CollectionModule } from './modules/collection/collection.module';
 import { UserModule } from './modules/user/user.module';
+import { FeedModule } from './modules/feed/feed.module'; 
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { UserModule } from './modules/user/user.module';
     IdentificationModule,
     CollectionModule,
     UserModule,
+    FeedModule, 
   ],
 })
 export class AppModule {}

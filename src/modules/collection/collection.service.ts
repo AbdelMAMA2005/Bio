@@ -1,6 +1,9 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
+import * as fs from 'fs';
+import * as path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { Collection as CollectionEntity } from '../../entities/collection.entity';
 import { Plant } from '../../entities/plant.entity';
 import { User } from '../../entities/user.entity';
@@ -89,4 +92,45 @@ export class CollectionService {
       longitude: c.longitude,
     }));
   }
+  
+  // Ajouter une photo de suivi
+  async addPhoto(
+    userId: string,
+    collectionId: string,
+    file: Express.Multer.File,
+  ): Promise<{ historiquePhotos: string[] }> {
+    // 1. Vérifier que la collection existe et appartient à l'utilisateur
+    const collection = await this.collectionRepo.findOne({
+      where: { id: collectionId, userId },
+    });
+
+    if (!collection) {
+      throw new NotFoundException('Collection non trouvée ou ne vous appartient pas.');
+    }
+
+    // 2. Créer le dossier de l'utilisateur si nécessaire
+    const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'collections', collectionId);
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    // 3. Générer un nom de fichier unique
+    const extension = path.extname(file.originalname) || '.jpg';
+    const filename = `${uuidv4()}${extension}`;
+    const filePath = path.join(uploadDir, filename);
+
+    // 4. Sauvegarder le fichier
+    fs.writeFileSync(filePath, file.buffer);
+
+    // 5. Construire l'URL publique
+    const imageUrl = `/uploads/collections/${collectionId}/${filename}`;
+
+    // 6. Ajouter l'URL au tableau historiquePhotos
+    const historiquePhotos = [...(collection.historiquePhotos || []), imageUrl];
+    collection.historiquePhotos = historiquePhotos;
+    await this.collectionRepo.save(collection);
+
+    return { historiquePhotos };
+  }
+
 }
