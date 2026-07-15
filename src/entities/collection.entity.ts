@@ -51,8 +51,8 @@ export class Collection {
   dateAjout!: Date;
 
   @Column({ type: 'double precision', nullable: true })
-  latitude!: number;
+  latitude!: number | null;
 
   @Column({ type: 'double precision', nullable: true })
-  longitude!: number;
+  longitude!: number | null;
 }

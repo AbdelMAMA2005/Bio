@@ -13,8 +13,8 @@ export class Plant {
   @Column()
   nomCommun!: string;
 
-  @Column({ nullable: true })
-  famille!: string;
+  @Column({ type: 'text', nullable: true })
+  famille!: string | null;
 
   @Column({
     type: 'enum',
@@ -29,13 +29,13 @@ export class Plant {
     lumiere?: string;
     temperature?: string;
     rempotage?: string;
-  };
+  } | null;
 
-  @Column({ nullable: true })
-  urlImage!: string;
+  @Column({ type: 'text', nullable: true })
+  urlImage!: string | null;
 
-  @Column({ nullable: true })
-  badgeRarete!: string;
+  @Column({ type: 'text', nullable: true })
+  badgeRarete!: string | null;
 
   @OneToMany(() => Collection, (collection) => collection.plante)
   collectionsPlante!: Collection[];
