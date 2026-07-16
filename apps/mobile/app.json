@@ -28,9 +28,36 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#eef3ea",
+          "dark": {
+            "backgroundColor": "#0f1b14"
+          },
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      "expo-localization",
+      "expo-secure-store",
+      "expo-font",
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "PlanAI a besoin de la caméra pour identifier tes plantes en direct."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "PlanAI a besoin d'accéder à tes photos pour ta story et le suivi de tes plantes.",
+          "cameraPermission": "PlanAI a besoin de la caméra pour ta story et le suivi de tes plantes."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/splash-icon.png",
+          "color": "#4ade80"
         }
       ]
     ],

@@ -1,0 +1,216 @@
+{
+  "common": {
+    "level": "Lvl. {{level}}",
+    "xp": "{{count}} XP",
+    "close": "Close",
+    "share": "Share",
+    "decline": "No thanks",
+    "cancel": "Cancel",
+    "networkErrorTitle": "Connection failed",
+    "networkErrorBody": "Check your connection and try again.",
+    "retry": "Retry"
+  },
+  "tabs": {
+    "jardin": "My Garden",
+    "scan": "Scan",
+    "communaute": "Community"
+  },
+  "scan": {
+    "liveFeed": "live camera feed",
+    "identifiedIn": "Identified in {{seconds}} s",
+    "permissionTitle": "Allow camera access",
+    "permissionBody": "PlanAI needs the camera to identify your plants live.",
+    "permissionCta": "Enable camera",
+    "notToxic": "Non-toxic",
+    "toxic": "Toxic",
+    "unknownToxicity": "Unknown toxicity",
+    "addToJardin": "My Garden",
+    "addToHerbarium": "My Herbarium",
+    "xpGain": "+{{xp}} XP",
+    "capture": "Capture",
+    "analyzing": "Identifying…"
+  },
+  "geoTag": {
+    "title": "Share your location?",
+    "body": "Save the GPS position of this find to help the community locate the species.",
+    "accept": "Share"
+  },
+  "toast": {
+    "addedToJardinTitle": "Added to your Garden!",
+    "addedToJardinSub": "Tracking and reminders enabled",
+    "addedToHerbariumTitle": "Added to your Herbarium!",
+    "addedToHerbariumSub": "Discovery saved"
+  },
+  "jardin": {
+    "subtitle": "Collection & care",
+    "title": "My Garden",
+    "quotidien": "My Daily Care",
+    "herbarium": "My Herbarium",
+    "reminderTitle_one": "{{count}} watering due today",
+    "reminderTitle_other": "{{count}} waterings due today",
+    "questsTitle": "Today's challenges",
+    "photoDeSuivi": "Progress photo",
+    "checkHealth": "Check health",
+    "waterIn": "Watering: {{when}}",
+    "today": "today",
+    "tomorrow": "tomorrow",
+    "inDays": "in {{count}} d",
+    "discoveriesCount_one": "{{count}} discovery",
+    "discoveriesCount_other": "{{count}} discoveries",
+    "rareCount_one": "· {{count}} rare",
+    "rareCount_other": "· {{count}} rare",
+    "sortRecent": "Recent",
+    "emptyGarden": "Your garden is empty for now. Scan a plant and add it here!",
+    "emptyHerbarium": "No discoveries yet. Go hunt for plants!",
+    "coinsBalance": "{{count}} coins",
+    "coinsGain": "+{{count}} coins",
+    "reminderScheduledTitle": "Reminder scheduled",
+    "reminderScheduledSub": "Notification in {{days}} days",
+    "photoTimeline": "Progress photos"
+  },
+  "quests": {
+    "scan3": "Scan 3 different plants",
+    "postTip": "Post a photo with a tip",
+    "rare1km": "Find a rare plant over 1 km away"
+  },
+  "health": {
+    "sain": "Healthy",
+    "alerte": "Needs attention",
+    "malade": "Disease detected"
+  },
+  "diagnosis": {
+    "title": "{{disease}} detected",
+    "meta": "AI analysis · {{confidence}}% confidence · {{plant}}",
+    "treatmentTitle": "Recommended treatment",
+    "reminderCta": "Remind me in {{days}} days"
+  },
+  "rarity": {
+    "commun": "Common",
+    "rare": "Rare",
+    "epique": "Epic"
+  },
+  "community": {
+    "subtitle": "Community",
+    "title": "The Garden",
+    "yourStory": "Your story",
+    "feedAll": "All posts",
+    "feedNear": "Near me · {{distance}}",
+    "discoveredAt": "Found {{distance}} from you",
+    "emptyNear": "No geotagged posts nearby right now.",
+    "takePhoto": "Camera",
+    "chooseFromGallery": "Gallery",
+    "storyPublished": "Story added!",
+    "newPost": "New post",
+    "captionPlaceholder": "Write a caption…",
+    "tagPlant": "Tag a plant",
+    "noTag": "No tag",
+    "choosePhoto": "Choose a photo",
+    "publish": "Publish",
+    "postPublished": "Post added!"
+  },
+  "plant": {
+    "familyLabel": "Family: {{family}}",
+    "careTitle": "Care tips",
+    "aboutTitle": "About",
+    "viewInHerbarium": "View in my Herbarium",
+    "care": {
+      "light": "Light",
+      "soil": "Soil",
+      "temperature": "Temperature",
+      "habitat": "Habitat"
+    }
+  },
+  "settings": {
+    "theme": "Theme",
+    "themeLight": "Switch to light theme",
+    "themeDark": "Switch to dark theme",
+    "themeSystem": "Follow system",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark",
+    "language": "Language",
+    "languageFr": "French",
+    "languageEn": "English",
+    "languageEs": "Spanish"
+  },
+  "distance": {
+    "meters": "{{value}} m away",
+    "kilometers": "{{value}} km away"
+  },
+  "auth": {
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Sign in to get back to your garden",
+    "registerTitle": "Create an account",
+    "registerSubtitle": "Join the PlanAI community",
+    "emailPlaceholder": "Email address",
+    "passwordPlaceholder": "Password",
+    "confirmPasswordPlaceholder": "Confirm password",
+    "pseudoPlaceholder": "Username",
+    "forgotPassword": "Forgot password?",
+    "loginCta": "Sign in",
+    "registerCta": "Create my account",
+    "or": "or",
+    "continueWithGoogle": "Continue with Google",
+    "noAccount": "Don't have an account?",
+    "createAccount": "Create an account",
+    "haveAccount": "Already have an account?",
+    "signIn": "Sign in",
+    "invalidCredentials": "Invalid email or password.",
+    "invalidFields": "Please fill in all fields correctly.",
+    "passwordMismatch": "Passwords don't match.",
+    "genericError": "Something went wrong. Please try again."
+  },
+  "account": {
+    "title": "My Account",
+    "editCta": "Edit",
+    "saveCta": "Save",
+    "levelLabel": "Level {{level}} · {{title}}",
+    "xpProgress": "{{current}} / {{target}} XP",
+    "statsCaptures": "Captures",
+    "statsSpecies": "Species",
+    "statsRares": "Rare",
+    "statsCoins": "Coins",
+    "preferencesTitle": "Preferences",
+    "notifications": "Notifications",
+    "notificationsHint": "Watering and treatment reminders",
+    "geoPrivacy": "Geo-Tag privacy",
+    "geoPrivacyHint": "Ask before every location share",
+    "myBadges": "My badges",
+    "myBadgesHint": "Unlocked and locked achievements",
+    "accountSectionTitle": "Account",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "updatePassword": "Update",
+    "passwordUpdated": "Password updated",
+    "logout": "Sign out",
+    "deleteAccount": "Delete my account",
+    "deleteConfirmTitle": "Delete your account?",
+    "deleteConfirmBody": "This action can't be undone. All your data (garden, herbarium, posts) will be permanently deleted.",
+    "deleteConfirmCta": "Delete permanently",
+    "cancel": "Cancel",
+    "levels": {
+      "beginner": "Beginner",
+      "apprentice": "Apprentice botanist",
+      "explorer": "Explorer",
+      "confirmed": "Seasoned botanist",
+      "expert": "Expert"
+    }
+  },
+  "badges": {
+    "title": "My badges",
+    "obtainedOn": "Earned {{date}}",
+    "locked": "Not yet earned"
+  },
+  "onboarding": {
+    "skip": "Skip",
+    "next": "Next",
+    "getStarted": "Get started",
+    "slide1Title": "Scan your plants",
+    "slide1Body": "Identify a species instantly with AI and discover its toxicity, family and rarity.",
+    "slide2Title": "Grow your Garden",
+    "slide2Body": "Track your clones' health day to day and find all your discoveries in your Herbarium.",
+    "slide3Title": "Join the Community",
+    "slide3Body": "Share your finds, discover others nearby, and earn XP."
+  }
+}

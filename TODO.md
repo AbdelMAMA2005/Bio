@@ -19,13 +19,13 @@
 
 - [x] Créer le dépôt GitHub `planai` (monorepo) — **Ensemble**
 - [x] Initialiser les workspaces (`apps/*`, `packages/*`) — **Djawad**
-- [ ] Bootstrap `apps/mobile` (create-expo-app) — **Djawad**
+- [x] Bootstrap `apps/mobile` (create-expo-app) — **Djawad**
 - [ ] Bootstrap `apps/api` (NestJS CLI) — **Abdel**
 - [ ] Créer `packages/shared` (types communs) — **Abdel**
-- [ ] `.gitignore` + `.env.example` (aucun secret commité) — **Djawad**
+- [x] `.gitignore` + `.env.example` (aucun secret commité) — **Djawad**
 - [ ] Protéger les branches `main` et `dev` (PR obligatoire) — **Ensemble**
 - [ ] CI GitHub Actions : lint + tests sur chaque PR — **Abdel**
-- [ ] README : instructions d'installation et de lancement — **Djawad**
+- [x] README : instructions d'installation et de lancement — **Djawad**
 
 ### Base de données
 
@@ -53,14 +53,14 @@
 
 ### Front mobile
 
-- [ ] Tab bar 3 onglets : Mon Jardin / **Scan** (central) / Communauté — **Djawad**
-- [ ] Écran Scan : caméra plein écran + cadre de visée (style Snap) — **Djawad**
-- [ ] Appel API identification + affichage résultat (nom, famille, rareté) — **Djawad**
-- [ ] Badge toxicité : rouge « Toxique » / vert « Non toxique » / orange « Incertaine » — **Djawad**
-- [ ] Ajout contextuel : boutons « Mon Jardin » et « Mon Herbarium » — **Djawad**
-- [ ] Pop-up Geo-Tag : « Partager la localisation ? » (accepter / refuser) — **Djawad**
-- [ ] Animation « +45 XP » qui flotte et disparaît — **Djawad**
-- [ ] Écrans auth : inscription / connexion — **Djawad**
+- [x] Tab bar 3 onglets : Mon Jardin / **Scan** (central) / Communauté — **Djawad**
+- [x] Écran Scan : caméra plein écran + cadre de visée (style Snap) — **Djawad**
+- [x] Appel API identification + affichage résultat (nom, famille, rareté) — **Djawad**
+- [x] Badge toxicité : rouge « Toxique » / vert « Non toxique » / orange « Incertaine » — **Djawad**
+- [x] Ajout contextuel : boutons « Mon Jardin » et « Mon Herbarium » — **Djawad**
+- [x] Pop-up Geo-Tag : « Partager la localisation ? » (accepter / refuser) — **Djawad**
+- [x] Animation « +45 XP » qui flotte et disparaît — **Djawad**
+- [x] Écrans auth : inscription / connexion — **Djawad**
 
 ---
 
@@ -76,18 +76,18 @@
 
 ### Front mobile
 
-- [ ] Sous-onglets segmentés : « Mon Quotidien » / « Mon Herbarium » — **Djawad**
-- [ ] **Quotidien** : cartes clones avec indicateur santé (vert/orange/rouge) — **Djawad**
-- [ ] Fiche d'entretien dynamique : arrosage, lumière, température, rempotage — **Djawad**
-- [ ] Bouton « Photo de suivi » (upload + timeline d'évolution) — **Djawad**
-- [ ] Bouton « Vérifier la santé » → diagnostic IA + traitement recommandé — **Djawad**
-- [ ] Bouton « Programmer un rappel » (notification push) — **Djawad**
-- [ ] Bandeau rappels du jour (« 2 arrosages prévus aujourd'hui ») — **Djawad**
-- [ ] **Herbarium** : grille compacte type collection de cartes — **Djawad**
-- [ ] Badge rareté (Commun / Rare / Épique) sur chaque carte — **Djawad**
-- [ ] Geo-tag affiché : lieu de capture ou distance (« à 3 km ») — **Djawad**
-- [ ] Date de capture (« il y a 3 jours ») — **Djawad**
-- [ ] Fiche plante consultable (sans actions d'entretien) — **Djawad**
+- [x] Sous-onglets segmentés : « Mon Quotidien » / « Mon Herbarium » — **Djawad**
+- [x] **Quotidien** : cartes clones avec indicateur santé (vert/orange/rouge) — **Djawad**
+- [x] Fiche d'entretien dynamique : arrosage, lumière, température, rempotage — **Djawad**
+- [x] Bouton « Photo de suivi » (upload + timeline d'évolution) — **Djawad**
+- [x] Bouton « Vérifier la santé » → diagnostic IA + traitement recommandé — **Djawad**
+- [x] Bouton « Programmer un rappel » (notification push) — **Djawad**
+- [x] Bandeau rappels du jour (« 2 arrosages prévus aujourd'hui ») — **Djawad**
+- [x] **Herbarium** : grille compacte type collection de cartes — **Djawad**
+- [x] Badge rareté (Commun / Rare / Épique) sur chaque carte — **Djawad**
+- [x] Geo-tag affiché : lieu de capture ou distance (« à 3 km ») — **Djawad**
+- [x] Date de capture (« il y a 3 jours ») — **Djawad**
+- [x] Fiche plante consultable (sans actions d'entretien) — **Djawad**
 
 ---
 
@@ -102,11 +102,11 @@
 
 ### Front mobile
 
-- [ ] Fil d'actualité : cartes publication (auteur, photo, tag plante, interactions) — **Djawad**
-- [ ] Création de publication : photo + texte + tag d'une plante de sa collection — **Djawad**
-- [ ] Stories : bulles en haut du feed + création — **Djawad**
-- [ ] Filtre segmenté « Tout le fil » / « Près de moi · 5 km » — **Djawad**
-- [ ] Encart « Découverte à X km de toi » sous les posts geo-tagués — **Djawad**
+- [x] Fil d'actualité : cartes publication (auteur, photo, tag plante, interactions) — **Djawad**
+- [x] Création de publication : photo + texte + tag d'une plante de sa collection — **Djawad**
+- [x] Stories : bulles en haut du feed + création — **Djawad**
+- [x] Filtre segmenté « Tout le fil » / « Près de moi · 5 km » — **Djawad**
+- [x] Encart « Découverte à X km de toi » sous les posts geo-tagués — **Djawad**
 
 ---
 
@@ -121,23 +121,23 @@
 
 ### Front mobile
 
-- [ ] Carte « Défis du jour » avec progression et récompenses — **Djawad**
-- [ ] Solde de pièces virtuelles — **Djawad**
-- [ ] Écran badges (« Botaniste débutant », « Chasseur d'épiques »…) — **Djawad**
-- [ ] Feedback haptique (vibration) pour les découvertes rares — **Djawad**
+- [x] Carte « Défis du jour » avec progression et récompenses — **Djawad**
+- [x] Solde de pièces virtuelles — **Djawad**
+- [x] Écran badges (« Botaniste débutant », « Chasseur d'épiques »…) — **Djawad**
+- [x] Feedback haptique (vibration) pour les découvertes rares — **Djawad**
 
 ---
 
 ## Phase 5 — Finitions & Qualité
 
-- [ ] Thème sombre / clair complet (bascule + respect du système) — **Djawad**
-- [ ] Transitions fluides entre onglets — **Djawad**
-- [ ] États vides (jardin vide, herbarium vide, feed vide) — **Djawad**
-- [ ] États de chargement + gestion des erreurs réseau — **Djawad**
+- [x] Thème sombre / clair complet (bascule + respect du système) — **Djawad**
+- [x] Transitions fluides entre onglets — **Djawad**
+- [x] États vides (jardin vide, herbarium vide, feed vide) — **Djawad**
+- [x] États de chargement + gestion des erreurs réseau — **Djawad**
 - [ ] Tests unitaires back (services identification, collection, quests) — **Abdel** (revue croisée : Djawad)
-- [ ] Tests front (composants critiques : ScanResult, PlantCard) — **Djawad** (revue croisée : Abdel)
-- [ ] Icône d'app + splash screen — **Djawad**
-- [ ] Onboarding première ouverture (3 écrans max) — **Djawad**
+- [x] Tests front (composants critiques : ScanResult, PlantCard) — **Djawad** (revue croisée : Abdel)
+- [x] Icône d'app + splash screen — **Djawad**
+- [x] Onboarding première ouverture (3 écrans max) — **Djawad**
 - [ ] RGPD : consentement localisation + suppression de compte — **Abdel**
 - [ ] Build EAS + publication TestFlight / Play Console (beta) — **Abdel**
 

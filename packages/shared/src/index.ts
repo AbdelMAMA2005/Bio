@@ -4,6 +4,8 @@ export type TypeCollection = 'owned' | 'discovered';
 
 export type EtatSante = 'sain' | 'alerte' | 'malade';
 
+export type Toxicite = 'toxique' | 'non_toxique' | 'incertaine';
+
 export interface User {
   id: string;
   pseudo: string;
@@ -17,9 +19,14 @@ export interface Plante {
   nomScientifique: string;
   nomCommun: string;
   famille: string;
-  toxicite: boolean;
+  toxicite: Toxicite;
   rarete: Rarete;
   conseilsEntretien: string;
+}
+
+export interface CollectionPhoto {
+  url: string;
+  date: string;
 }
 
 export interface CollectionItem {
@@ -30,5 +37,5 @@ export interface CollectionItem {
   latitude?: number;
   longitude?: number;
   etatSante?: EtatSante;
-  historiquePhotos?: string[];
+  historiquePhotos?: CollectionPhoto[];
 }
