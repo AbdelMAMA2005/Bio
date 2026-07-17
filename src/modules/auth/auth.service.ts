@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { User } from '../../entities/user.entity';
@@ -15,9 +15,9 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterRequestDto): Promise<RegisterResponseDto> {
-    // Vérifier si l'email existe déjà
+    // Vérifier si l'email existe déjà (y compris chez les utilisateurs non supprimés)
     const existingEmail = await this.userRepo.findOne({
-      where: { email: dto.email },
+      where: { email: dto.email, dateSuppression: IsNull() },
     });
     if (existingEmail) {
       throw new ConflictException('Cet email est déjà utilisé.');
@@ -25,7 +25,7 @@ export class AuthService {
 
     // Vérifier si le nom d'utilisateur existe déjà
     const existingUsername = await this.userRepo.findOne({
-      where: { nomUtilisateur: dto.nomUtilisateur },
+      where: { nomUtilisateur: dto.nomUtilisateur, dateSuppression: IsNull() },
     });
     if (existingUsername) {
       throw new ConflictException('Ce nom d\'utilisateur est déjà pris.');
@@ -56,7 +56,7 @@ export class AuthService {
 
   async login(dto: LoginRequestDto): Promise<LoginResponseDto> {
     const user = await this.userRepo.findOne({
-      where: { email: dto.email },
+      where: { email: dto.email, dateSuppression: IsNull() },
     });
 
     if (!user) {
@@ -86,6 +86,6 @@ export class AuthService {
   }
 
   async validateUser(id: string): Promise<User | null> {
-    return this.userRepo.findOne({ where: { id } });
+    return this.userRepo.findOne({ where: { id, dateSuppression: IsNull() } });
   }
 }

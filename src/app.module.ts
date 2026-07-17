@@ -8,6 +8,9 @@ import { IdentificationModule } from './modules/identification/identification.mo
 import { CollectionModule } from './modules/collection/collection.module';
 import { UserModule } from './modules/user/user.module';
 import { FeedModule } from './modules/feed/feed.module'; 
+import { DiagnosisModule } from './modules/diagnosis/diagnosis.module';
+import { PlantsModule } from './modules/plants/plants.module';
+import { RemindersModule } from './modules/reminders/reminders.module';
 
 @Module({
   imports: [
@@ -22,6 +25,9 @@ import { FeedModule } from './modules/feed/feed.module';
     CollectionModule,
     UserModule,
     FeedModule, 
+    DiagnosisModule,
+    PlantsModule,
+    RemindersModule,
   ],
 })
 export class AppModule {}

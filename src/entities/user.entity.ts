@@ -22,6 +22,9 @@ export class User {
   @Column({ default: 0 })
   experience!: number;
 
+  @Column({ default: false })
+  estAdmin!: boolean;
+
   @Column({ default: 1 })
   niveau!: number;
 

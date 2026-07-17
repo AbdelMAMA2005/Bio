@@ -5,8 +5,8 @@ import { Like } from '../../entities/like.entity';
 import { Comment } from '../../entities/comment.entity';
 import { User } from '../../entities/user.entity';
 import { Collection } from '../../entities/collection.entity';
-import { FeedController } from './feed.controller.ts';
-import { FeedService } from './feed.service.ts';
+import { FeedController } from './feed.controller';
+import { FeedService } from './feed.service';
 
 @Module({
   imports: [

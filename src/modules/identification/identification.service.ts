@@ -181,8 +181,7 @@ export class IdentificationService {
     await new Promise((resolve) => setTimeout(resolve, 300));
     return structuredClone(MOCK_PLANT_ID_RESPONSE);
   }
-
-  // ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
   //  Parse Plant.id v3 response → IdentifyPlantResponseDto
   // ─────────────────────────────────────────────────────────
 
@@ -204,25 +203,31 @@ export class IdentificationService {
     const famille: string | null =
       best.details?.taxonomy?.family || null;
 
-    // ── Toxicity mapping ──
+    // ── Toxicity mapping (Corrigé) ──
     let toxicite = ToxicityLevel.GREEN;
     const toxicityRaw: string | null = best.details?.toxicity || null;
+
     if (toxicityRaw) {
-      const lower = toxicityRaw.toLowerCase();
-      if (
-        lower.includes('toxic') ||
-        lower.includes('toxique') ||
-        lower.includes('poisonous') ||
-        lower.includes('dangereu')
-      ) {
+      const toxLower = toxicityRaw.toLowerCase();
+
+      // 1. D'abord les négations (non toxique)
+      if (toxLower.includes('non toxique') || toxLower.includes('non-toxic') || 
+          toxLower.includes('not toxic') || toxLower.includes('sans danger')) {
+        toxicite = ToxicityLevel.GREEN;
+      }
+      // 2. Ensuite les formes positives
+      else if (toxLower.includes('toxic') || toxLower.includes('toxique') || 
+               toxLower.includes('poisonous') || toxLower.includes('dangereux')) {
         toxicite = ToxicityLevel.RED;
-      } else if (
-        lower.includes('mild') ||
-        lower.includes('légèrement') ||
-        lower.includes('caution') ||
-        lower.includes('précaution')
-      ) {
+      }
+      // 3. Cas intermédiaire (attention, peut irriter)
+      else if (toxLower.includes('mild') || toxLower.includes('irritant') || 
+               toxLower.includes('caution')) {
         toxicite = ToxicityLevel.ORANGE;
+      }
+      // 4. Par défaut : vert
+      else {
+        toxicite = ToxicityLevel.GREEN;
       }
     }
 
