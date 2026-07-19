@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Collection as CollectionEntity } from '../../entities/collection.entity';
 import { Plant } from '../../entities/plant.entity';
 import { User } from '../../entities/user.entity';
-import type { CreateCollectionRequestDto, CreateCollectionResponseDto, GetCollectionResponseDto } from '../../dto';
+import type { CreateCollectionRequestDto, CreateCollectionResponseDto, GetCollectionResponseDto, UpdateCollectionDto } from '../../dto';
 import { PlantType } from '../../entities/enums/plant-type.enum';
 import { HealthStatus } from '../../entities/enums/health-status.enum';
 
@@ -90,9 +90,94 @@ export class CollectionService {
       urlImage: c.plante.urlImage,
       latitude: c.latitude,
       longitude: c.longitude,
+      historiquePhotos: c.historiquePhotos || [],
+      type: c.typeCollection,
     }));
   }
-  
+
+  // Récupérer un élément spécifique de la collection d'un utilisateur
+  async findOneByUser(id: string, userId: string): Promise<GetCollectionResponseDto> {
+    const c = await this.collectionRepo.findOne({
+      where: { id, userId },
+      relations: { plante: true },
+    });
+    if (!c) {
+      throw new NotFoundException('Entrée de collection non trouvée');
+    }
+    return {
+      id: c.id,
+      idPlante: c.plantId,
+      nomScientifique: c.plante.nomScientifique,
+      nomCommun: c.plante.nomCommun,
+      badgeRarete: c.plante.badgeRarete,
+      toxicite: c.plante.toxicite,
+      etatSante: c.etatSante,
+      dateAjout: c.dateAjout,
+      urlImage: c.plante.urlImage,
+      latitude: c.latitude,
+      longitude: c.longitude,
+      historiquePhotos: c.historiquePhotos || [],
+      type: c.typeCollection,
+    };
+  }
+
+  // Mettre à jour un élément de la collection
+  async update(
+    userId: string,
+    id: string,
+    dto: UpdateCollectionDto,
+  ): Promise<GetCollectionResponseDto> {
+    const c = await this.collectionRepo.findOne({
+      where: { id, userId },
+      relations: { plante: true },
+    });
+    if (!c) {
+      throw new NotFoundException('Collection non trouvée ou ne vous appartient pas.');
+    }
+
+    if (dto.etatSante !== undefined) {
+      c.etatSante = dto.etatSante;
+    }
+    if (dto.typeCollection !== undefined) {
+      c.typeCollection = dto.typeCollection;
+    }
+    if (dto.latitude !== undefined) {
+      c.latitude = dto.latitude;
+    }
+    if (dto.longitude !== undefined) {
+      c.longitude = dto.longitude;
+    }
+
+    const saved = await this.collectionRepo.save(c);
+
+    return {
+      id: saved.id,
+      idPlante: saved.plantId,
+      nomScientifique: saved.plante.nomScientifique,
+      nomCommun: saved.plante.nomCommun,
+      badgeRarete: saved.plante.badgeRarete,
+      toxicite: saved.plante.toxicite,
+      etatSante: saved.etatSante,
+      dateAjout: saved.dateAjout,
+      urlImage: saved.plante.urlImage,
+      latitude: saved.latitude,
+      longitude: saved.longitude,
+      historiquePhotos: saved.historiquePhotos || [],
+      type: saved.typeCollection,
+    };
+  }
+
+  // Supprimer physiquement un élément de la collection
+  async delete(userId: string, id: string): Promise<void> {
+    const collection = await this.collectionRepo.findOne({
+      where: { id, userId },
+    });
+    if (!collection) {
+      throw new NotFoundException('Collection non trouvée ou ne vous appartient pas.');
+    }
+    await this.collectionRepo.remove(collection);
+  }
+
   // Ajouter une photo de suivi
   async addPhoto(
     userId: string,

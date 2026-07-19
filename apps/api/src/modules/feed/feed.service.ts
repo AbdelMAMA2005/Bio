@@ -12,6 +12,7 @@ import {
   CreateCommentRequestDto,
   CreateCommentResponseDto,
   FeedQueryDto,
+  UpdatePostDto,
 } from '../../dto';
 
 @Injectable()
@@ -117,6 +118,39 @@ export class FeedService {
     return { items, total };
   }
 
+  // ----- Mettre à jour une publication -----
+  async updatePost(userId: string, postId: string, dto: UpdatePostDto): Promise<CreatePostResponseDto> {
+    const post = await this.postRepo.findOne({
+      where: { id: postId, userId },
+      relations: { utilisateur: true, collection: { plante: true } },
+    });
+    if (!post) {
+      throw new NotFoundException('Publication non trouvée ou vous n\'êtes pas l\'auteur');
+    }
+
+    if (dto.contenuTexte !== undefined) {
+      post.contenuTexte = dto.contenuTexte;
+    }
+    if (dto.imageUrl !== undefined) {
+      post.urlImage = dto.imageUrl;
+    }
+
+    const saved = await this.postRepo.save(post);
+
+    const [likesCount, commentairesCount] = await Promise.all([
+      this.likeRepo.count({ where: { postId: saved.id } }),
+      this.commentRepo.count({ where: { postId: saved.id } }),
+    ]);
+
+    const isLiked = await this.likeRepo.count({ where: { postId: saved.id, userId } });
+
+    const response = this.mapToResponseDto(saved, userId);
+    response.likesCount = likesCount;
+    response.commentairesCount = commentairesCount;
+    response.estLikedParUtilisateur = isLiked > 0;
+    return response;
+  }
+
   // ----- Liker ou unliker une publication (toggle) -----
   async toggleLike(userId: string, postId: string): Promise<{ liked: boolean; likesCount: number }> {
     const post = await this.postRepo.findOne({ where: { id: postId } });
@@ -141,6 +175,24 @@ export class FeedService {
       const likesCount = await this.likeRepo.count({ where: { postId: postId } });
       return { liked: true, likesCount };
     }
+  }
+
+  // ----- Retirer un like explicitement -----
+  async unlikePost(userId: string, postId: string): Promise<{ liked: boolean; likesCount: number }> {
+    const post = await this.postRepo.findOne({ where: { id: postId } });
+    if (!post) {
+      throw new NotFoundException('Publication non trouvée');
+    }
+
+    const existingLike = await this.likeRepo.findOne({
+      where: { postId: postId, userId: userId },
+    });
+
+    if (existingLike) {
+      await this.likeRepo.remove(existingLike);
+    }
+    const likesCount = await this.likeRepo.count({ where: { postId: postId } });
+    return { liked: false, likesCount };
   }
 
   // ----- Ajouter un commentaire -----
@@ -204,6 +256,23 @@ export class FeedService {
         urlAvatar: c.utilisateur.urlAvatar,
       },
     }));
+  }
+
+  // ----- Supprimer un commentaire -----
+  async deleteComment(userId: string, postId: string, commentId: string): Promise<void> {
+    const comment = await this.commentRepo.findOne({
+      where: { id: commentId, postId },
+      relations: { publication: true },
+    });
+    if (!comment) {
+      throw new NotFoundException('Commentaire non trouvé');
+    }
+
+    if (comment.userId !== userId && comment.publication.userId !== userId) {
+      throw new ForbiddenException("Vous n'êtes pas autorisé à supprimer ce commentaire");
+    }
+
+    await this.commentRepo.remove(comment);
   }
 
   // ----- Supprimer une publication (seulement si c'est l'auteur) -----

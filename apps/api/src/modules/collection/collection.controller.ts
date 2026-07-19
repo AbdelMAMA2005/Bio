@@ -2,6 +2,8 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
+  Delete,
   Body,
   Query,
   UseGuards,
@@ -15,7 +17,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CollectionService } from './collection.service';
-import { CreateCollectionRequestDto } from '../../dto';
+import { CreateCollectionRequestDto, UpdateCollectionDto } from '../../dto';
 import { PlantType } from '../../entities/enums/plant-type.enum';
 import { JwtAuthGuard } from '../../common/guards';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -39,6 +41,32 @@ export class CollectionController {
     @Query('type') type?: PlantType,
   ) {
     return this.collectionService.findByUserAndType(user.id, type);
+  }
+
+  @Get(':id')
+  async findOne(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+  ) {
+    return this.collectionService.findOneByUser(id, user.id);
+  }
+
+  @Patch(':id')
+  async update(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateCollectionDto,
+  ) {
+    return this.collectionService.update(user.id, id, dto);
+  }
+
+  @Delete(':id')
+  async delete(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+  ) {
+    await this.collectionService.delete(user.id, id);
+    return { success: true };
   }
 
   // Ajouter une photo de suivi
