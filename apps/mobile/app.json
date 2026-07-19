@@ -59,6 +59,12 @@
           "icon": "./assets/images/splash-icon.png",
           "color": "#4ade80"
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "PlanAI a besoin de ta position pour géolocaliser tes découvertes (Geo-Tag)."
+        }
       ]
     ],
     "experiments": {

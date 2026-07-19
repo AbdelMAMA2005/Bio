@@ -1,15 +1,39 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import type { BackendIdentifyResponse } from '@/api/adapters';
+import { toPlantWithIcon } from '@/api/adapters';
+import { apiClient } from '@/api/client';
 import { queryKeys } from '@/api/queryKeys';
-import { addCollectionItem, pickNextIdentification, wait } from '@/api/mock/store';
 import type { IdentificationResult } from '@/api/types';
 
 type IdentifyInput = {
   photoUri: string;
 };
 
-async function identifyPlant(_input: IdentifyInput): Promise<IdentificationResult> {
-  return wait(pickNextIdentification(), 1200);
+/**
+ * Le back ne renvoie pas de score de confiance (pas de champ `confiance` sur
+ * IdentifyPlantResponseDto — voir API_CONTRACT.md §3). On affiche une valeur de
+ * repli plutôt que d'inventer une vraie mesure.
+ */
+const FALLBACK_CONFIDENCE = 95;
+
+async function identifyPlant(input: IdentifyInput): Promise<IdentificationResult> {
+  const formData = new FormData();
+  formData.append('image', {
+    uri: input.photoUri,
+    name: 'scan.jpg',
+    type: 'image/jpeg',
+  } as unknown as Blob);
+
+  const { data } = await apiClient.post<BackendIdentifyResponse>('/identification', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+
+  return {
+    plant: toPlantWithIcon(data.plantId, data),
+    confidence: FALLBACK_CONFIDENCE,
+    xpAwarded: data.xpGagne,
+  };
 }
 
 export function useIdentify() {
@@ -22,11 +46,18 @@ type AddToCollectionInput = {
   plant: IdentificationResult['plant'];
   type: 'owned' | 'discovered';
   geoTagged: boolean;
+  latitude?: number;
+  longitude?: number;
 };
 
 async function addToCollection(input: AddToCollectionInput): Promise<void> {
-  addCollectionItem(input.plant, input.type, input.geoTagged);
-  await wait(undefined, 300);
+  await apiClient.post('/collection', {
+    plantId: input.plant.id,
+    type: input.type,
+    ...(input.geoTagged && input.latitude !== undefined && input.longitude !== undefined
+      ? { latitude: input.latitude, longitude: input.longitude }
+      : {}),
+  });
 }
 
 export function useAddToCollection() {

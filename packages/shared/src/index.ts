@@ -30,6 +30,8 @@ export interface CollectionPhoto {
 }
 
 export interface CollectionItem {
+  /** Identifiant réel de la ligne collection côté back (absent des données mock). */
+  id?: string;
   idUtilisateur: string;
   idPlante: string;
   dateAjout: string;

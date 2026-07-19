@@ -1,5 +1,6 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -73,10 +74,24 @@ export function ScanScreen() {
     }
   };
 
-  const finalizeAdd = (geoTagged: boolean) => {
+  const finalizeAdd = async (geoTagged: boolean) => {
     if (!identify.data || !pendingType) return;
     const type = pendingType;
-    addToCollection.mutate({ plant: identify.data.plant, type, geoTagged });
+
+    let coords: { latitude: number; longitude: number } | undefined;
+    if (geoTagged) {
+      try {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (permission.granted) {
+          const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          coords = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+        }
+      } catch {
+        // Position indisponible (émulateur sans GPS, permission refusée en cours de route, etc.) : on continue sans.
+      }
+    }
+
+    addToCollection.mutate({ plant: identify.data.plant, type, geoTagged, ...coords });
     addXp(identify.data.xpAwarded);
     setPendingType(null);
     setToast({

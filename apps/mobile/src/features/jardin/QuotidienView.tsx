@@ -34,12 +34,12 @@ export function QuotidienView() {
     setTimeout(() => setToast(null), 2200);
   };
 
-  const handlePhotoDeSuivi = async (idPlante: string) => {
+  const handlePhotoDeSuivi = async (collectionId: string) => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.6 });
     if (result.canceled || !result.assets[0]) return;
-    addTrackingPhoto.mutate({ idPlante, uri: result.assets[0].uri });
+    addTrackingPhoto.mutate({ collectionId, uri: result.assets[0].uri });
   };
 
   const handleCheckHealth = (idPlante: string, plantName: string) => {
@@ -90,7 +90,7 @@ export function QuotidienView() {
                 <CloneCard
                   key={clone.item.idPlante}
                   clone={clone}
-                  onPhotoDeSuivi={() => handlePhotoDeSuivi(clone.item.idPlante)}
+                  onPhotoDeSuivi={() => handlePhotoDeSuivi(clone.item.id ?? clone.item.idPlante)}
                   onCheckHealth={() => handleCheckHealth(clone.item.idPlante, clone.plant.nomCommun)}
                   checkingHealth={checkHealth.isPending && checkHealth.variables === clone.item.idPlante}
                 />

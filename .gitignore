@@ -1,13 +1,10 @@
-<<<<<<< HEAD
 node_modules
 .expo
 dist
 .env
 *.local
-=======
+
 # compiled output
-/dist
-/node_modules
 /build
 
 # Logs
@@ -43,7 +40,6 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 # dotenv environment variable files
-.env
 .env.development.local
 .env.test.local
 .env.production.local
@@ -61,4 +57,3 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
->>>>>>> backend

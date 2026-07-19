@@ -1,13 +1,13 @@
 import type { User } from '@planai/shared';
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { setAuthToken } from '@/api/authToken';
 import { clearSession, readSession, writeSession } from '@/features/auth/authStorage';
+import { login as apiLogin, register as apiRegister } from '@/features/auth/authApi';
 import {
   mockChangePassword,
   mockDeleteAccount,
   mockGoogleLogin,
-  mockLogin,
-  mockRegister,
   mockUpdateProfile,
 } from '@/features/auth/mockAuthApi';
 import { xpTargetForLevel } from '@/features/account/levels';
@@ -43,6 +43,14 @@ export function AuthProvider({
   const [user, setUser] = useState<User | null>(initialUser);
   const [isBusy, setIsBusy] = useState(false);
 
+  useEffect(() => {
+    // Le client HTTP ne garde le token qu'en mémoire : on le réhydrate depuis
+    // SecureStore au boot (initialUser seul ne suffit pas à authentifier les requêtes).
+    readSession().then((session) => {
+      if (session) setAuthToken(session.token);
+    });
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -51,7 +59,8 @@ export function AuthProvider({
       login: async (email, password) => {
         setIsBusy(true);
         try {
-          const { token, user: loggedInUser } = await mockLogin(email, password);
+          const { token, user: loggedInUser } = await apiLogin(email, password);
+          setAuthToken(token);
           await writeSession({ token, user: loggedInUser });
           setUser(loggedInUser);
         } finally {
@@ -61,7 +70,8 @@ export function AuthProvider({
       register: async (pseudo, email, password) => {
         setIsBusy(true);
         try {
-          const { token, user: registeredUser } = await mockRegister(pseudo, email, password);
+          const { token, user: registeredUser } = await apiRegister(pseudo, email, password);
+          setAuthToken(token);
           await writeSession({ token, user: registeredUser });
           setUser(registeredUser);
         } finally {
@@ -71,7 +81,9 @@ export function AuthProvider({
       loginWithGoogle: async () => {
         setIsBusy(true);
         try {
+          // Pas d'endpoint POST /auth/google côté back — reste mocké (BACKEND_ISSUES.md §6).
           const { token, user: googleUser } = await mockGoogleLogin();
+          setAuthToken(token);
           await writeSession({ token, user: googleUser });
           setUser(googleUser);
         } finally {
@@ -79,10 +91,12 @@ export function AuthProvider({
         }
       },
       logout: async () => {
+        setAuthToken(null);
         await clearSession();
         setUser(null);
       },
       updateProfile: async (patch) => {
+        // Pas d'endpoint PATCH /users/me côté back — reste mocké (BACKEND_ISSUES.md §6).
         await mockUpdateProfile(patch);
         setUser((prev) => {
           if (!prev) return prev;
@@ -94,10 +108,13 @@ export function AuthProvider({
         });
       },
       changePassword: async (current, next) => {
+        // Pas d'endpoint POST /auth/change-password côté back — reste mocké (BACKEND_ISSUES.md §6).
         await mockChangePassword(current, next);
       },
       deleteAccount: async () => {
+        // Pas d'endpoint DELETE /auth/account côté back — reste mocké (BACKEND_ISSUES.md §6).
         await mockDeleteAccount();
+        setAuthToken(null);
         await clearSession();
         setUser(null);
       },
