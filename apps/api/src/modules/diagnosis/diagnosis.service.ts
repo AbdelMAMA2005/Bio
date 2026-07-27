@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -9,8 +9,27 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * Plant.id v3 Health renvoie `treatment.{biological,chemical,prevention}` comme des
+ * TABLEAUX de conseils (vérifié en conditions réelles, pas des chaînes comme le laissait
+ * penser l'ancien code) : on les joint en texte, et on omet une catégorie vide plutôt que
+ * d'afficher une case de traitement vide (jamais de texte inventé).
+ */
+function joinTreatment(raw: {
+  biological?: string[];
+  chemical?: string[];
+  prevention?: string[];
+}): { biologique?: string; chimique?: string; prevention?: string } | undefined {
+  const biologique = raw.biological?.length ? raw.biological.join(' ') : undefined;
+  const chimique = raw.chemical?.length ? raw.chemical.join(' ') : undefined;
+  const prevention = raw.prevention?.length ? raw.prevention.join(' ') : undefined;
+  if (!biologique && !chimique && !prevention) return undefined;
+  return { biologique, chimique, prevention };
+}
+
 @Injectable()
 export class DiagnosisService {
+  private readonly logger = new Logger(DiagnosisService.name);
   private readonly apiKey: string;
   private readonly useMock: boolean;
 
@@ -24,7 +43,11 @@ export class DiagnosisService {
   }
 
   private getAbsolutePhotoPath(photoUrl: string): string {
-    const uploadsBase = path.join(__dirname, '..', '..', 'uploads');
+    // Voir collection.service.ts#addPhoto : 3 x '..' pour remonter jusqu'à apps/api/,
+    // pas 2 (sinon on cherche le fichier dans dist/uploads/... alors qu'il est réellement
+    // dans apps/api/uploads/..., et le repli "dernière photo de l'historique" échoue
+    // toujours avec "fichier non trouvé").
+    const uploadsBase = path.join(__dirname, '..', '..', '..', 'uploads');
     const relativePart = photoUrl.replace(/^\/?uploads\/?/, '');
     return path.join(uploadsBase, relativePart);
   }
@@ -74,7 +97,7 @@ export class DiagnosisService {
 
     // 4. Si une image a été fournie lors de l'appel, la sauvegarder et l'ajouter à l'historique
     if (imageBuffer) {
-      const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'collections', collectionId);
+      const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'collections', collectionId);
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
@@ -99,15 +122,42 @@ export class DiagnosisService {
       }
     }
 
+    // 6. Sauvegarder le diagnostic (maladie, confiance, traitement, date) pour que le
+    // bouton "Voir le diagnostic" côté front puisse le rouvrir sans relancer d'analyse —
+    // écrase le précédent (toujours le plus récent, cohérent avec etatSante ci-dessus,
+    // recalculé dans le même appel). `null` sur les champs maladie quand la plante est
+    // saine : jamais de texte inventé pour un diagnostic qui n'a rien détecté.
+    const topSuggestion = diagnosisResult.suggestions[0];
+    collection.dernierDiagnostic = {
+      maladieNom: diagnosisResult.estSain ? null : (topSuggestion?.nom ?? null),
+      scoreGlobal: diagnosisResult.scoreGlobal,
+      traitement: diagnosisResult.estSain ? null : (topSuggestion?.traitement ?? null),
+      description: diagnosisResult.estSain ? null : (topSuggestion?.description ?? null),
+      estSain: diagnosisResult.estSain,
+      dateDiagnostic: new Date().toISOString(),
+    };
+
     collection.etatSante = nouveauStatus;
     await this.collectionRepo.save(collection);
 
     return diagnosisResult;
   }
 
+  /**
+   * Plant.id v3 Health Assessment, comme l'identification (voir identification.service.ts) :
+   * `health`/`details`/`language` sont des QUERY PARAMS, pas des champs du corps JSON — le
+   * corps ne prend que `images`/`similar_images`. Vérifié en conditions réelles (23/07/2026) :
+   * l'ancienne forme (tout dans le body) renvoyait systématiquement une erreur 400 Plant.id
+   * ("Unknown modifier"), masquée en un 500 générique côté back, donc jamais diagnostiquée
+   * avant (aucun test ne couvrait le vrai appel HTTP, seulement le mode mock). `details=`
+   * demandé (`local_name,description,treatment,classification,common_names,cause`) est
+   * nécessaire pour obtenir un texte de traitement — sans lui, `suggestions[].details` ne
+   * contient que `language`/`entity_id`, jamais de texte exploitable.
+   */
   private async callPlantIdHealth(imageBuffer: Buffer): Promise<DiagnosisResponseDto> {
     const imageBase64 = imageBuffer.toString('base64');
-    const url = this.configService.get<string>('PLANT_ID_API_URL_health') || 'https://api.plant.id/v3/health_assessment';
+    const baseUrl = this.configService.get<string>('PLANT_ID_API_URL_health') || 'https://api.plant.id/v3/health_assessment';
+    const url = `${baseUrl}?health=all&details=local_name,description,treatment,classification,common_names,cause&language=fr`;
 
     try {
       const response = await fetch(url, {
@@ -118,13 +168,13 @@ export class DiagnosisService {
         },
         body: JSON.stringify({
           images: [imageBase64],
-          health: 'all',
-          details: ['description', 'treatment'],
-          language: 'fr',
+          similar_images: true,
         }),
       });
 
       if (!response.ok) {
+        const errorBody = await response.text().catch(() => '');
+        this.logger.error(`❌ Erreur Plant.id Health (HTTP ${response.status}): ${errorBody}`);
         throw new BadRequestException("Erreur lors de l'appel à l'API Plant.id Health");
       }
 
@@ -143,17 +193,14 @@ export class DiagnosisService {
           nom: s.name || 'Inconnu',
           probabilite: s.probability || 0,
           estNuisible: s.is_harmful ?? true,
-          traitement: s.details?.treatment ? {
-            biologique: s.details.treatment.biological,
-            chimique: s.details.treatment.chemical,
-            prevention: s.details.treatment.prevention,
-          } : undefined,
+          traitement: s.details?.treatment ? joinTreatment(s.details.treatment) : undefined,
           description: s.details?.description || s.details?.local_name || null,
         })),
         scoreGlobal: estSain ? Math.round(probabiliteSante * 100) : Math.round((1 - probabiliteSante) * 100),
       };
     } catch (error: any) {
-      console.error('❌ Erreur Plant.id Health:', error.message);
+      if (error instanceof BadRequestException) throw error;
+      this.logger.error(`❌ Erreur Plant.id Health: ${error.message}`);
       throw new InternalServerErrorException(
         'Le diagnostic de santé a échoué. Veuillez réessayer plus tard.',
       );

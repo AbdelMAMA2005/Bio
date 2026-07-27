@@ -94,8 +94,9 @@ apps/api/
 │   │   │                       #   historiquePhotos (JSON array)
 │   │   ├── identification/     # proxy vers Plant.id / Google Vision
 │   │   ├── diagnosis/          # détection maladies (CNN PlantVillage)
-│   │   ├── feed/               # publications, likes, commentaires, stories
-│   │   │                       #   + endpoint "près de moi" (rayon 5/10 km)
+│   │   ├── feed/               # publications, likes, commentaires
+│   │   │                       #   + filtre "près de moi" (rayon réel en SQL, radiusMetres)
+│   │   ├── stories/             # stories éphémères 24h (entité Story dédiée)
 │   │   ├── quests/             # défis quotidiens + exploration, récompenses
 │   │   └── notifications/      # rappels push (arrosage, traitements)
 │   ├── common/                 # guards, pipes, interceptors, filters
@@ -105,13 +106,16 @@ apps/api/
 │   ├── enums/
 │   │   ├── toxicity-level.enum.ts
 │   │   ├── plant-type.enum.ts
-│   │   └── health-status.enum.ts
+│   │   ├── health-status.enum.ts
+│   │   └── story-media-type.enum.ts
 │   ├── user.entity.ts
 │   ├── plant.entity.ts
 │   ├── collection.entity.ts
 │   ├── posts.entity.ts
 │   ├── like.entity.ts
 │   ├── comment.entity.ts
+│   ├── story.entity.ts        # un média = une ligne, regroupées en bulles à la lecture
+│   ├── story-view.entity.ts   # vues "vu par" (storyId + viewerId, unique)
 │   └── reminder.entity.ts
 ├── test/
 └── package.json
@@ -170,9 +174,26 @@ Les noms de tables PostgreSQL sont en anglais (`users`, `plants`, `collection`, 
 | `type` | `'owned' \| 'discovered'` | *owned* = Mon Jardin ; *discovered* = Herbarium |
 | `etatSante` | `'green' \| 'orange' \| 'red'` | Indicateur de santé |
 | `historiquePhotos` | `string[]` (JSONB) | URLs des photos de suivi |
+| `dernierDiagnostic` | `DernierDiagnostic \| null` (JSONB) | Dernier diagnostic de santé (voir ci-dessous), réécrit à chaque `POST /collection/:id/diagnosis` — pas un historique multi-entrées |
 | `dateAjout` | `Date` | Date d'ajout à la collection |
 | `latitude` | `number \| null` | Geo-tag (optionnel) |
 | `longitude` | `number \| null` | Geo-tag (optionnel) |
+
+**`DernierDiagnostic`** (ajouté le 24/07/2026, voir `rapport.md`) :
+```typescript
+{
+  maladieNom: string | null;      // null si la plante était saine à ce diagnostic
+  scoreGlobal: number;            // confiance 0-100 (même valeur que scoreGlobal du diagnostic)
+  traitement: { biologique?: string; chimique?: string; prevention?: string } | null;
+  description: string | null;
+  estSain: boolean;
+  dateDiagnostic: string;         // ISO 8601
+}
+```
+Alimente le bouton "Voir le diagnostic" (Mon Quotidien) : visible uniquement si `etatSante
+=== 'malade'` ET ce champ non-null — permet de rouvrir le dernier diagnostic sans relancer
+d'analyse. Se masque automatiquement si une vérification ultérieure déclare la plante saine
+(le champ est réécrit, pas supprimé : voir API_CONTRACT.md §4).
 
 ---
 
@@ -183,8 +204,41 @@ Les noms de tables PostgreSQL sont en anglais (`users`, `plants`, `collection`, 
 | `idUtilisateur` | `string` (UUID) | Clé étrangère → `users.id` |
 | `idCollection` | `string \| null` (UUID) | Optionnel → `collection.id` (plante taguée) |
 | `contenuTexte` | `string` | Texte de la publication |
-| `urlImage` | `string \| null` | Image associée |
+| `urlImage` | `string \| null` | Image associée (vrai fichier uploadé dans `uploads/posts/`, ou repli `imageUrl` JSON) |
+| `latitude` / `longitude` | `number \| null` | Héritées de la collection taguée si elle a un Geo-Tag, sinon `null` — servent au filtre "Près de moi" (`GET /feed?filter=near`, distance haversine calculée en SQL) |
 | `dateCreation` | `Date` | Horodatage |
+
+---
+
+### Table `stories` (statuts éphémères 24h, comportement WhatsApp)
+
+Une ligne = **un média**, pas une bulle. Plusieurs médias actifs du même `userId` se
+regroupent en une seule bulle **à la lecture** (`StoriesService#getGroupedStories`), chacun
+gardant sa propre expiration `+24h` indépendante — pas de table de groupe dédiée.
+
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` (UUID) | Identifiant unique du média |
+| `idUtilisateur` | `string` (UUID) | Clé étrangère → `users.id` |
+| `urlMedia` | `string` | Vrai fichier uploadé dans `uploads/stories/` |
+| `mediaType` | `'image' \| 'video'` | Détecté depuis le `mimetype` du fichier reçu ; `POST /stories` n'accepte en pratique que des images (voir `API_CONTRACT.md` §5) — la vidéo reste au niveau du modèle sans être atteignable |
+| `dateCreation` | `Date` | Horodatage |
+| `dateExpiration` | `Date` | `dateCreation + 24h`, fixée à la création — `GET /stories` ne renvoie jamais un média expiré, même isolément au sein d'une bulle par ailleurs active |
+
+### Table `story_views` (vues "vu par", comportement WhatsApp)
+
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` (UUID) | Identifiant unique |
+| `storyId` | `string` (UUID) | Clé étrangère → `stories.id` (le média vu) |
+| `viewerId` | `string` (UUID) | Clé étrangère → `users.id` (qui a vu) |
+| `dateVue` | `Date` | Horodatage de la vue |
+
+Contrainte unique `(storyId, viewerId)` : une seule vue par personne et par média
+(`POST /stories/:mediaId/view` est idempotent). L'auteur d'un média ne génère jamais de vue
+sur son propre contenu. `GET /stories/:mediaId/viewers` (réservé à l'auteur, 403 sinon) lit
+cette table pour la liste "vu par" ; `vuesCount`/`vuParMoi` dans `GET /stories` en dérivent
+aussi (compte réel, jamais un chiffre affiché sans ligne correspondante en base).
 
 ---
 

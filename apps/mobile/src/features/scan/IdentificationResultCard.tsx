@@ -5,6 +5,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 
 import { CircleIconButton } from '@/components/CircleIconButton';
 import { Icon } from '@/components/Icon';
+import { PlantPhoto } from '@/components/PlantPhoto';
 import { SecondaryButton } from '@/components/SecondaryButton';
 import type { IdentificationResult } from '@/api/types';
 import { useAppTheme } from '@/theme';
@@ -15,13 +16,16 @@ import { toxicityDisplay } from '@/utils/toxicity';
 
 type Props = {
   result: IdentificationResult;
+  /** Photo réellement prise par l'utilisateur (URI locale) — affichée telle quelle, jamais
+   * remplacée par l'image générique du référentiel d'espèce (`plant.urlImage`). */
+  photoUri: string;
   elapsedSeconds: number;
   onSelectJardin: () => void;
   onSelectHerbarium: () => void;
   onDismiss: () => void;
 };
 
-export function IdentificationResultCard({ result, elapsedSeconds, onSelectJardin, onSelectHerbarium, onDismiss }: Props) {
+export function IdentificationResultCard({ result, photoUri, elapsedSeconds, onSelectJardin, onSelectHerbarium, onDismiss }: Props) {
   const { t } = useTranslation();
   const { colors, isDark } = useAppTheme();
   const { plant, confidence, xpAwarded } = result;
@@ -59,7 +63,14 @@ export function IdentificationResultCard({ result, elapsedSeconds, onSelectJardi
 
         <View style={styles.header}>
           <View style={[styles.plantIconWrap, { backgroundColor: rarityColors.bg }]}>
-            <Icon name={plant.icon} size={32} color={rarityColors.text} />
+            <PlantPhoto
+              ownPhotoUrl={photoUri}
+              catalogUrl={plant.urlImage}
+              icon={plant.icon}
+              iconSize={32}
+              iconColor={rarityColors.text}
+              style={styles.plantImage}
+            />
             <Animated.Text style={[styles.xpFloating, xpStyle]}>{t('scan.xpGain', { xp: xpAwarded })}</Animated.Text>
           </View>
           <View style={styles.headerText}>
@@ -134,6 +145,12 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  plantImage: {
+    width: 64,
+    height: 64,
+    borderRadius: Radius.xl,
+    position: 'absolute',
   },
   xpFloating: {
     position: 'absolute',

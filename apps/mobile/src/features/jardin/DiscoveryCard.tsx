@@ -2,8 +2,9 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
+import { PlantPhoto } from '@/components/PlantPhoto';
 import { RarityBadge } from '@/components/RarityBadge';
-import type { HerbariumDiscovery } from '@/api/types';
+import { ownPhotoUrl, type HerbariumDiscovery } from '@/api/types';
 import { formatRelativeDate } from '@/utils/format';
 import type { SupportedLanguage } from '@/i18n';
 import { useAppTheme } from '@/theme';
@@ -20,12 +21,19 @@ export function DiscoveryCard({ discovery, onPress }: Props) {
   const { i18n } = useTranslation();
   const { colors, isDark } = useAppTheme();
   const { plant, item, placeLabel } = discovery;
+  const photoUrl = ownPhotoUrl(item);
   const rarityPalette = (isDark ? RarityColors : RarityColorsLight)[plant.rarete];
 
   return (
     <Pressable onPress={onPress} style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
       <View style={[styles.thumb, { backgroundColor: rarityPalette.bg }]}>
-        <Icon name={plant.icon} size={40} color={rarityPalette.text} />
+        <PlantPhoto
+          ownPhotoUrl={photoUrl}
+          catalogUrl={plant.urlImage}
+          icon={plant.icon}
+          iconSize={40}
+          iconColor={rarityPalette.text}
+        />
         <View style={styles.badgeWrap}>
           <RarityBadge rarete={plant.rarete} />
         </View>

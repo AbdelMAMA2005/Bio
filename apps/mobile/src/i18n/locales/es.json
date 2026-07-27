@@ -28,7 +28,9 @@
     "addToHerbarium": "Mi Herbario",
     "xpGain": "+{{xp}} XP",
     "capture": "Capturar",
-    "analyzing": "Identificando…"
+    "analyzing": "Identificando…",
+    "notRecognized": "Planta no reconocida. Vuelve a intentarlo con una foto más nítida, un mejor ángulo o más luz.",
+    "genericError": "La identificación ha fallado. Inténtalo de nuevo en un momento."
   },
   "geoTag": {
     "title": "¿Compartir tu ubicación?",
@@ -51,6 +53,7 @@
     "questsTitle": "Retos del día",
     "photoDeSuivi": "Foto de seguimiento",
     "checkHealth": "Comprobar salud",
+    "viewDiagnosis": "Ver diagnóstico",
     "waterIn": "Riego: {{when}}",
     "today": "hoy",
     "tomorrow": "mañana",
@@ -66,11 +69,19 @@
     "coinsGain": "+{{count}} monedas",
     "reminderScheduledTitle": "Recordatorio programado",
     "reminderScheduledSub": "Notificación en {{days}} días",
-    "photoTimeline": "Seguimiento fotográfico"
+    "photoTimeline": "Seguimiento fotográfico",
+    "diagnosisErrorTitle": "Diagnóstico no disponible",
+    "diagnosisErrorSub": "Vuelve a intentarlo con una foto más nítida de la hoja.",
+    "markWatered": "Marcar como regada",
+    "wateredToastTitle": "Riego registrado",
+    "wateredToastSub": "Próxima fecha recalculada",
+    "wateringNotificationBody": "¡Es hora de regarla!"
   },
   "quests": {
     "scan3": "Escanear 3 plantas diferentes",
+    "addGarden": "Añadir una nueva planta a tu Jardín",
     "postTip": "Publicar una foto con un consejo",
+    "get5Likes": "Recibir 5 likes en una publicación",
     "rare1km": "Encontrar una planta rara a + de 1 km"
   },
   "health": {
@@ -81,6 +92,7 @@
   "diagnosis": {
     "title": "{{disease}} detectada",
     "meta": "Análisis IA · confianza {{confidence}} % · {{plant}}",
+    "diagnosedAt": "Diagnosticado {{when}}",
     "treatmentTitle": "Tratamiento recomendado",
     "reminderCta": "Recordar en {{days}} días"
   },
@@ -95,7 +107,7 @@
     "yourStory": "Tu historia",
     "feedAll": "Todo el feed",
     "feedNear": "Cerca de mí · {{distance}}",
-    "discoveredAt": "Descubierta a {{distance}} de ti",
+    "discoveredAt": "Descubierta {{distance}} de ti",
     "emptyNear": "No hay publicaciones geolocalizadas cerca por ahora.",
     "takePhoto": "Cámara",
     "chooseFromGallery": "Galería",
@@ -106,18 +118,29 @@
     "noTag": "Sin etiqueta",
     "choosePhoto": "Elige una foto",
     "publish": "Publicar",
-    "postPublished": "¡Publicación añadida!"
+    "postPublished": "¡Publicación añadida!",
+    "comments": "Comentarios",
+    "commentPlaceholder": "Añade un comentario…",
+    "noComments": "Aún no hay comentarios. ¡Sé el primero en reaccionar!",
+    "viewedByCount_one": "Visto por {{count}} persona",
+    "viewedByCount_other": "Visto por {{count}} personas",
+    "noViewsYet": "Ninguna vista por ahora.",
+    "shareDefaultMessage": "¡Descubre esta publicación en PlanAI!",
+    "shareErrorTitle": "No se pudo compartir",
+    "shareErrorSub": "Inténtalo de nuevo en un momento."
   },
   "plant": {
     "familyLabel": "Familia: {{family}}",
     "careTitle": "Consejos de cuidado",
     "aboutTitle": "Acerca de",
+    "aboutUnavailable": "No hay descripción disponible para esta especie.",
     "viewInHerbarium": "Ver en mi Herbario",
     "care": {
       "light": "Luz",
       "soil": "Suelo",
-      "temperature": "Temperatura",
-      "habitat": "Hábitat"
+      "watering": "Riego",
+      "propagation": "Multiplicación",
+      "more": "más"
     }
   },
   "settings": {
@@ -151,6 +174,7 @@
     "registerCta": "Crear mi cuenta",
     "or": "o",
     "continueWithGoogle": "Continuar con Google",
+    "googleUnavailable": "Inicio de sesión con Google no disponible por ahora",
     "noAccount": "¿Aún no tienes cuenta?",
     "createAccount": "Crear una cuenta",
     "haveAccount": "¿Ya tienes cuenta?",

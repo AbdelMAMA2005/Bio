@@ -9,9 +9,11 @@ import { AuthProvider } from '@/features/auth/AuthProvider';
 
 jest.mock('@/api/client', () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
+  setUnauthorizedHandler: jest.fn(),
 }));
 
 const mockedGet = apiClient.get as jest.Mock;
+const mockedPost = apiClient.post as jest.Mock;
 
 const backendGarden: BackendCollectionItem[] = [
   {
@@ -19,30 +21,38 @@ const backendGarden: BackendCollectionItem[] = [
     idPlante: 'plant-monstera',
     nomScientifique: 'Monstera deliciosa',
     nomCommun: 'Monstera Deliciosa',
+    famille: 'Araceae',
     badgeRarete: 'Commun',
     toxicite: 'green',
     etatSante: 'green',
     dateAjout: '2026-06-01T00:00:00.000Z',
     urlImage: null,
+    aPropos: null,
+    conseilsEntretien: null,
     latitude: null,
     longitude: null,
+    prochainArrosage: '2026-07-01T00:00:00.000Z',
   },
   {
     id: 'col-lavande',
     idPlante: 'plant-lavande',
     nomScientifique: 'Lavandula angustifolia',
     nomCommun: 'Lavande vraie',
+    famille: 'Lamiaceae',
     badgeRarete: 'Commun',
     toxicite: 'green',
     etatSante: 'red',
     dateAjout: '2026-05-01T00:00:00.000Z',
     urlImage: null,
+    aPropos: null,
+    conseilsEntretien: null,
     latitude: null,
     longitude: null,
+    prochainArrosage: '2026-07-01T00:00:00.000Z',
   },
 ];
 
-const testUser = { id: 'user-1', pseudo: 'Testeur', email: 'test@planai.app', niveau: 1, xp: 0 };
+const testUser = { id: 'user-1', pseudo: 'Testeur', email: 'test@planai.app', niveau: 1, xp: 0, pieces: 0 };
 
 let queryClient: QueryClient;
 let wrapper: (props: { children: ReactNode }) => ReactElement;
@@ -98,18 +108,46 @@ describe('useMyGarden (integration: hook + real API client, HTTP layer mocked)',
 });
 
 describe('useCheckHealth (integration: mutation + garden query invalidation)', () => {
-  it('diagnoses the lavande clone as sick and refreshes the garden query', async () => {
+  it('calls POST /collection/:id/diagnosis, adapts the response, and refreshes the garden query', async () => {
     mockedGet.mockResolvedValue({ data: backendGarden });
+    mockedPost.mockResolvedValueOnce({
+      data: {
+        estSain: false,
+        probabiliteSante: 0.3,
+        suggestions: [
+          {
+            id: 'disease-1',
+            nom: 'Septoriose',
+            probabilite: 0.91,
+            estNuisible: true,
+            traitement: { biologique: 'Retirer les feuilles atteintes.' },
+          },
+        ],
+        scoreGlobal: 91,
+      },
+    });
 
     const garden = await renderHook(() => useMyGarden(), { wrapper });
     await waitFor(() => expect(garden.result.current.isSuccess).toBe(true));
 
     const mutation = await renderHook(() => useCheckHealth(), { wrapper });
 
-    mutation.result.current.mutate('plant-lavande');
+    mutation.result.current.mutate({
+      collectionId: 'col-lavande',
+      idPlante: 'plant-lavande',
+      photoUri: 'file:///tmp/leaf.jpg',
+    });
 
     await waitFor(() => expect(mutation.result.current.isSuccess).toBe(true));
-    expect(mutation.result.current.data).toMatchObject({ status: 'disease', diseaseName: 'Septoriose' });
+    // La photo de la feuille (prise par l'utilisateur, cahier des charges "Détection de
+    // maladies") est envoyée en multipart — sans elle, le back n'a rien à analyser pour
+    // une plante sans historique de photos.
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/collection/col-lavande/diagnosis',
+      expect.any(FormData),
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    expect(mutation.result.current.data).toMatchObject({ status: 'disease', diseaseName: 'Septoriose', confidence: 91 });
 
     expect(mockedGet).toHaveBeenCalledTimes(2); // initial fetch + refetch triggered by invalidation
 

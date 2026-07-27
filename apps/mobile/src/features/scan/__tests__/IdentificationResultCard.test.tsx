@@ -14,6 +14,8 @@ const toxicPlant: IdentificationResult = {
     toxicite: 'toxique',
     rarete: 'rare',
     icon: 'local_florist',
+    aPropos: '',
+    urlImage: '',
     conseilsEntretien: '{}',
   },
   confidence: 91,
@@ -31,6 +33,7 @@ function renderCard(result: IdentificationResult) {
     <AppThemeProvider>
       <IdentificationResultCard
         result={result}
+        photoUri="file:///tmp/scan.jpg"
         elapsedSeconds={1.4}
         onSelectJardin={jest.fn()}
         onSelectHerbarium={jest.fn()}

@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useMemo, useState } from 'react';
+import * as Location from 'expo-location';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,48 +9,79 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ErrorState } from '@/components/ErrorState';
 import { Icon } from '@/components/Icon';
 import { SegmentedControl } from '@/components/SegmentedControl';
-import { useFeed, usePublishPost, usePublishStory, useToggleLike } from '@/api/hooks/useFeed';
+import { useFeed, usePublishPost, usePublishStoryMedia, useStories, useToggleLike } from '@/api/hooks/useFeed';
+import { CommentsSheet } from '@/features/feed/CommentsSheet';
 import { PostCard } from '@/features/feed/PostCard';
 import { PostComposerModal } from '@/features/feed/PostComposerModal';
+import { sharePost } from '@/features/feed/sharePost';
 import { StoryActionSheet } from '@/features/feed/StoryActionSheet';
 import { StoryBubble } from '@/features/feed/StoryBubble';
+import { StoryViewer } from '@/features/feed/StoryViewer';
 import { ScanToast } from '@/features/scan/ScanToast';
 import { useAppTheme } from '@/theme';
-import { AccentGradient, AccentOnColor } from '@/theme/colors';
+import { AccentOnColor } from '@/theme/colors';
 import { HitTarget, Radius, Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
+import type { FeedPost, StoryGroup } from '@/api/types';
 
 type FeedFilter = 'all' | 'near';
-const NEAR_RADIUS_METERS = 5000;
 
 export function CommunityScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
-  const feed = useFeed();
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | undefined>();
+  const [filter, setFilter] = useState<FeedFilter>('all');
+  const feed = useFeed(coords, filter === 'near' ? 'near' : undefined);
+  const stories = useStories();
   const toggleLike = useToggleLike();
-  const publishStory = usePublishStory();
+  const publishStoryMedia = usePublishStoryMedia();
   const publishPost = usePublishPost();
 
-  const [filter, setFilter] = useState<FeedFilter>('all');
   const [pickerOpen, setPickerOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
+  const [sharingPostId, setSharingPostId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ title: string; subtitle: string } | null>(null);
+  const [viewer, setViewer] = useState<{ groups: StoryGroup[]; groupIndex: number } | null>(null);
+
+  // "Ta story" (bulle dédiée, façon WhatsApp) séparée du reste : jamais dupliquée dans le
+  // défilement horizontal des autres bulles.
+  const myStory = stories.data?.find((g) => g.estMoi);
+  const otherStories = stories.data?.filter((g) => !g.estMoi) ?? [];
 
   const showToast = (title: string, subtitle: string) => {
     setToast({ title, subtitle });
     setTimeout(() => setToast(null), 2200);
   };
 
-  const posts = useMemo(() => {
-    const all = feed.data?.posts ?? [];
-    if (filter === 'all') return all;
-    return all.filter((post) => post.distanceMeters !== null && post.distanceMeters <= NEAR_RADIUS_METERS);
-  }, [feed.data, filter]);
+  const handleFilterChange = async (next: FeedFilter) => {
+    setFilter(next);
+    if (next !== 'near' || coords) return;
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!permission.granted) return;
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+    } catch {
+      // Position indisponible (émulateur sans GPS, permission refusée en cours de
+      // route...) : le filtre "Près de moi" restera honnêtement vide plutôt que
+      // d'afficher des distances inventées.
+    }
+  };
+
+  // Le filtre "near" n'interroge jamais le back sans position connue (voir useFeed.ts,
+  // `enabled: filter !== 'near' || !!coords`) : sans ce garde-fou, la requête resterait
+  // indéfiniment "en attente" (React Query) et l'écran afficherait un spinner permanent au
+  // lieu d'un vide honnête (permission refusée, position indisponible...).
+  const nearWithoutCoords = filter === 'near' && !coords;
+  const posts = nearWithoutCoords ? [] : (feed.data ?? []);
+  const showLoading = feed.isPending && !nearWithoutCoords;
+  const showError = feed.isError && !nearWithoutCoords;
 
   const publishFromPicker = async (result: ImagePicker.ImagePickerResult) => {
     setPickerOpen(false);
     if (result.canceled || !result.assets[0]) return;
-    await publishStory.mutateAsync(result.assets[0].uri);
+    await publishStoryMedia.mutateAsync(result.assets[0].uri);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     showToast(t('community.storyPublished'), t('community.yourStory'));
   };
@@ -71,6 +102,19 @@ export function CommunityScreen() {
     await publishFromPicker(await ImagePicker.launchCameraAsync({ quality: 0.6 }));
   };
 
+  const handleShare = async (post: FeedPost) => {
+    setSharingPostId(post.id);
+    try {
+      await sharePost(post, t('community.shareDefaultMessage'));
+    } catch {
+      // Échec réel (téléchargement de l'image impossible, aucune app cible…) — un partage
+      // simplement annulé par l'utilisateur ne lève jamais (voir sharePost.ts).
+      showToast(t('community.shareErrorTitle'), t('community.shareErrorSub'));
+    } finally {
+      setSharingPostId(null);
+    }
+  };
+
   const pickFromGallery = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -84,20 +128,13 @@ export function CommunityScreen() {
     <View style={[styles.fill, { backgroundColor: colors.screen }]}>
       <SafeAreaView style={styles.fill} edges={['top']}>
         <View style={styles.header}>
-          <View>
-            <Text style={[styles.subtitle, { color: colors.muted }]}>{t('community.subtitle')}</Text>
-            <Text style={[styles.title, { color: colors.text }]}>{t('community.title')}</Text>
-          </View>
-          <Pressable onPress={() => setPickerOpen(true)} hitSlop={4}>
-            <LinearGradient colors={AccentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.addButton}>
-              <Icon name="add" size={22} color={AccentOnColor} />
-            </LinearGradient>
-          </Pressable>
+          <Text style={[styles.subtitle, { color: colors.muted }]}>{t('community.subtitle')}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('community.title')}</Text>
         </View>
 
-        {feed.isPending ? (
+        {showLoading ? (
           <ActivityIndicator color={colors.active} style={styles.loader} />
-        ) : feed.isError ? (
+        ) : showError ? (
           <ErrorState onRetry={() => feed.refetch()} />
         ) : (
           <FlatList
@@ -110,14 +147,33 @@ export function CommunityScreen() {
                 <FlatList
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  data={feed.data?.stories ?? []}
-                  keyExtractor={(item) => item.id}
+                  data={otherStories}
+                  keyExtractor={(item) => item.idUtilisateur}
                   contentContainerStyle={styles.storiesRow}
                   ListHeaderComponent={
-                    <StoryBubble variant="add" label={t('community.yourStory')} onPress={() => setPickerOpen(true)} />
+                    myStory ? (
+                      <StoryBubble
+                        variant="story"
+                        name={t('community.yourStory')}
+                        initial={myStory.nomUtilisateur.charAt(0).toUpperCase()}
+                        thumbnailUri={myStory.medias[myStory.medias.length - 1]?.urlMedia}
+                        seen
+                        onPress={() => setViewer({ groups: [myStory], groupIndex: 0 })}
+                        onPressAdd={() => setPickerOpen(true)}
+                      />
+                    ) : (
+                      <StoryBubble variant="add" label={t('community.yourStory')} onPress={() => setPickerOpen(true)} />
+                    )
                   }
-                  renderItem={({ item }) => (
-                    <StoryBubble variant="story" name={item.name} initial={item.initial} imageUri={item.imageUri} />
+                  renderItem={({ item, index }) => (
+                    <StoryBubble
+                      variant="story"
+                      name={item.nomUtilisateur}
+                      initial={item.nomUtilisateur.charAt(0).toUpperCase()}
+                      thumbnailUri={item.medias[item.medias.length - 1]?.urlMedia}
+                      seen={item.entierementVue}
+                      onPress={() => setViewer({ groups: otherStories, groupIndex: index })}
+                    />
                   )}
                 />
 
@@ -125,7 +181,7 @@ export function CommunityScreen() {
                   <SegmentedControl
                     fullWidth
                     value={filter}
-                    onChange={setFilter}
+                    onChange={handleFilterChange}
                     options={[
                       { value: 'all', label: t('community.feedAll') },
                       { value: 'near', label: t('community.feedNear', { distance: t('distance.kilometers', { value: 5 }) }) },
@@ -140,7 +196,15 @@ export function CommunityScreen() {
                 <Text style={[styles.placeholder, { color: colors.muted }]}>{t('community.emptyNear')}</Text>
               </View>
             }
-            renderItem={({ item }) => <PostCard post={item} onToggleLike={() => toggleLike.mutate(item.id)} />}
+            renderItem={({ item }) => (
+              <PostCard
+                post={item}
+                onToggleLike={() => toggleLike.mutate(item.id)}
+                onOpenComments={() => setCommentsPostId(item.id)}
+                onShare={() => handleShare(item)}
+                sharing={sharingPostId === item.id}
+              />
+            )}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
           />
         )}
@@ -164,6 +228,12 @@ export function CommunityScreen() {
         publishing={publishPost.isPending}
       />
 
+      <CommentsSheet postId={commentsPostId} onClose={() => setCommentsPostId(null)} />
+
+      {viewer ? (
+        <StoryViewer groups={viewer.groups} initialGroupIndex={viewer.groupIndex} onClose={() => setViewer(null)} />
+      ) : null}
+
       {toast ? (
         <SafeAreaView style={StyleSheet.absoluteFill} pointerEvents="none">
           <ScanToast title={toast.title} subtitle={toast.subtitle} />
@@ -176,9 +246,6 @@ export function CommunityScreen() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xs,
     paddingBottom: Spacing.sm,
@@ -192,13 +259,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     letterSpacing: -0.5,
   },
-  addButton: {
-    width: HitTarget,
-    height: HitTarget,
-    borderRadius: HitTarget / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   fab: {
     position: 'absolute',
     right: Spacing.lg,
@@ -208,10 +268,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    boxShadow: '0px 4px 10px rgba(0,0,0,0.25)',
     elevation: 6,
   },
   loader: {

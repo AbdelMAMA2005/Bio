@@ -40,7 +40,10 @@ export function HerbariumView() {
       data={discoveries}
       key="herbarium-grid"
       numColumns={2}
-      keyExtractor={(item) => item.plant.id}
+      // item.item.id (l'entrée de collection, unique) — pas plant.id (l'espèce, partagée
+      // par toutes les découvertes de la même plante) : découvrir deux fois la même espèce
+      // produisait des clés dupliquées (mêmes symptômes que QuotidienView.tsx).
+      keyExtractor={(item) => item.item.id ?? item.plant.id}
       columnWrapperStyle={styles.row}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}

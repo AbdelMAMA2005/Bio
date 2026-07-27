@@ -3,6 +3,7 @@ import {
   Post,
   UploadedFile,
   UseInterceptors,
+  UseGuards,
   BadRequestException,
   ParseFilePipe,
   MaxFileSizeValidator,
@@ -12,14 +13,18 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { IdentificationService } from './identification.service';
 import { IdentifyPlantResponseDto } from '../../dto/shared.dto'; // ou @planai/shared
 import { Multer } from 'multer';
+import { JwtAuthGuard } from '../../common/guards';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('identification')
+@UseGuards(JwtAuthGuard)
 export class IdentificationController {
   constructor(private readonly identificationService: IdentificationService) {}
 
   @Post()
   @UseInterceptors(FileInterceptor('image'))
   async identify(
+    @CurrentUser() user: any,
     @UploadedFile(
       new ParseFilePipe({
         validators: [
@@ -33,6 +38,6 @@ export class IdentificationController {
     if (!file || !file.buffer) {
       throw new BadRequestException('Aucune image fournie. Envoyez un fichier via le champ `image`.');
     }
-    return this.identificationService.identifyPlantFromBuffer(file.buffer);
+    return this.identificationService.identifyPlantFromBuffer(user.id, file.buffer);
   }
 }

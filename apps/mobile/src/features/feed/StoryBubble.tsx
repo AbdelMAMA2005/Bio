@@ -1,5 +1,6 @@
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { useAppTheme } from '@/theme';
@@ -7,10 +8,21 @@ import { StoryGradient } from '@/theme/colors';
 import { FontFamily } from '@/theme/typography';
 
 const SIZE = 62;
+const BADGE_SIZE = 22;
 
 type Props =
   | { variant: 'add'; label: string; onPress: () => void }
-  | { variant: 'story'; name: string; initial: string; imageUri?: string; onPress?: () => void };
+  | {
+      variant: 'story';
+      name: string;
+      initial: string;
+      thumbnailUri?: string;
+      /** `true` si tous les médias de la bulle ont déjà été vus (anneau plein plutôt que dégradé). */
+      seen: boolean;
+      onPress: () => void;
+      /** Badge "+" superposé — uniquement sur "Ta story" quand elle a déjà du contenu. */
+      onPressAdd?: () => void;
+    };
 
 export function StoryBubble(props: Props) {
   const { colors } = useAppTheme();
@@ -30,21 +42,33 @@ export function StoryBubble(props: Props) {
     );
   }
 
+  const ringColors = props.seen ? ([colors.idle, colors.idle] as const) : StoryGradient;
+
   return (
-    <Pressable onPress={props.onPress} disabled={!props.onPress} style={styles.wrap}>
-      <LinearGradient colors={StoryGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradientRing}>
-        <View style={[styles.avatarInner, { backgroundColor: colors.screen }]}>
-          {props.imageUri ? (
-            <Image source={{ uri: props.imageUri }} style={styles.avatarImage} />
-          ) : (
-            <Text style={[styles.initial, { color: colors.text }]}>{props.initial.toUpperCase()}</Text>
-          )}
-        </View>
-      </LinearGradient>
+    <View style={styles.wrap}>
+      <Pressable onPress={props.onPress}>
+        <LinearGradient colors={ringColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradientRing}>
+          <View style={[styles.avatarInner, { backgroundColor: colors.screen }]}>
+            {props.thumbnailUri ? (
+              <Image source={{ uri: props.thumbnailUri }} style={styles.avatarImage} />
+            ) : (
+              <Text style={[styles.initial, { color: colors.text }]}>{props.initial.toUpperCase()}</Text>
+            )}
+          </View>
+        </LinearGradient>
+        {props.onPressAdd ? (
+          <Pressable
+            onPress={props.onPressAdd}
+            hitSlop={6}
+            style={[styles.addBadge, { backgroundColor: colors.active, borderColor: colors.screen }]}>
+            <Icon name="add" size={14} color={colors.screen} />
+          </Pressable>
+        ) : null}
+      </Pressable>
       <Text style={[styles.label, { color: colors.text }]} numberOfLines={1}>
         {props.name}
       </Text>
-    </Pressable>
+    </View>
   );
 }
 
@@ -93,6 +117,17 @@ const styles = StyleSheet.create({
   initial: {
     fontFamily: FontFamily.extraBold,
     fontSize: 20,
+  },
+  addBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: BADGE_SIZE,
+    height: BADGE_SIZE,
+    borderRadius: BADGE_SIZE / 2,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   label: {
     fontFamily: FontFamily.medium,

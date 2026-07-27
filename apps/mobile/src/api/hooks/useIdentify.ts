@@ -10,13 +10,6 @@ type IdentifyInput = {
   photoUri: string;
 };
 
-/**
- * Le back ne renvoie pas de score de confiance (pas de champ `confiance` sur
- * IdentifyPlantResponseDto — voir API_CONTRACT.md §3). On affiche une valeur de
- * repli plutôt que d'inventer une vraie mesure.
- */
-const FALLBACK_CONFIDENCE = 95;
-
 async function identifyPlant(input: IdentifyInput): Promise<IdentificationResult> {
   const formData = new FormData();
   formData.append('image', {
@@ -31,7 +24,10 @@ async function identifyPlant(input: IdentifyInput): Promise<IdentificationResult
 
   return {
     plant: toPlantWithIcon(data.plantId, data),
-    confidence: FALLBACK_CONFIDENCE,
+    // Score de confiance réel de Plant.id (voir API_CONTRACT.md §3) — plus une
+    // valeur fixe : le back rejette déjà les identifications trop peu fiables
+    // (voir identification.service.ts), donc ce chiffre reflète une vraie mesure.
+    confidence: data.confiance,
     xpAwarded: data.xpGagne,
   };
 }
@@ -50,14 +46,15 @@ type AddToCollectionInput = {
   longitude?: number;
 };
 
-async function addToCollection(input: AddToCollectionInput): Promise<void> {
-  await apiClient.post('/collection', {
+async function addToCollection(input: AddToCollectionInput): Promise<{ collectionId: string }> {
+  const { data } = await apiClient.post<{ id: string }>('/collection', {
     plantId: input.plant.id,
     type: input.type,
     ...(input.geoTagged && input.latitude !== undefined && input.longitude !== undefined
       ? { latitude: input.latitude, longitude: input.longitude }
       : {}),
   });
+  return { collectionId: data.id };
 }
 
 export function useAddToCollection() {

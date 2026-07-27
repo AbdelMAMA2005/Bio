@@ -7,7 +7,6 @@ import type {
   IdentificationResult,
   PlantDetail,
   Quest,
-  Story,
   TaggableCollectionItem,
 } from '@/api/types';
 
@@ -27,6 +26,7 @@ export const currentUser: User = {
   email: 'lea.fontaine@example.com',
   niveau: 12,
   xp: 2480,
+  pieces: 340,
 };
 
 export const gardenClones: GardenClone[] = [
@@ -136,14 +136,6 @@ export const herbariumDiscoveries: HerbariumDiscovery[] = [
     plant: mockPlants.digitale,
     placeLabel: 'Monts du Lyonnais',
   },
-];
-
-export const stories: Story[] = [
-  { id: 'story-marco', initial: 'M', name: 'Marco' },
-  { id: 'story-sophie', initial: 'S', name: 'Sophie' },
-  { id: 'story-theo', initial: 'T', name: 'Théo' },
-  { id: 'story-aida', initial: 'A', name: 'Aïda' },
-  { id: 'story-noe', initial: 'N', name: 'Noé' },
 ];
 
 export const feedPosts: FeedPost[] = [
@@ -275,17 +267,6 @@ export function toggleLike(postId: string) {
   if (!post) return;
   post.liked = !post.liked;
   post.likes += post.liked ? 1 : -1;
-}
-
-export function addStory(imageUri: string): Story {
-  const story: Story = {
-    id: `story-${Date.now()}`,
-    initial: currentUser.pseudo.charAt(0),
-    name: currentUser.pseudo,
-    imageUri,
-  };
-  stories.unshift(story);
-  return story;
 }
 
 export function findPlantDetail(plantId: string): PlantDetail | null {

@@ -1,6 +1,6 @@
-import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterRequestDto, LoginRequestDto } from '../../dto';
+import { RegisterRequestDto, LoginRequestDto, GoogleLoginRequestDto } from '../../dto';
 import { LocalAuthGuard } from '../../common/guards';
 
 @Controller('auth')
@@ -14,8 +14,15 @@ export class AuthController {
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
+  @HttpCode(HttpStatus.OK)
   async login(@Request() req: any, @Body() dto: LoginRequestDto) {
     // Le LocalAuthGuard a déjà validé l'utilisateur, il est dans req.user
     return this.authService.login(dto);
+  }
+
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  async google(@Body() dto: GoogleLoginRequestDto) {
+    return this.authService.loginWithGoogle(dto.idToken);
   }
 }

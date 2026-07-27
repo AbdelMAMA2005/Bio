@@ -38,6 +38,14 @@ export class Post {
   @Column({ type: 'text', nullable: true })
   urlImage!: string | null;
 
+  // Hérité de la collection taguée (si elle a un Geo-Tag) au moment de la
+  // publication — permet le filtre "Près de moi" (cahier des charges §3.3)
+  // sans qu'un post seul n'ait de mécanisme de géolocalisation propre.
+  @Column({ type: 'double precision', nullable: true })
+  latitude!: number | null;
+
+  @Column({ type: 'double precision', nullable: true })
+  longitude!: number | null;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   dateCreation!: Date;

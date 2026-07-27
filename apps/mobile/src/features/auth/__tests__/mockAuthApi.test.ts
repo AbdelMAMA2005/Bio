@@ -1,12 +1,4 @@
-import { mockChangePassword, mockDeleteAccount, mockGoogleLogin, mockUpdateProfile } from '../mockAuthApi';
-
-describe('mockGoogleLogin', () => {
-  it('resolves with the demo profile and a fixed Google email', async () => {
-    const result = await mockGoogleLogin();
-    expect(result.user.email).toBe('lea.fontaine@gmail.com');
-    expect(result.token).toMatch(/^mock-token-/);
-  });
-});
+import { mockChangePassword, mockDeleteAccount, mockUpdateProfile } from '../mockAuthApi';
 
 describe('mockChangePassword', () => {
   it('rejects a new password shorter than 4 characters', async () => {

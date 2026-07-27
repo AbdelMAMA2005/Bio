@@ -8,6 +8,10 @@ import { join } from 'path';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Le front (Expo web + device) est servi depuis une autre origine/port : sans
+  // CORS, le navigateur bloque les requêtes avant même qu'elles n'atteignent l'API.
+  app.enableCors();
+
   // Servir les fichiers statiques du dossier 'uploads'
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
 

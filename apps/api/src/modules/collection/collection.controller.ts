@@ -90,4 +90,13 @@ export class CollectionController {
     }
     return this.collectionService.addPhoto(user.id, collectionId, file);
   }
+
+  // Marquer la plante comme arrosée maintenant (recalcule prochainArrosage)
+  @Post(':id/water')
+  async water(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+  ) {
+    return this.collectionService.waterNow(user.id, id);
+  }
 }

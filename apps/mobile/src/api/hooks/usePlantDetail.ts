@@ -1,6 +1,6 @@
 import { useHerbarium } from '@/api/hooks/useHerbarium';
 import { useMyGarden } from '@/api/hooks/useMyGarden';
-import type { PlantDetail } from '@/api/types';
+import { ownPhotoUrl, type PlantDetail } from '@/api/types';
 
 /**
  * Pas d'endpoint GET /collection/:id ou GET /plants/:id côté back (voir API_CONTRACT.md
@@ -16,9 +16,19 @@ export function usePlantDetail(id: string) {
   const clone = garden.data?.find((c) => c.plant.id === id);
 
   const data: PlantDetail | undefined = discovery
-    ? { plant: discovery.plant, placeLabel: discovery.placeLabel, dateAjout: discovery.item.dateAjout }
+    ? {
+        plant: discovery.plant,
+        placeLabel: discovery.placeLabel,
+        dateAjout: discovery.item.dateAjout,
+        ownPhotoUrl: ownPhotoUrl(discovery.item),
+      }
     : clone
-      ? { plant: clone.plant, placeLabel: '', dateAjout: clone.item.dateAjout }
+      ? {
+          plant: clone.plant,
+          placeLabel: '',
+          dateAjout: clone.item.dateAjout,
+          ownPhotoUrl: ownPhotoUrl(clone.item),
+        }
       : undefined;
 
   return {

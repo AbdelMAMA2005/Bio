@@ -22,6 +22,8 @@ const discovery: HerbariumDiscovery = {
     toxicite: 'non_toxique',
     rarete: 'rare',
     icon: 'spa',
+    aPropos: '',
+    urlImage: '',
     conseilsEntretien: '{}',
   },
   placeLabel: 'Forêt de Compiègne',

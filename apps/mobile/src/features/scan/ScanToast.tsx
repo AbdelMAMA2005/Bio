@@ -10,9 +10,10 @@ import { FontFamily } from '@/theme/typography';
 type Props = {
   title: string;
   subtitle: string;
+  variant?: 'success' | 'error';
 };
 
-export function ScanToast({ title, subtitle }: Props) {
+export function ScanToast({ title, subtitle, variant = 'success' }: Props) {
   const { colors } = useAppTheme();
   const entrance = useSharedValue(0);
 
@@ -25,11 +26,13 @@ export function ScanToast({ title, subtitle }: Props) {
     transform: [{ translateY: (1 - entrance.value) * -14 }],
   }));
 
+  const iconColor = variant === 'error' ? '#d24744' : colors.active;
+
   return (
     <Animated.View style={[styles.wrap, style]} pointerEvents="none">
       <View style={[styles.toast, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
         <View style={[styles.iconWrap, { backgroundColor: colors.chip }]}>
-          <Icon name="check_circle" size={20} color={colors.active} />
+          <Icon name={variant === 'error' ? 'error' : 'check_circle'} size={20} color={iconColor} />
         </View>
         <View style={styles.textWrap}>
           <Text style={[styles.title, { color: colors.text }]}>{title}</Text>

@@ -23,6 +23,7 @@ export class PlantsService {
       toxicite: plant.toxicite,
       urlImage: plant.urlImage,
       badgeRarete: plant.badgeRarete,
+      aPropos: plant.aPropos,
       conseilsEntretien: plant.conseilsEntretien,
     };
   }
@@ -76,6 +77,7 @@ export class PlantsService {
       toxicite: dto.toxicite,
       urlImage: dto.urlImage || null,
       badgeRarete: dto.badgeRarete || null,
+      aPropos: dto.aPropos || null,
       conseilsEntretien: dto.conseilsEntretien || null,
     });
     const saved = await this.plantRepo.save(plant);
@@ -94,6 +96,7 @@ export class PlantsService {
     if (dto.toxicite !== undefined) plant.toxicite = dto.toxicite;
     if (dto.urlImage !== undefined) plant.urlImage = dto.urlImage;
     if (dto.badgeRarete !== undefined) plant.badgeRarete = dto.badgeRarete;
+    if (dto.aPropos !== undefined) plant.aPropos = dto.aPropos;
     if (dto.conseilsEntretien !== undefined) plant.conseilsEntretien = dto.conseilsEntretien;
 
     const saved = await this.plantRepo.save(plant);

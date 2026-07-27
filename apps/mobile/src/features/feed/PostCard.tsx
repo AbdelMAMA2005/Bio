@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import type { FeedPost } from '@/api/types';
@@ -15,9 +15,12 @@ import { FontFamily } from '@/theme/typography';
 type Props = {
   post: FeedPost;
   onToggleLike: () => void;
+  onOpenComments: () => void;
+  onShare: () => void;
+  sharing?: boolean;
 };
 
-export function PostCard({ post, onToggleLike }: Props) {
+export function PostCard({ post, onToggleLike, onOpenComments, onShare, sharing }: Props) {
   const { t, i18n } = useTranslation();
   const { colors, isDark } = useAppTheme();
   const language = (i18n.language as SupportedLanguage) ?? 'fr';
@@ -46,6 +49,8 @@ export function PostCard({ post, onToggleLike }: Props) {
 
       {post.imageUri ? (
         <Image source={{ uri: post.imageUri }} style={styles.image} />
+      ) : post.plant?.urlImage ? (
+        <Image source={{ uri: post.plant.urlImage }} style={styles.image} />
       ) : post.plant && rarityPalette ? (
         <View style={[styles.image, styles.imageFallback, { backgroundColor: rarityPalette.bg }]}>
           <Icon name={post.plant.icon} size={56} color={rarityPalette.text} />
@@ -68,12 +73,16 @@ export function PostCard({ post, onToggleLike }: Props) {
             {post.likes}
           </Text>
         </Pressable>
-        <View style={styles.actionItem}>
+        <Pressable style={styles.actionItem} onPress={onOpenComments} hitSlop={6}>
           <Icon name="chat_bubble" size={18} color={colors.muted} />
           <Text style={[styles.actionLabel, { color: colors.muted }]}>{post.comments}</Text>
-        </View>
-        <Pressable style={styles.actionItem} hitSlop={6}>
-          <Icon name="ios_share" size={18} color={colors.muted} />
+        </Pressable>
+        <Pressable style={styles.actionItem} onPress={onShare} disabled={sharing} hitSlop={6}>
+          {sharing ? (
+            <ActivityIndicator size="small" color={colors.muted} />
+          ) : (
+            <Icon name="ios_share" size={18} color={colors.muted} />
+          )}
         </Pressable>
       </View>
     </View>

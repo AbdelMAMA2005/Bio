@@ -47,8 +47,33 @@ export class Collection {
   @Column({ type: 'jsonb', default: [] })
   historiquePhotos!: string[];
 
+  /**
+   * Résultat du dernier diagnostic de santé (POST /collection/:id/diagnosis), sain ou
+   * malade — réécrit à chaque nouveau diagnostic (jamais d'historique multi-entrées : le
+   * bouton "Voir le diagnostic" côté front n'a besoin que du plus récent, voir
+   * DiagnosisService#diagnosePlantHealth et rapport.md).
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  dernierDiagnostic!: {
+    maladieNom: string | null;
+    scoreGlobal: number;
+    traitement: { biologique?: string; chimique?: string; prevention?: string } | null;
+    description: string | null;
+    estSain: boolean;
+    dateDiagnostic: string;
+  } | null;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   dateAjout!: Date;
+
+  /**
+   * Dernier arrosage connu — initialisé à la date d'ajout (on suppose la plante
+   * arrosée au moment où elle rejoint le Jardin), mis à jour par
+   * `POST /collection/:id/water`. Sert de base au calcul de `prochainArrosage`
+   * (voir CollectionService), jamais exposé tel quel côté front.
+   */
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  derniereArrosage!: Date;
 
   @Column({ type: 'double precision', nullable: true })
   latitude!: number | null;

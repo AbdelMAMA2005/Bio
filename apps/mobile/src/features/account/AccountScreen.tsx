@@ -39,6 +39,9 @@ export function AccountScreen() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [deleteFormOpen, setDeleteFormOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (!user) return null;
 
@@ -63,14 +66,19 @@ export function AccountScreen() {
   };
 
   const confirmDelete = () => {
+    setDeleteError(null);
     Alert.alert(t('account.deleteConfirmTitle'), t('account.deleteConfirmBody'), [
       { text: t('account.cancel'), style: 'cancel' },
       {
         text: t('account.deleteConfirmCta'),
         style: 'destructive',
         onPress: async () => {
-          await deleteAccount();
-          router.replace('/login');
+          try {
+            await deleteAccount(deletePassword);
+            router.replace('/login');
+          } catch {
+            setDeleteError(t('auth.invalidFields'));
+          }
         },
       },
     ]);
@@ -229,8 +237,27 @@ export function AccountScreen() {
               icon="delete_forever"
               label={t('account.deleteAccount')}
               destructive
-              onPress={confirmDelete}
+              onPress={() => setDeleteFormOpen((open) => !open)}
+              showBorder={deleteFormOpen}
             />
+            {deleteFormOpen ? (
+              <View style={[styles.passwordForm, { borderBottomColor: colors.hairline }]}>
+                <TextField
+                  icon="lock"
+                  isPassword
+                  placeholder={t('account.currentPassword')}
+                  value={deletePassword}
+                  onChangeText={setDeletePassword}
+                />
+                {deleteError ? <Text style={[styles.passwordMessage, { color: colors.active }]}>{deleteError}</Text> : null}
+                <GradientButton
+                  label={t('account.deleteConfirmCta')}
+                  onPress={confirmDelete}
+                  loading={isBusy}
+                  disabled={!deletePassword}
+                />
+              </View>
+            ) : null}
           </SectionCard>
         </ScrollView>
       </SafeAreaView>

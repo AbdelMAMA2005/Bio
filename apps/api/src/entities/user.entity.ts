@@ -4,6 +4,7 @@ import { Post } from './posts.entity';
 import { Comment } from './comment.entity';
 import { Like } from './like.entity';
 import { Reminder } from './reminder.entity';
+import { Story } from './story.entity';
 
 @Entity('users')
 export class User {
@@ -21,6 +22,9 @@ export class User {
 
   @Column({ default: 0 })
   experience!: number;
+
+  @Column({ default: 0 })
+  pieces!: number;
 
   @Column({ default: false })
   estAdmin!: boolean;
@@ -51,4 +55,7 @@ export class User {
 
   @OneToMany(() => Reminder, (rappel) => rappel.utilisateur)
   rappelsUtilisateur!: Reminder[];
+
+  @OneToMany(() => Story, (story) => story.utilisateur)
+  storiesUtilisateur!: Story[];
 }

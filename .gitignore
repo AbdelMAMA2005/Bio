@@ -1,7 +1,6 @@
 node_modules
 .expo
 dist
-.env
 *.local
 
 # compiled output
@@ -20,7 +19,7 @@ lerna-debug.log*
 .DS_Store
 
 # Tests
-/coverage
+/coverage 
 /.nyc_output
 
 # IDEs and editors
@@ -40,10 +39,15 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 # dotenv environment variable files
+.env
 .env.development.local
 .env.test.local
 .env.production.local
 .env.local
+
+# fichiers uploadés par apps/api en dev/test (jamais à committer)
+apps/api/uploads/
+apps/api/src/uploads/
 
 # temp directory
 .temp

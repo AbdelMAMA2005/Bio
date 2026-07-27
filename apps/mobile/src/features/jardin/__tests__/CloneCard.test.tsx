@@ -21,10 +21,25 @@ const sickClone: GardenClone = {
     toxicite: 'non_toxique',
     rarete: 'commun',
     icon: 'spa',
+    aPropos: '',
+    urlImage: '',
     conseilsEntretien: '{}',
   },
   nextWatering: { key: 'jardin.inDays', count: 3 },
   lightHint: 'Plein soleil',
+};
+
+const sickCloneWithDiagnosis: GardenClone = {
+  ...sickClone,
+  savedDiagnosis: {
+    result: { status: 'disease', diseaseIcon: 'coronavirus', diseaseName: 'Septoriose', confidence: 91, treatment: 'Retirer les feuilles atteintes.' },
+    date: new Date().toISOString(),
+  },
+};
+
+const healthyClone: GardenClone = {
+  ...sickClone,
+  item: { ...sickClone.item, etatSante: 'sain' },
 };
 
 beforeAll(async () => {
@@ -32,10 +47,22 @@ beforeAll(async () => {
   await i18n.changeLanguage('fr');
 });
 
-function renderCard(clone: GardenClone, onCheckHealth = jest.fn(), onPhotoDeSuivi = jest.fn()) {
+function renderCard(
+  clone: GardenClone,
+  onCheckHealth = jest.fn(),
+  onPhotoDeSuivi = jest.fn(),
+  onViewDiagnosis = jest.fn(),
+  onMarkWatered = jest.fn(),
+) {
   return render(
     <AppThemeProvider>
-      <CloneCard clone={clone} onPhotoDeSuivi={onPhotoDeSuivi} onCheckHealth={onCheckHealth} />
+      <CloneCard
+        clone={clone}
+        onPhotoDeSuivi={onPhotoDeSuivi}
+        onCheckHealth={onCheckHealth}
+        onViewDiagnosis={onViewDiagnosis}
+        onMarkWatered={onMarkWatered}
+      />
     </AppThemeProvider>,
   );
 }
@@ -87,5 +114,55 @@ describe('CloneCard', () => {
     renderCard(cloneWithPhotos);
 
     expect(await screen.findByText('Suivi photo')).toBeTruthy();
+  });
+
+  describe('bouton "Voir le diagnostic"', () => {
+    it('is hidden for a healthy plant, even with no diagnosis history', async () => {
+      renderCard(healthyClone);
+
+      await screen.findByText('Lavande vraie');
+      expect(screen.queryByText('Voir le diagnostic')).toBeNull();
+    });
+
+    it('is hidden for a sick plant that has no saved diagnosis (state inconsistency guard)', async () => {
+      renderCard(sickClone);
+
+      await screen.findByText('Lavande vraie');
+      expect(screen.queryByText('Voir le diagnostic')).toBeNull();
+    });
+
+    it('is visible for a sick plant with a saved diagnosis', async () => {
+      renderCard(sickCloneWithDiagnosis);
+
+      expect(await screen.findByText('Voir le diagnostic')).toBeTruthy();
+    });
+
+    it('calls onViewDiagnosis (no new analysis) when pressed', async () => {
+      const onViewDiagnosis = jest.fn();
+      renderCard(sickCloneWithDiagnosis, jest.fn(), jest.fn(), onViewDiagnosis);
+
+      fireEvent.press(await screen.findByText('Voir le diagnostic'));
+
+      expect(onViewDiagnosis).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('bouton "Marquer comme arrosé"', () => {
+    it('is hidden when watering is not due today', async () => {
+      renderCard(sickClone); // nextWatering: { key: 'jardin.inDays', count: 3 }
+
+      await screen.findByText('Lavande vraie');
+      expect(screen.queryByText('Marquer comme arrosé')).toBeNull();
+    });
+
+    it('is visible and calls onMarkWatered when watering is due today', async () => {
+      const onMarkWatered = jest.fn();
+      const cloneDueToday: GardenClone = { ...sickClone, nextWatering: { key: 'jardin.today' } };
+      renderCard(cloneDueToday, jest.fn(), jest.fn(), jest.fn(), onMarkWatered);
+
+      fireEvent.press(await screen.findByText('Marquer comme arrosé'));
+
+      expect(onMarkWatered).toHaveBeenCalledTimes(1);
+    });
   });
 });

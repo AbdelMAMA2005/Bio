@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# Vérifie après chaque merge/pull que le point d'entrée Expo (apps/mobile)
+# n'a pas régressé et que le cache Metro ne va pas re-servir l'ancien entrypoint.
+#
+# Contexte : un merge peut réintroduire un "main" cassé dans apps/mobile/package.json,
+# et même si les fichiers sont corrects, un cache Metro/.expo périmé ou un
+# `expo start` lancé depuis la racine du monorepo reproduit la même erreur
+# "Unable to resolve ../../App from node_modules/expo/AppEntry.js".
+set -uo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$ROOT_DIR" || exit 0
+
+MOBILE_PKG="apps/mobile/package.json"
+FAIL=0
+
+echo ""
+echo "── post-merge: vérification du point d'entrée Expo ──"
+
+# 1. Le champ "main" de apps/mobile/package.json doit pointer vers expo-router,
+#    pas vers le point d'entrée par défaut d'Expo.
+if [ -f "$MOBILE_PKG" ]; then
+  MAIN_FIELD=$(node -e "try{console.log(require('./$MOBILE_PKG').main || '')}catch(e){console.log('')}" 2>/dev/null)
+  case "$MAIN_FIELD" in
+    "expo-router/entry")
+      echo "  ok   main = \"expo-router/entry\""
+      ;;
+    "")
+      echo "  FAIL $MOBILE_PKG: champ \"main\" absent (attendu: \"expo-router/entry\")"
+      FAIL=1
+      ;;
+    *"AppEntry"*)
+      echo "  FAIL $MOBILE_PKG: main=\"$MAIN_FIELD\" — le merge a réintroduit le point d'entrée Expo par défaut !"
+      echo "       -> corrige avec: main = \"expo-router/entry\""
+      FAIL=1
+      ;;
+    *)
+      echo "  WARN $MOBILE_PKG: main=\"$MAIN_FIELD\" (valeur inattendue, vérifie manuellement)"
+      ;;
+  esac
+else
+  echo "  FAIL $MOBILE_PKG introuvable"
+  FAIL=1
+fi
+
+# 2. Aucune référence à expo/AppEntry ne doit traîner dans un package.json versionné.
+STRAY=$(find . -maxdepth 3 -name package.json -not -path "*/node_modules/*" -exec grep -l "AppEntry" {} \; 2>/dev/null)
+if [ -n "$STRAY" ]; then
+  echo "  FAIL référence(s) à AppEntry trouvée(s) hors node_modules :"
+  echo "$STRAY" | sed 's/^/       /'
+  FAIL=1
+fi
+
+# 3. Pas de marqueur de conflit de merge non résolu.
+CONFLICTS=$(grep -rln '^<<<<<<<\|^=======$\|^>>>>>>>' apps/mobile package.json packages/shared 2>/dev/null)
+if [ -n "$CONFLICTS" ]; then
+  echo "  FAIL marqueurs de conflit de merge non résolus :"
+  echo "$CONFLICTS" | sed 's/^/       /'
+  FAIL=1
+fi
+
+# 4. Purge défensive du cache Metro/Expo : un cache périmé peut re-servir
+#    un ancien bundle (AppEntry) même si les fichiers sources sont corrects.
+if [ -d "apps/mobile/.expo" ] || [ -d "node_modules/.cache" ]; then
+  rm -rf apps/mobile/.expo node_modules/.cache
+  echo "  ok   cache Metro/.expo purgé (apps/mobile/.expo, node_modules/.cache)"
+fi
+
+# 5. Si un serveur Expo tourne déjà avec un mauvais cwd (racine du monorepo
+#    au lieu de apps/mobile), le prévenir plutôt que de laisser l'erreur revenir.
+if command -v pgrep >/dev/null 2>&1; then
+  for pid in $(pgrep -f "expo start" 2>/dev/null); do
+    cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null)
+    if [ -n "$cwd" ] && [ "$cwd" = "$ROOT_DIR" ]; then
+      echo "  WARN un process 'expo start' (pid $pid) tourne depuis la racine du monorepo,"
+      echo "       pas depuis apps/mobile -> il va re-servir node_modules/expo/AppEntry.js."
+      echo "       Arrête-le et relance-le depuis apps/mobile (ou: npm run start -w apps/mobile)."
+    fi
+  done
+fi
+
+if [ "$FAIL" -eq 1 ]; then
+  echo ""
+  echo "── post-merge: PROBLÈME DÉTECTÉ sur le point d'entrée Expo (voir ci-dessus) ──"
+else
+  echo "── post-merge: point d'entrée Expo OK ──"
+fi
+echo ""
+
+# Ce hook est informatif : il ne bloque jamais le merge/pull lui-même.
+exit 0

@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
+import { ImageViewerModal } from '@/components/ImageViewerModal';
+import { PlantPhoto } from '@/components/PlantPhoto';
 import { SecondaryButton } from '@/components/SecondaryButton';
-import type { GardenClone } from '@/api/types';
+import { ownPhotoUrl, type GardenClone } from '@/api/types';
 import { PhotoTimeline } from '@/features/jardin/PhotoTimeline';
 import { useAppTheme } from '@/theme';
 import { HealthColors, HealthIcons, RarityColors, RarityColorsLight } from '@/theme/colors';
@@ -14,17 +17,37 @@ type Props = {
   clone: GardenClone;
   onPhotoDeSuivi: () => void;
   onCheckHealth: () => void;
+  onViewDiagnosis: () => void;
+  onMarkWatered: () => void;
   checkingHealth?: boolean;
+  markingWatered?: boolean;
 };
 
-export function CloneCard({ clone, onPhotoDeSuivi, onCheckHealth, checkingHealth }: Props) {
+export function CloneCard({
+  clone,
+  onPhotoDeSuivi,
+  onCheckHealth,
+  onViewDiagnosis,
+  onMarkWatered,
+  checkingHealth,
+  markingWatered,
+}: Props) {
   const { t } = useTranslation();
   const { colors, isDark } = useAppTheme();
   const { plant, item, nextWatering, lightHint } = clone;
+  const photoUrl = ownPhotoUrl(item);
+  const heroImageUri = photoUrl ?? plant.urlImage ?? undefined;
+  const [heroViewerOpen, setHeroViewerOpen] = useState(false);
   const etatSante = item.etatSante ?? 'sain';
   const rarityPalette = (isDark ? RarityColors : RarityColorsLight)[plant.rarete];
   const healthColor = HealthColors[etatSante];
   const isSick = etatSante === 'malade';
+  // Le bouton ne réapparaît que sur une plante ACTUELLEMENT malade avec un diagnostic
+  // sauvegardé : une vérification ultérieure qui la déclare saine/guérie masque le bouton
+  // (rien d'actionnable à revoir), mais le diagnostic reste en base (voir rapport.md —
+  // etatSante et dernierDiagnostic sont toujours mis à jour ensemble côté back, donc pas
+  // de risque d'afficher un diagnostic "malade" périmé pendant que l'état est déjà sain).
+  const hasSavedDiagnosis = isSick && !!clone.savedDiagnosis;
 
   const wateringLabel =
     nextWatering.key === 'jardin.inDays'
@@ -35,9 +58,18 @@ export function CloneCard({ clone, onPhotoDeSuivi, onCheckHealth, checkingHealth
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
       <View style={styles.header}>
         <View style={styles.thumbWrap}>
-          <View style={[styles.thumb, { backgroundColor: rarityPalette.bg }]}>
-            <Icon name={plant.icon} size={28} color={rarityPalette.text} />
-          </View>
+          <Pressable
+            style={[styles.thumb, { backgroundColor: rarityPalette.bg }]}
+            disabled={!heroImageUri}
+            onPress={() => setHeroViewerOpen(true)}>
+            <PlantPhoto
+              ownPhotoUrl={photoUrl}
+              catalogUrl={plant.urlImage}
+              icon={plant.icon}
+              iconSize={28}
+              iconColor={rarityPalette.text}
+            />
+          </Pressable>
           <View style={[styles.healthDot, { backgroundColor: healthColor, borderColor: colors.surface }]} />
         </View>
         <View style={styles.info}>
@@ -59,6 +91,26 @@ export function CloneCard({ clone, onPhotoDeSuivi, onCheckHealth, checkingHealth
         </View>
       </View>
 
+      {hasSavedDiagnosis ? (
+        <SecondaryButton
+          label={t('jardin.viewDiagnosis')}
+          icon="visibility"
+          destructive
+          onPress={onViewDiagnosis}
+          style={styles.viewDiagnosisButton}
+        />
+      ) : null}
+
+      {nextWatering.key === 'jardin.today' ? (
+        <SecondaryButton
+          label={t('jardin.markWatered')}
+          icon="water_drop"
+          loading={markingWatered}
+          onPress={onMarkWatered}
+          style={styles.viewDiagnosisButton}
+        />
+      ) : null}
+
       <PhotoTimeline photos={item.historiquePhotos ?? []} />
 
       <View style={styles.actions}>
@@ -77,6 +129,10 @@ export function CloneCard({ clone, onPhotoDeSuivi, onCheckHealth, checkingHealth
           style={styles.actionButton}
         />
       </View>
+
+      {heroViewerOpen && heroImageUri ? (
+        <ImageViewerModal images={[{ uri: heroImageUri }]} onClose={() => setHeroViewerOpen(false)} />
+      ) : null}
     </View>
   );
 }
@@ -99,6 +155,7 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: Radius.lg,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -142,6 +199,9 @@ const styles = StyleSheet.create({
   metaLabel: {
     fontFamily: FontFamily.regular,
     fontSize: 11,
+  },
+  viewDiagnosisButton: {
+    alignSelf: 'stretch',
   },
   actions: {
     flexDirection: 'row',

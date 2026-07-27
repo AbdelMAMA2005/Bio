@@ -12,6 +12,8 @@ import { CircleIconButton } from '@/components/CircleIconButton';
 import { GradientButton } from '@/components/GradientButton';
 import { Icon } from '@/components/Icon';
 import { useAddToCollection, useIdentify } from '@/api/hooks/useIdentify';
+import { useAddTrackingPhoto } from '@/api/hooks/useMyGarden';
+import { ApiError } from '@/api/client';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { GeoTagModal } from '@/features/scan/GeoTagModal';
 import { IdentificationResultCard } from '@/features/scan/IdentificationResultCard';
@@ -37,10 +39,11 @@ export function ScanScreen() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [flashOn, setFlashOn] = useState(false);
   const [pendingType, setPendingType] = useState<CollectionType | null>(null);
-  const [toast, setToast] = useState<{ title: string; subtitle: string } | null>(null);
+  const [toast, setToast] = useState<{ title: string; subtitle: string; variant?: 'success' | 'error' } | null>(null);
 
   const identify = useIdentify();
   const addToCollection = useAddToCollection();
+  const addTrackingPhoto = useAddTrackingPhoto();
 
   const resetScan = () => {
     setPhase('idle');
@@ -66,7 +69,19 @@ export function ScanScreen() {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
             }
           },
-          onError: () => resetScan(),
+          onError: (error) => {
+            resetScan();
+            // 404 = plante non reconnue ou confiance trop faible (voir
+            // identification.service.ts) : message actionnable plutôt qu'un échec
+            // silencieux qui laisserait croire que rien ne s'est passé.
+            const notRecognized = error instanceof ApiError && error.status === 404;
+            setToast({
+              title: notRecognized ? t('scan.notRecognized') : t('scan.genericError'),
+              subtitle: '',
+              variant: 'error',
+            });
+            setTimeout(() => setToast(null), 3200);
+          },
         },
       );
     } catch {
@@ -77,6 +92,10 @@ export function ScanScreen() {
   const finalizeAdd = async (geoTagged: boolean) => {
     if (!identify.data || !pendingType) return;
     const type = pendingType;
+    // Capturée avant resetScan() (qui remet capturedUri à null) : c'est la vraie photo
+    // prise par l'utilisateur, à persister telle quelle plutôt que de laisser la fiche
+    // retomber sur l'image générique de l'espèce (plant.urlImage).
+    const photoUri = capturedUri;
 
     let coords: { latitude: number; longitude: number } | undefined;
     if (geoTagged) {
@@ -91,7 +110,18 @@ export function ScanScreen() {
       }
     }
 
-    addToCollection.mutate({ plant: identify.data.plant, type, geoTagged, ...coords });
+    addToCollection.mutate(
+      { plant: identify.data.plant, type, geoTagged, ...coords },
+      {
+        onSuccess: ({ collectionId }) => {
+          // Best-effort : la capture a déjà réussi (toast affiché) même si cet upload
+          // échoue (réseau...), la fiche retombe alors sur l'image générique de l'espèce.
+          if (photoUri) {
+            addTrackingPhoto.mutate({ collectionId, uri: photoUri });
+          }
+        },
+      },
+    );
     addXp(identify.data.xpAwarded);
     setPendingType(null);
     setToast({
@@ -172,9 +202,10 @@ export function ScanScreen() {
         ) : null}
       </SafeAreaView>
 
-      {phase === 'result' && identify.data ? (
+      {phase === 'result' && identify.data && capturedUri ? (
         <IdentificationResultCard
           result={identify.data}
+          photoUri={capturedUri}
           elapsedSeconds={elapsedSeconds}
           onSelectJardin={() => setPendingType('owned')}
           onSelectHerbarium={() => setPendingType('discovered')}
@@ -186,7 +217,7 @@ export function ScanScreen() {
 
       {toast ? (
         <SafeAreaView style={StyleSheet.absoluteFill} pointerEvents="none">
-          <ScanToast title={toast.title} subtitle={toast.subtitle} />
+          <ScanToast title={toast.title} subtitle={toast.subtitle} variant={toast.variant} />
         </SafeAreaView>
       ) : null}
     </View>

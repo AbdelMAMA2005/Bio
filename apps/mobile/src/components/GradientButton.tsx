@@ -35,10 +35,7 @@ const styles = StyleSheet.create({
   pressable: {
     borderRadius: Radius.lg,
     overflow: 'hidden',
-    shadowColor: '#a3e635',
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
+    boxShadow: '0px 8px 16px rgba(163,230,53,0.5)',
   },
   disabled: {
     opacity: 0.6,

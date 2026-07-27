@@ -6,16 +6,21 @@ import { GradientButton } from '@/components/GradientButton';
 import { Icon } from '@/components/Icon';
 import { SecondaryButton } from '@/components/SecondaryButton';
 import type { DiagnosisResult } from '@/api/mock/diagnosis';
+import type { SupportedLanguage } from '@/i18n';
 import { useAppTheme } from '@/theme';
 import { AmberAccent, ToxicityColors } from '@/theme/colors';
 import type { IconName } from '@/theme/icons';
 import { Radius, Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
+import { formatRelativeDate } from '@/utils/format';
 
 type Props = {
   visible: boolean;
   plantName: string;
   result: DiagnosisResult | undefined;
+  /** Date ISO du diagnostic affiché — présent quand on rouvre un diagnostic sauvegardé
+   * (bouton "Voir le diagnostic") ou qu'on vient d'en lancer un nouveau. */
+  diagnosedAt?: string;
   reminderDays?: number;
   onClose: () => void;
   onScheduleReminder: () => void;
@@ -26,17 +31,19 @@ export function DiagnosisSheet({
   visible,
   plantName,
   result,
+  diagnosedAt,
   reminderDays = 5,
   onClose,
   onScheduleReminder,
   schedulingReminder,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { colors } = useAppTheme();
 
   if (!result) return null;
 
   const isDisease = result.status === 'disease';
+  const language = (i18n.language as SupportedLanguage) ?? 'fr';
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -59,6 +66,11 @@ export function DiagnosisSheet({
               <Text style={[styles.meta, { color: colors.muted }]}>
                 {t('diagnosis.meta', { confidence: result.confidence, plant: plantName })}
               </Text>
+              {diagnosedAt ? (
+                <Text style={[styles.date, { color: colors.muted }]}>
+                  {t('diagnosis.diagnosedAt', { when: formatRelativeDate(diagnosedAt, language) })}
+                </Text>
+              ) : null}
 
               <View style={[styles.treatmentBox, { backgroundColor: colors.chip }]}>
                 <Text style={[styles.treatmentTitle, { color: colors.text }]}>{t('diagnosis.treatmentTitle')}</Text>
@@ -66,13 +78,13 @@ export function DiagnosisSheet({
               </View>
 
               <View style={styles.actions}>
-                <SecondaryButton label={t('common.close')} onPress={onClose} style={styles.actionButton} />
                 <GradientButton
                   label={t('diagnosis.reminderCta', { days: reminderDays })}
                   onPress={onScheduleReminder}
                   loading={schedulingReminder}
                   style={styles.actionButton}
                 />
+                <SecondaryButton label={t('common.close')} onPress={onClose} style={styles.actionButton} />
               </View>
             </>
           ) : (
@@ -81,6 +93,11 @@ export function DiagnosisSheet({
               <Text style={[styles.meta, { color: colors.muted }]}>
                 {t('diagnosis.meta', { confidence: result.confidence, plant: plantName })}
               </Text>
+              {diagnosedAt ? (
+                <Text style={[styles.date, { color: colors.muted }]}>
+                  {t('diagnosis.diagnosedAt', { when: formatRelativeDate(diagnosedAt, language) })}
+                </Text>
+              ) : null}
               <SecondaryButton label={t('common.close')} onPress={onClose} style={styles.fullWidthButton} />
             </>
           )}
@@ -129,6 +146,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: Spacing.sm,
   },
+  date: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: -Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
   treatmentBox: {
     alignSelf: 'stretch',
     borderRadius: Radius.lg,
@@ -146,12 +170,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   actions: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: Spacing.sm,
     alignSelf: 'stretch',
   },
   actionButton: {
-    flex: 1,
+    alignSelf: 'stretch',
   },
   fullWidthButton: {
     alignSelf: 'stretch',

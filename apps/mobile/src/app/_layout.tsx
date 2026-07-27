@@ -6,11 +6,13 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { QueryClientProvider } from '@tanstack/react-query';
 
 import { BootGate } from '@/components/BootGate';
 import { AuthProvider, restoreSession, useAuth } from '@/features/auth/AuthProvider';
+import { useWateringNotificationTapNavigation } from '@/features/jardin/useWateringNotifications';
 import { OnboardingProvider, useOnboarding } from '@/features/onboarding/OnboardingProvider';
 import { hasSeenOnboarding } from '@/features/onboarding/onboardingStorage';
 import { initI18n } from '@/i18n';
@@ -25,6 +27,10 @@ function RootNavigator() {
   const { seen: onboardingSeen } = useOnboarding();
   const { isDark } = useAppTheme();
 
+  // Monté une seule fois au niveau racine pour capter le tap sur une notification
+  // d'arrosage quel que soit l'écran affiché (voir useWateringNotifications.ts).
+  useWateringNotificationTapNavigation();
+
   return (
     <NavigationThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -37,6 +43,7 @@ function RootNavigator() {
           <Stack.Screen name="compte" options={{ presentation: 'modal' }} />
           <Stack.Screen name="badges" options={{ presentation: 'modal' }} />
           <Stack.Screen name="plante/[id]" />
+          <Stack.Screen name="conseil/[type]" />
         </Stack.Protected>
         <Stack.Protected guard={onboardingSeen && !isAuthenticated}>
           <Stack.Screen name="(auth)" />
@@ -70,19 +77,21 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AppThemeProvider>
-        <QueryClientProvider client={queryClient}>
-          <BootGate appReady={appReady}>
-            {boot.ready ? (
-              <OnboardingProvider initialSeen={boot.onboardingSeen}>
-                <AuthProvider initialUser={boot.user}>
-                  <RootNavigator />
-                </AuthProvider>
-              </OnboardingProvider>
-            ) : null}
-          </BootGate>
-        </QueryClientProvider>
-      </AppThemeProvider>
+      <KeyboardProvider>
+        <AppThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <BootGate appReady={appReady}>
+              {boot.ready ? (
+                <OnboardingProvider initialSeen={boot.onboardingSeen}>
+                  <AuthProvider initialUser={boot.user}>
+                    <RootNavigator />
+                  </AuthProvider>
+                </OnboardingProvider>
+              ) : null}
+            </BootGate>
+          </QueryClientProvider>
+        </AppThemeProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

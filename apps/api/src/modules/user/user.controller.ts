@@ -34,6 +34,7 @@ export class UserController {
       experience: user.experience,
       niveau: user.niveau,
       insignes: user.insignes || [],
+      pieces: user.pieces,
       urlAvatar: user.urlAvatar || null,
     };
   }
@@ -69,7 +70,9 @@ export class UserController {
       throw new BadRequestException('Aucun fichier fourni');
     }
 
-    const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'avatars');
+    // Voir collection.service.ts#addPhoto pour le détail : 3 x '..' pour atteindre
+    // apps/api/uploads/ (là où main.ts sert les statiques), pas 2.
+    const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'avatars');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }

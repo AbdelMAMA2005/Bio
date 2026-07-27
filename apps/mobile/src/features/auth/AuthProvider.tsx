@@ -2,14 +2,18 @@ import type { User } from '@planai/shared';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { setAuthToken } from '@/api/authToken';
+import { setUnauthorizedHandler } from '@/api/client';
+import { USE_MOCK_API } from '@/api/config';
 import { clearSession, readSession, writeSession } from '@/features/auth/authStorage';
-import { login as apiLogin, register as apiRegister } from '@/features/auth/authApi';
 import {
-  mockChangePassword,
-  mockDeleteAccount,
-  mockGoogleLogin,
-  mockUpdateProfile,
-} from '@/features/auth/mockAuthApi';
+  login as apiLogin,
+  register as apiRegister,
+  loginWithGoogle as apiLoginWithGoogle,
+  updateProfile as apiUpdateProfile,
+  deleteAccount as apiDeleteAccount,
+  fetchProfile as apiFetchProfile,
+} from '@/features/auth/authApi';
+import { mockChangePassword, mockDeleteAccount, mockUpdateProfile } from '@/features/auth/mockAuthApi';
 import { xpTargetForLevel } from '@/features/account/levels';
 
 type AuthContextValue = {
@@ -18,12 +22,18 @@ type AuthContextValue = {
   isBusy: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (pseudo: string, email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (patch: Partial<Pick<User, 'pseudo'>>) => Promise<void>;
   changePassword: (current: string, next: string) => Promise<void>;
-  deleteAccount: () => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
   addXp: (amount: number) => void;
+  /**
+   * Relit /users/me et remplace l'état local par la vérité serveur — utilisé
+   * après toute action dont le crédit XP/pièces est décidé côté back sans que
+   * le front connaisse déjà le montant exact (ex. défis quotidiens complétés).
+   */
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -49,6 +59,17 @@ export function AuthProvider({
     readSession().then((session) => {
       if (session) setAuthToken(session.token);
     });
+  }, []);
+
+  useEffect(() => {
+    // Pas de refresh token côté back : sur 401, on déconnecte — le route guard de
+    // _layout.tsx renvoie alors automatiquement vers l'écran de connexion.
+    setUnauthorizedHandler(() => {
+      setAuthToken(null);
+      clearSession();
+      setUser(null);
+    });
+    return () => setUnauthorizedHandler(null);
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -78,11 +99,10 @@ export function AuthProvider({
           setIsBusy(false);
         }
       },
-      loginWithGoogle: async () => {
+      loginWithGoogle: async (idToken) => {
         setIsBusy(true);
         try {
-          // Pas d'endpoint POST /auth/google côté back — reste mocké (BACKEND_ISSUES.md §6).
-          const { token, user: googleUser } = await mockGoogleLogin();
+          const { token, user: googleUser } = await apiLoginWithGoogle(idToken);
           setAuthToken(token);
           await writeSession({ token, user: googleUser });
           setUser(googleUser);
@@ -96,8 +116,13 @@ export function AuthProvider({
         setUser(null);
       },
       updateProfile: async (patch) => {
-        // Pas d'endpoint PATCH /users/me côté back — reste mocké (BACKEND_ISSUES.md §6).
-        await mockUpdateProfile(patch);
+        // PATCH /users/me existe désormais côté back (API_CONTRACT.md §2), repli mock
+        // activable via EXPO_PUBLIC_USE_MOCK_API.
+        if (USE_MOCK_API) {
+          await mockUpdateProfile(patch);
+        } else {
+          await apiUpdateProfile(patch);
+        }
         setUser((prev) => {
           if (!prev) return prev;
           const next = { ...prev, ...patch };
@@ -111,12 +136,33 @@ export function AuthProvider({
         // Pas d'endpoint POST /auth/change-password côté back — reste mocké (BACKEND_ISSUES.md §6).
         await mockChangePassword(current, next);
       },
-      deleteAccount: async () => {
-        // Pas d'endpoint DELETE /auth/account côté back — reste mocké (BACKEND_ISSUES.md §6).
-        await mockDeleteAccount();
+      deleteAccount: async (password) => {
+        // DELETE /users/me existe désormais côté back, protégé par re-saisie du mot de
+        // passe (API_CONTRACT.md §2), repli mock activable via EXPO_PUBLIC_USE_MOCK_API.
+        if (USE_MOCK_API) {
+          await mockDeleteAccount();
+        } else {
+          await apiDeleteAccount(password);
+        }
         setAuthToken(null);
         await clearSession();
         setUser(null);
+      },
+      refreshUser: async () => {
+        // Pas de session active (mock/tests, ou 401 déjà géré ailleurs) : rien à
+        // rafraîchir plutôt que d'échouer.
+        if (!user) return;
+        try {
+          const fresh = await apiFetchProfile();
+          setUser(fresh);
+          readSession().then((session) => {
+            if (session) writeSession({ ...session, user: fresh });
+          });
+        } catch {
+          // Le prochain accès normal à l'API remontera l'erreur (401, réseau…) via
+          // le mécanisme habituel — un simple refresh en arrière-plan ne doit pas
+          // faire planter l'écran appelant.
+        }
       },
       addXp: (amount) => {
         setUser((prev) => {

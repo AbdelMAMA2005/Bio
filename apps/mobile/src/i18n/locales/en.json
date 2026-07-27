@@ -28,7 +28,9 @@
     "addToHerbarium": "My Herbarium",
     "xpGain": "+{{xp}} XP",
     "capture": "Capture",
-    "analyzing": "Identifying…"
+    "analyzing": "Identifying…",
+    "notRecognized": "Plant not recognized. Try again with a clearer photo, a better angle, or more light.",
+    "genericError": "Identification failed. Please try again in a moment."
   },
   "geoTag": {
     "title": "Share your location?",
@@ -51,6 +53,7 @@
     "questsTitle": "Today's challenges",
     "photoDeSuivi": "Progress photo",
     "checkHealth": "Check health",
+    "viewDiagnosis": "View diagnosis",
     "waterIn": "Watering: {{when}}",
     "today": "today",
     "tomorrow": "tomorrow",
@@ -66,11 +69,19 @@
     "coinsGain": "+{{count}} coins",
     "reminderScheduledTitle": "Reminder scheduled",
     "reminderScheduledSub": "Notification in {{days}} days",
-    "photoTimeline": "Progress photos"
+    "photoTimeline": "Progress photos",
+    "diagnosisErrorTitle": "Diagnosis unavailable",
+    "diagnosisErrorSub": "Try again with a clearer photo of the leaf.",
+    "markWatered": "Mark as watered",
+    "wateredToastTitle": "Watering recorded",
+    "wateredToastSub": "Next due date recalculated",
+    "wateringNotificationBody": "Time to water it!"
   },
   "quests": {
     "scan3": "Scan 3 different plants",
+    "addGarden": "Add a new plant to your Garden",
     "postTip": "Post a photo with a tip",
+    "get5Likes": "Get 5 likes on a post",
     "rare1km": "Find a rare plant over 1 km away"
   },
   "health": {
@@ -81,6 +92,7 @@
   "diagnosis": {
     "title": "{{disease}} detected",
     "meta": "AI analysis · {{confidence}}% confidence · {{plant}}",
+    "diagnosedAt": "Diagnosed {{when}}",
     "treatmentTitle": "Recommended treatment",
     "reminderCta": "Remind me in {{days}} days"
   },
@@ -106,18 +118,29 @@
     "noTag": "No tag",
     "choosePhoto": "Choose a photo",
     "publish": "Publish",
-    "postPublished": "Post added!"
+    "postPublished": "Post added!",
+    "comments": "Comments",
+    "commentPlaceholder": "Add a comment…",
+    "noComments": "No comments yet. Be the first to react!",
+    "viewedByCount_one": "Viewed by {{count}} person",
+    "viewedByCount_other": "Viewed by {{count}} people",
+    "noViewsYet": "No views yet.",
+    "shareDefaultMessage": "Check out this post on PlanAI!",
+    "shareErrorTitle": "Couldn't share",
+    "shareErrorSub": "Try again in a moment."
   },
   "plant": {
     "familyLabel": "Family: {{family}}",
     "careTitle": "Care tips",
     "aboutTitle": "About",
+    "aboutUnavailable": "No description available for this species.",
     "viewInHerbarium": "View in my Herbarium",
     "care": {
       "light": "Light",
       "soil": "Soil",
-      "temperature": "Temperature",
-      "habitat": "Habitat"
+      "watering": "Watering",
+      "propagation": "Propagation",
+      "more": "more"
     }
   },
   "settings": {
@@ -151,6 +174,7 @@
     "registerCta": "Create my account",
     "or": "or",
     "continueWithGoogle": "Continue with Google",
+    "googleUnavailable": "Google sign-in is currently unavailable",
     "noAccount": "Don't have an account?",
     "createAccount": "Create an account",
     "haveAccount": "Already have an account?",

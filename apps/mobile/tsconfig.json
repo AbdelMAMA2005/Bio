@@ -2,6 +2,15 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // tsc n'implémente pas nativement la résolution par plateforme de Metro
+    // (googleAuth.native.ts / googleAuth.web.ts) sans ceci — Metro, lui, résout
+    // déjà correctement par cible de build indépendamment de ce réglage.
+    // "" AVANT ".web" : certaines libs (ex. @react-native-google-signin) n'ont
+    // qu'un .d.ts par défaut (natif) + un .web.d.ts distinct, sans .native.d.ts —
+    // ".web" avant "" ferait passer TOUTES leurs résolutions internes (même pour
+    // du code natif) sur les types web, avec une API différente (repro : voir
+    // git blame de cette ligne si le souci revient).
+    "moduleSuffixes": [".native", ".ios", ".android", "", ".web"],
     "paths": {
       "@/*": [
         "./src/*"

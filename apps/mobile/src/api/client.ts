@@ -26,10 +26,24 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+/**
+ * Le back n'a pas de refresh token (voir API_CONTRACT.md §1, un seul token longue
+ * durée) : sur 401, la seule action côté client possible est de déconnecter et
+ * renvoyer vers l'écran de connexion. AuthProvider enregistre ce callback au montage.
+ */
+let onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  onUnauthorized = handler;
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<{ message?: string | string[] }>) => {
     const status = error.response?.status ?? null;
+    if (status === 401) {
+      onUnauthorized?.();
+    }
     const raw = error.response?.data?.message;
     const message = Array.isArray(raw) ? raw.join(' ') : (raw ?? error.message);
     return Promise.reject(new ApiError(message, status));

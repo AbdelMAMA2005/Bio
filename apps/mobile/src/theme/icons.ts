@@ -73,6 +73,7 @@ export const IconSets = {
   lock_reset: { set: 'MaterialIcons', name: 'lock-reset' },
   photo_library: { set: 'MaterialIcons', name: 'photo-library' },
   refresh: { set: 'MaterialIcons', name: 'refresh' },
+  send: { set: 'MaterialIcons', name: 'send' },
 } as const;
 
 export type IconName = keyof typeof IconSets;

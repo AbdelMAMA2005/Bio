@@ -70,10 +70,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   optionActiveShadow: {
-    shadowColor: '#000',
-    shadowOpacity: 0.14,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.14)',
     elevation: 2,
   },
   label: {

@@ -1,13 +1,13 @@
-import type { CollectionItem, Plante } from '@planai/shared';
+import type { CollectionItem, Plante, StoryGroup as SharedStoryGroup, StoryMedia as SharedStoryMedia } from '@planai/shared';
 
+import type { DiagnosisResult } from '@/api/mock/diagnosis';
 import type { IconName } from '@/theme/icons';
 
 export type ConseilsEntretien = {
   light: string;
   soil: string;
-  temperature: string;
-  habitat: string;
-  about: string;
+  arrosage: string;
+  multiplication: string;
 };
 
 export function parseConseilsEntretien(raw: string): ConseilsEntretien {
@@ -16,6 +16,18 @@ export function parseConseilsEntretien(raw: string): ConseilsEntretien {
 
 /** Icône représentant l'espèce (silhouette utilisée en attendant la vraie photo). */
 export type PlantWithIcon = Plante & { icon: IconName };
+
+/**
+ * Vraie photo de CET exemplaire capturé (première entrée de `historiquePhotos`, uploadée
+ * juste après l'ajout — voir ScanScreen.tsx), à préférer à l'image générique du référentiel
+ * d'espèce (`plant.urlImage`, partagée par tous les utilisateurs de cette espèce). Les deux
+ * sont transmises séparément à `<PlantPhoto>` (pas fusionnées ici) : un lien cassé
+ * (fichier disparu) doit retomber sur le second plutôt que rester silencieusement vide —
+ * voir `components/PlantPhoto.tsx`.
+ */
+export function ownPhotoUrl(item: CollectionItem): string | undefined {
+  return item.historiquePhotos?.[0]?.url || undefined;
+}
 
 export type WateringSchedule =
   | { key: 'jardin.today' }
@@ -27,6 +39,13 @@ export type GardenClone = {
   plant: PlantWithIcon;
   nextWatering: WateringSchedule;
   lightHint: string;
+  /**
+   * Dernier diagnostic sauvegardé (`item.dernierDiagnostic`, déjà converti). `undefined` si
+   * jamais diagnostiquée. Le bouton "Voir le diagnostic" (CloneCard) n'est affiché que si
+   * `item.etatSante === 'malade'` ET ce champ présent — voir rapport.md pour le choix
+   * (le bouton se masque si la plante redevient saine, mais la donnée reste en base).
+   */
+  savedDiagnosis?: { result: DiagnosisResult; date: string };
 };
 
 export type HerbariumDiscovery = {
@@ -35,12 +54,10 @@ export type HerbariumDiscovery = {
   placeLabel: string;
 };
 
-export type Story = {
-  id: string;
-  initial: string;
-  name: string;
-  imageUri?: string;
-};
+/** `urlMedia` déjà résolue en URL absolue (voir `adapters.ts#toStoryGroup`). */
+export type StoryMedia = Omit<SharedStoryMedia, 'urlMedia'> & { urlMedia: string };
+
+export type StoryGroup = Omit<SharedStoryGroup, 'medias'> & { medias: StoryMedia[] };
 
 export type FeedPost = {
   id: string;
@@ -60,6 +77,14 @@ export type FeedPost = {
   distanceMeters: number | null;
 };
 
+export type FeedComment = {
+  id: string;
+  authorInitial: string;
+  authorName: string;
+  createdAt: string;
+  text: string;
+};
+
 export type TaggableCollectionItem = {
   collectionItemId: string;
   plant: PlantWithIcon;
@@ -70,6 +95,8 @@ export type PlantDetail = {
   plant: PlantWithIcon;
   placeLabel: string;
   dateAjout: string;
+  /** Voir `ownPhotoUrl` — vraie photo de cet exemplaire si disponible. */
+  ownPhotoUrl?: string;
 };
 
 export type Quest = {

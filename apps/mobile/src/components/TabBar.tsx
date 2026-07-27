@@ -57,10 +57,7 @@ export function TabBar({ state, navigation }: TabBarProps) {
                 colors={AccentGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={[
-                  styles.scanButton,
-                  { borderColor: isFocused ? '#ffffff' : 'transparent', shadowColor: '#a3e635' },
-                ]}>
+                style={[styles.scanButton, { borderColor: isFocused ? '#ffffff' : 'transparent' }]}>
                 <Icon name={meta.icon} size={32} color={AccentOnColor} />
               </LinearGradient>
               <Text style={[styles.label, { color, marginTop: 4 }]}>{t(meta.labelKey)}</Text>
@@ -93,10 +90,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: Spacing.md,
     paddingHorizontal: Spacing.xl,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: -4 },
+    boxShadow: '0px -4px 14px rgba(0,0,0,0.12)',
   },
   tabItem: {
     alignItems: 'center',
@@ -124,9 +118,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    shadowOpacity: 0.6,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
+    boxShadow: '0px 10px 16px rgba(163,230,53,0.6)',
     elevation: 8,
   },
 });

@@ -1,98 +1,136 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# PlanAI
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Démarrer l'app sur son téléphone (USB / adb)
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+> Pour une connexion en WiFi sans câble (Expo Go, sans adb), voir `demarrage.md` à la
+> racine. Ce qui suit couvre le lancement en USB via adb, sur Linux comme sur Windows.
 
-## Description
+### 0. Prérequis
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- **Un dev client déjà installé sur le téléphone** : l'app **Expo Go** seule ne suffit
+  pas — le projet utilise des modules natifs (Google Sign-In, caméra, etc.) qui exigent
+  un build de développement, buildé une fois via EAS (`npx eas-cli build --profile
+  development --platform android`, puis installer l'APK généré) ou en local
+  (`cd apps/mobile && npx expo run:android`, téléphone branché).
+- **Postgres lancé** et `apps/api/.env` configuré (`DB_HOST`, `DB_PORT`, etc.).
+- **Débogage USB activé** sur le téléphone : Paramètres → Options pour développeurs →
+  Débogage USB (si "Options pour développeurs" n'existe pas, Paramètres → À propos du
+  téléphone → taper 7 fois sur "Numéro de build").
 
-## Project setup
+### 1. Installer adb
+
+**Linux :**
+```bash
+sudo apt install android-sdk-platform-tools   # Debian/Ubuntu/Kali
+adb version                                   # vérifie l'installation
+```
+(Si le paquet n'est pas disponible, télécharger "SDK Platform-Tools for Linux" depuis
+https://developer.android.com/tools/releases/platform-tools et ajouter le dossier extrait
+au `PATH`.)
+
+**Windows :**
+1. Télécharger "SDK Platform-Tools for Windows" depuis
+   https://developer.android.com/tools/releases/platform-tools
+2. Extraire le zip (ex. `C:\platform-tools`)
+3. Ajouter ce dossier au `PATH` (Panneau de configuration → Variables d'environnement
+   système)
+4. Ouvrir un **nouveau** terminal (PowerShell ou cmd) et vérifier avec `adb version`
+
+(Alternative avec un gestionnaire de paquets : `choco install adb` ou `scoop install
+adb`.) Si le téléphone n'apparaît toujours pas à l'étape suivante, il manque
+probablement le pilote USB du fabricant — installer le pilote OEM correspondant au
+modèle du téléphone.
+
+### 2. Connecter le téléphone
+
+- Brancher le téléphone en USB
+- Accepter la popup **"Autoriser le débogage USB ?"** qui s'affiche sur le téléphone
+  (cocher "Toujours autoriser depuis cet ordinateur" pour ne pas la revoir)
+- Vérifier :
+  ```bash
+  adb devices
+  ```
+  Le téléphone doit apparaître avec le statut `device` (pas `unauthorized` ni `offline`
+  — si `unauthorized`, re-regarder l'écran du téléphone et accepter la popup ; si
+  `offline`, débrancher puis rebrancher le câble).
+
+### 3. Démarrer le backend (`apps/api`) et le front (`apps/mobile`)
+
+Deux terminaux séparés, à laisser ouverts tous les deux :
 
 ```bash
-$ npm install
+# Terminal 1 — backend (apps/api)
+cd apps/api
+npm run start:dev
 ```
-
-## Compile and run the project
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# Terminal 2 — bundler mobile (apps/mobile), --dev-client car Expo Go seul ne suffit pas
+cd apps/mobile
+npx expo start --dev-client
 ```
 
-## Run tests
+### 4. Lancer l'app sur le téléphone
 
+Dans le terminal Metro (terminal 2), appuyer sur **`a`** : Expo détecte le téléphone
+branché en USB, fait automatiquement le port-forward nécessaire et ouvre l'app dessus.
+
+Si ça ne suffit pas (ou pour relancer l'app sans repasser par le terminal Metro), dans
+un 3ᵉ terminal :
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+adb reverse tcp:8081 tcp:8081
+adb reverse tcp:3000 tcp:3000
+adb shell am start -a android.intent.action.VIEW -d "mobile://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
 ```
 
-## Deployment
+⚠️ Si **Expo Go** est aussi installé sur le téléphone, la commande ci-dessus peut
+l'ouvrir par erreur à sa place (les deux apps gèrent des schémas d'URL proches) : soit
+désinstaller Expo Go, soit cibler explicitement le dev client avec
+`-p app.planai.mobile` (package Android du projet, voir `apps/mobile/app.json`).
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### 5. Tout arrêter
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+`Ctrl+C` dans les deux terminaux (`apps/api` et `apps/mobile`). Pas besoin de
+`adb disconnect`.
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+### Dépannage
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Pour les cas non couverts ici (changement d'IP, cache Metro, pare-feu, "Network Error",
+débogage sans fil...), voir la section **"5. Dépannage général"** de `demarrage.md`.
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## Présentation
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Une app qui utilise une carte en mode Pokémon Go pour identifier les différentes espèces de plantes autour de toi. Elle te propose de les « capturer » et te donne des points d'XP à chaque capture, en fonction de la rareté de la plante.
 
-## Support
+## Fonctionnalités Principales
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- **Identification en temps réel** : Reconnaissance des plantes via la caméra
+- **Détection de toxicité** : Système de détection des caractéristiques toxiques ou non d'une plante
+- **Conseils d'entretien** : Recommandations pour chaque plante identifiée
+- **Système de points** : Gagnez de l'XP avec chaque capture selon la rareté
 
-## Stay in touch
+## Interface & Design
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+L'interface serait en mode « snap » avec trois onglets principaux :
 
-## License
+### 1. Caméra (Centre)
+- Intègre le système de détection de la toxicité
+- Suggère des plantes à découvrir ou à ajouter à ta collection
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### 2. Carte (Gauche)
+- Localise les plantes autour de toi
+- Défis automatiques (quêtes quotidiennes)
+
+### 3. Communauté
+- Espace de communication entre passionnés
+- Partage de séries et stories sur les plantes
+- Échange d'expériences et de connaissances
+
+## Vision & Objectifs
+
+Assurer la scalabilité de l'app en en faisant une véritable organisation, avec un écosystème autour de :
+- **Découverte** des espèces végétales
+- **Protection** et conservation
+- **Partage** des connaissances sur les plantes

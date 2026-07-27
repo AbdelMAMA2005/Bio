@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, In } from 'typeorm';
+import * as fs from 'fs';
+import * as path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { Post as PostEntity } from '../../entities/posts.entity';
 import { Like as LikeEntity } from '../../entities/like.entity';
 import { Comment as CommentEntity } from '../../entities/comment.entity';
@@ -31,7 +34,11 @@ export class FeedService {
   ) {}
 
   // ----- Créer une publication -----
-  async createPost(userId: string, dto: CreatePostRequestDto): Promise<CreatePostResponseDto> {
+  async createPost(
+    userId: string,
+    dto: CreatePostRequestDto,
+    file?: Express.Multer.File,
+  ): Promise<CreatePostResponseDto> {
     const user = await this.userRepo.findOne({
       where: { id: userId, dateSuppression: IsNull() },
     });
@@ -50,11 +57,33 @@ export class FeedService {
       }
     }
 
+    // La vraie photo prise par l'utilisateur (multipart), pas une URL pré-hébergée : avant
+    // le 24/07/2026, POST /feed/posts n'acceptait que `imageUrl` en JSON, mais aucun
+    // endpoint d'upload générique n'existait pour le feed — la photo du composeur n'était
+    // donc jamais envoyée (voir rapport.md). `imageUrl` reste accepté en repli pour ne pas
+    // casser un appel JSON existant, mais un fichier fourni est toujours prioritaire.
+    let urlImage: string | null = dto.imageUrl || null;
+    if (file) {
+      const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'posts');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      const extension = path.extname(file.originalname) || '.jpg';
+      const filename = `${uuidv4()}${extension}`;
+      fs.writeFileSync(path.join(uploadDir, filename), file.buffer);
+      urlImage = `/uploads/posts/${filename}`;
+    }
+
     const post = new PostEntity();
     post.userId = userId;
     post.collectionId = dto.collectionId || null;
     post.contenuTexte = dto.contenuTexte;
-    post.urlImage = dto.imageUrl || null;
+    post.urlImage = urlImage;
+    // Hérite du Geo-Tag de la plante taguée (si elle en a un) : c'est ce qui
+    // permet au filtre "Près de moi" (cahier des charges §3.3) de fonctionner
+    // avec de vraies coordonnées plutôt que de ne jamais matcher aucun post.
+    post.latitude = collection?.latitude ?? null;
+    post.longitude = collection?.longitude ?? null;
 
     const saved = await this.postRepo.save(post);
 
@@ -78,12 +107,33 @@ export class FeedService {
     const skip = (page - 1) * limit;
 
     // Récupérer les posts des utilisateurs non supprimés
-    const [posts, total] = await this.postRepo
+    const qb = this.postRepo
       .createQueryBuilder('p')
       .leftJoinAndSelect('p.utilisateur', 'u')
       .leftJoinAndSelect('p.collection', 'c')
       .leftJoinAndSelect('c.plante', 'pl')
-      .where('u.dateSuppression IS NULL')
+      .where('u.dateSuppression IS NULL');
+
+    // Filtre "Près de moi" (cahier des charges §3.3) : appliqué en base, pas seulement
+    // calculé puis filtré côté front — sinon un post proche mais hors de la première page
+    // (triée par date) ne serait jamais vu. Distance réelle via la formule de haversine en
+    // SQL (acos/cos/sin natifs à Postgres, pas besoin de PostGIS) ; LEAST/GREATEST bornent
+    // l'argument d'acos à [-1,1] pour éviter un NaN dû aux arrondis flottants sur une
+    // distance quasi nulle.
+    if (query.filter === 'near' && query.latitude !== undefined && query.longitude !== undefined) {
+      const radius = query.radiusMetres ?? 5000;
+      qb.andWhere('p.latitude IS NOT NULL AND p.longitude IS NOT NULL').andWhere(
+        `(6371000 * acos(
+            LEAST(1, GREATEST(-1,
+              cos(radians(:lat)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians(:lon))
+              + sin(radians(:lat)) * sin(radians(p.latitude))
+            ))
+          )) <= :radius`,
+        { lat: query.latitude, lon: query.longitude, radius },
+      );
+    }
+
+    const [posts, total] = await qb
       .orderBy('p.dateCreation', 'DESC')
       .skip(skip)
       .take(limit)
@@ -107,7 +157,7 @@ export class FeedService {
           this.commentRepo.count({ where: { postId: post.id } }),
         ]);
 
-        const dto = this.mapToResponseDto(post, userId);
+        const dto = this.mapToResponseDto(post, userId, query.latitude, query.longitude);
         dto.likesCount = likesCount;
         dto.commentairesCount = commentairesCount;
         dto.estLikedParUtilisateur = likedPostIds.has(post.id);
@@ -288,8 +338,35 @@ export class FeedService {
     await this.postRepo.remove(post);
   }
 
+  // ----- Distance à vol d'oiseau (formule de haversine), en mètres -----
+  private static readonly EARTH_RADIUS_METERS = 6_371_000;
+
+  private haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return FeedService.EARTH_RADIUS_METERS * c;
+  }
+
   // ----- Méthode utilitaire de mapping -----
-  private mapToResponseDto(post: PostEntity, currentUserId: string): CreatePostResponseDto {
+  private mapToResponseDto(
+    post: PostEntity,
+    currentUserId: string,
+    callerLatitude?: number,
+    callerLongitude?: number,
+  ): CreatePostResponseDto {
+    const distanceMetres =
+      callerLatitude !== undefined &&
+      callerLongitude !== undefined &&
+      post.latitude !== null &&
+      post.longitude !== null
+        ? Math.round(this.haversineMeters(callerLatitude, callerLongitude, post.latitude, post.longitude))
+        : null;
+
     return {
       id: post.id,
       idUtilisateur: post.userId,
@@ -311,9 +388,11 @@ export class FeedService {
             urlImage: post.collection.plante.urlImage,
           }
         : undefined,
+      typeCollection: post.collection?.typeCollection,
       likesCount: 0, // sera mis à jour par le service
       commentairesCount: 0,
       estLikedParUtilisateur: false, // sera mis à jour par le service
+      distanceMetres,
     };
   }
 }

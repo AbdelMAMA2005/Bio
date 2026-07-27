@@ -8,7 +8,7 @@ import { SecondaryButton } from '@/components/SecondaryButton';
 import { TextField } from '@/components/TextField';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { AuthScreenLayout } from '@/features/auth/AuthScreenLayout';
-import { useGoogleAuthRequest } from '@/features/auth/googleAuth';
+import { useGoogleSignIn } from '@/features/auth/googleAuth';
 import { useAppTheme } from '@/theme';
 import { FontFamily } from '@/theme/typography';
 import { Spacing } from '@/theme/spacing';
@@ -17,7 +17,7 @@ export function LoginScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
   const { login, loginWithGoogle, isBusy } = useAuth();
-  const { promptAsync, isConfigured } = useGoogleAuthRequest();
+  const { signIn: googleSignIn, isConfigured } = useGoogleSignIn();
   const router = useRouter();
 
   const [email, setEmail] = useState('');
@@ -35,13 +35,16 @@ export function LoginScreen() {
   };
 
   const handleGoogle = async () => {
+    if (!isConfigured) return; // bouton désactivé dans ce cas, voir plus bas.
     setError(null);
     try {
-      // Sans EXPO_PUBLIC_GOOGLE_CLIENT_ID, on simule directement le retour OAuth.
-      if (isConfigured) await promptAsync();
-      await loginWithGoogle();
+      const idToken = await googleSignIn();
+      if (!idToken) return; // annulé par l'utilisateur
+
+      await loginWithGoogle(idToken);
       router.replace('/jardin');
-    } catch {
+    } catch (e) {
+      console.error('[handleGoogle] échec de la connexion Google', e);
       setError(t('auth.genericError'));
     }
   };
@@ -82,10 +85,11 @@ export function LoginScreen() {
         </View>
 
         <SecondaryButton
-          label={t('auth.continueWithGoogle')}
+          label={isConfigured ? t('auth.continueWithGoogle') : t('auth.googleUnavailable')}
           icon="google"
           onPress={handleGoogle}
           loading={isBusy}
+          disabled={!isConfigured}
         />
       </View>
 

@@ -5,10 +5,16 @@ import {
   Body,
   Param,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
   Query,
   Delete,
   Patch,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { FeedService } from './feed.service';
 import {
   CreatePostRequestDto,
@@ -25,12 +31,26 @@ export class FeedController {
   constructor(private readonly feedService: FeedService) {}
 
   // ----- Créer une publication -----
+  // `image` (multipart) optionnelle : la vraie photo prise dans le composeur, voir
+  // feed.service.ts#createPost. `contenuTexte`/`collectionId` arrivent comme champs
+  // multipart classiques, parsés par la même DTO que l'ancien corps JSON.
   @Post('posts')
+  @UseInterceptors(FileInterceptor('image'))
   async createPost(
     @CurrentUser() user: any,
     @Body() dto: CreatePostRequestDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    file?: Express.Multer.File,
   ) {
-    return this.feedService.createPost(user.id, dto);
+    return this.feedService.createPost(user.id, dto, file);
   }
 
   // ----- Modifier une publication -----
