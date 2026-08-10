@@ -6,7 +6,13 @@
     "packages/*"
   ],
   "scripts": {
-    "postinstall": "git config core.hooksPath scripts/git-hooks || true"
+    "postinstall": "git config core.hooksPath scripts/git-hooks || true",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:reset": "docker compose down -v && docker compose up -d",
+    "docker:migrate": "docker compose exec api npm run migrate --workspace=api",
+    "docker:seed": "docker compose exec api npm run seed --workspace=api"
   },
   "overrides": {
     "react": "19.1.0",

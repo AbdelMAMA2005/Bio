@@ -1,0 +1,37 @@
+# Contexte de build = racine du monorepo (voir docker-compose.yml). Tout ce
+# qui n'est pas nécessaire pour construire/lancer apps/api est exclu pour
+# garder le build rapide et l'image légère.
+
+**/node_modules
+**/dist
+**/.expo
+**/coverage
+.git
+.gitignore
+
+# apps/mobile ne tourne jamais en conteneur (Expo doit accéder aux appareils/
+# émulateurs depuis l'hôte) — inutile dans le contexte de build de l'API.
+apps/mobile
+
+# secrets locaux — jamais dans une image Docker
+.env
+.env.*
+!.env.example
+apps/api/.env
+apps/mobile/.env
+
+# données runtime, pas du code
+apps/api/uploads
+
+# docs / divers, inutiles au build
+README.md
+ARCHITECTURE.md
+API_CONTRACT.md
+BACKEND_ISSUES.md
+DOCKER.md
+TODO.md
+demarrage.md
+rapport.md
+Cahier de charge
+.vscode
+.claude

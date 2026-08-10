@@ -377,7 +377,36 @@ git checkout -b dev && git push -u origin dev
 
 ---
 
-## 8. Priorités MVP (cahier des charges §7)
+## 8. Environnement de développement avec Docker
+
+PostgreSQL + `apps/api` tournent en conteneurs Docker pour qu'Abdel et Djawad
+aient exactement le même environnement (même version de Postgres, mêmes
+variables d'environnement, pas d'installation manuelle divergente).
+`apps/mobile` (Expo) tourne **toujours sur l'hôte**, jamais en conteneur, pour
+garder l'accès aux appareils/émulateurs.
+
+Fichiers concernés : `docker-compose.yml` et `.dockerignore` (racine),
+`apps/api/Dockerfile`, `.env.example` (racine, à copier en `.env`).
+
+Le guide pas-à pas complet (Windows + Linux : prérequis, premier démarrage,
+migrations/seed, connexion du front via adb, remise à zéro, ce qui reste hors
+Docker) est dans **[DOCKER.md](./DOCKER.md)**. Pour une explication encore
+plus détaillée, pensée pour quelqu'un qui n'a jamais utilisé Docker (chaque
+commande et chaque mot de vocabulaire expliqués), voir
+**[DOCKER_CONFIGURATION.md](./DOCKER_CONFIGURATION.md)**.
+
+Résumé express (Linux/macOS, une fois Docker installé) :
+
+```bash
+cp .env.example .env
+npm run docker:up       # docker compose up -d : db + api + adminer
+npm run docker:logs     # vérifier que l'API a bien démarré (Ctrl+C pour quitter les logs)
+cd apps/mobile && npx expo start   # Expo reste sur l'hôte, voir demarrage.md / README.md
+```
+
+---
+
+## 9. Priorités MVP (cahier des charges §7)
 
 1. **Scan** : identification IA + toxicité + ajout contextuel Jardin/Herbarium.
 2. **Mon Jardin** : split Quotidien/Herbarium, indicateurs de santé.

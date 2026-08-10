@@ -1,0 +1,77 @@
+name: planai
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: planai-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_DATABASE:-planai_db}
+    ports:
+      # Port exposé sur l'hôte configurable via DB_PORT (.env) — 5433 par
+      # défaut pour ne pas entrer en conflit avec un PostgreSQL déjà installé
+      # manuellement sur la machine. À l'intérieur du réseau Docker, Postgres
+      # écoute toujours sur son port standard 5432 (voir service "api").
+      - '${DB_PORT:-5433}:5432'
+    volumes:
+      - planai_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: dev
+    container_name: planai-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # À l'intérieur du réseau Docker, l'API joint Postgres via le nom du
+      # service ("db") sur son port interne standard — ces deux valeurs
+      # écrasent volontairement DB_HOST/DB_PORT du .env (qui décrivent l'accès
+      # depuis l'HÔTE, ex. pour psql ou pgAdmin). Voir DOCKER.md.
+      DB_HOST: db
+      DB_PORT: '5432'
+    ports:
+      - '${PORT:-3000}:3000'
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Hot-reload : le code source est monté depuis l'hôte. node_modules
+      # N'EST PAS monté depuis l'hôte (volume nommé séparé) pour ne jamais
+      # écraser les dépendances installées dans l'image par celles,
+      # potentiellement incompatibles (binaires natifs type argon2), du poste
+      # de dev.
+      - ./apps/api:/app/apps/api
+      - ./packages/shared:/app/packages/shared
+      - planai_api_node_modules:/app/node_modules
+    # En dev : synchronise le schéma + seed le référentiel plantes (idempotent,
+    # voir apps/api/src/seeds/plant.seed.ts) avant de démarrer le serveur en
+    # hot-reload, pour qu'Abdel et Djawad démarrent toujours sur la même base.
+    command: sh -c "npm run seed --workspace=api && npm run start:dev --workspace=api"
+
+  adminer:
+    image: adminer:4
+    container_name: planai-adminer
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    ports:
+      - '${ADMINER_PORT:-8080}:8080'
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  planai_db_data:
+    name: planai_db_data
+  planai_api_node_modules:
+    name: planai_api_node_modules
