@@ -118,7 +118,9 @@ export function toPlantWithIcon(id: string, backend: BackendPlantFields): PlantW
 export type BackendUser = {
   id: string;
   email: string;
-  nomUtilisateur: string;
+  username: string | null;
+  fullName?: string;
+  urlAvatar?: string | null;
   experience: number;
   niveau: number;
   insignes?: string[];
@@ -128,7 +130,9 @@ export type BackendUser = {
 export function userFromBackend(backend: BackendUser): User {
   return {
     id: backend.id,
-    pseudo: backend.nomUtilisateur,
+    pseudo: backend.username ?? '',
+    ...(backend.fullName !== undefined ? { fullName: backend.fullName } : {}),
+    urlAvatar: backend.urlAvatar ?? null,
     email: backend.email,
     niveau: backend.niveau,
     xp: backend.experience,
@@ -387,7 +391,7 @@ export type BackendPost = {
   contenuTexte: string;
   imageUrl?: string;
   dateCreation: string;
-  auteur: { id: string; nomUtilisateur: string; urlAvatar?: string | null };
+  auteur: { id: string; username: string; urlAvatar?: string | null };
   plante?: { id: string; nomScientifique: string; nomCommun: string; badgeRarete?: string | null; urlImage?: string | null };
   /** Type réel de la collection taguée ('owned'/'discovered') — voir API_CONTRACT.md §5. */
   typeCollection?: 'owned' | 'discovered';
@@ -407,8 +411,9 @@ export function toFeedPost(post: BackendPost, apiBaseUrl: string): FeedPost {
 
   return {
     id: post.id,
-    authorInitial: post.auteur.nomUtilisateur.charAt(0).toUpperCase(),
-    authorName: post.auteur.nomUtilisateur,
+    authorId: post.idUtilisateur,
+    authorInitial: post.auteur.username.charAt(0).toUpperCase(),
+    authorName: post.auteur.username,
     createdAt: post.dateCreation,
     plant: post.plante
       ? toPlantWithIcon(post.plante.id, {
@@ -448,7 +453,7 @@ export type BackendStoryMedia = {
 
 export type BackendStoryGroup = {
   idUtilisateur: string;
-  nomUtilisateur: string;
+  username: string;
   urlAvatar: string | null;
   estMoi: boolean;
   entierementVue: boolean;
@@ -462,7 +467,7 @@ function toStoryMedia(media: BackendStoryMedia, apiBaseUrl: string): StoryMedia 
 export function toStoryGroup(group: BackendStoryGroup, apiBaseUrl: string): StoryGroup {
   return {
     idUtilisateur: group.idUtilisateur,
-    nomUtilisateur: group.nomUtilisateur,
+    username: group.username,
     urlAvatar: group.urlAvatar,
     estMoi: group.estMoi,
     entierementVue: group.entierementVue,
@@ -478,14 +483,14 @@ export type BackendComment = {
   idUtilisateur: string;
   contenu: string;
   dateCreation: string;
-  auteur: { id: string; nomUtilisateur: string; urlAvatar?: string | null };
+  auteur: { id: string; username: string; urlAvatar?: string | null };
 };
 
 export function toComment(comment: BackendComment): FeedComment {
   return {
     id: comment.id,
-    authorInitial: comment.auteur.nomUtilisateur.charAt(0).toUpperCase(),
-    authorName: comment.auteur.nomUtilisateur,
+    authorInitial: comment.auteur.username.charAt(0).toUpperCase(),
+    authorName: comment.auteur.username,
     createdAt: comment.dateCreation,
     text: comment.contenu,
   };

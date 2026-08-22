@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  Index,
+} from 'typeorm';
 import { Post } from './posts.entity';
 import { User } from './user.entity';
 
@@ -14,11 +21,15 @@ export class Comment {
   @Column('uuid')
   userId!: string;
 
-  @ManyToOne(() => Post, (publication) => publication.commentaires, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Post, (publication) => publication.commentaires, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'postId' })
   publication!: Post;
 
-  @ManyToOne(() => User, (utilisateur) => utilisateur.commentairesUtilisateur, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => User, (utilisateur) => utilisateur.commentairesUtilisateur, {
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'userId' })
   utilisateur!: User;
 

@@ -17,13 +17,23 @@ const mockedFs = fs as jest.Mocked<typeof fs>;
 
 describe('CollectionService', () => {
   let service: CollectionService;
-  let collectionRepo: { save: jest.Mock; findOne: jest.Mock; remove: jest.Mock; createQueryBuilder: jest.Mock; count: jest.Mock };
+  let collectionRepo: {
+    save: jest.Mock;
+    findOne: jest.Mock;
+    remove: jest.Mock;
+    createQueryBuilder: jest.Mock;
+    count: jest.Mock;
+  };
   let plantRepo: { findOne: jest.Mock; save: jest.Mock };
   let userRepo: { findOne: jest.Mock; increment: jest.Mock };
 
   beforeEach(async () => {
     collectionRepo = {
-      save: jest.fn(async (entity) => ({ id: 'collection-1', dateAjout: new Date('2026-07-09'), ...entity })),
+      save: jest.fn(async (entity) => ({
+        id: 'collection-1',
+        dateAjout: new Date('2026-07-09'),
+        ...entity,
+      })),
       findOne: jest.fn(),
       remove: jest.fn(),
       createQueryBuilder: jest.fn(),
@@ -34,8 +44,8 @@ describe('CollectionService', () => {
     plantRepo = { findOne: jest.fn(), save: jest.fn(async (p) => p) };
     userRepo = { findOne: jest.fn(), increment: jest.fn() };
     mockedFs.existsSync.mockReturnValue(true);
-    mockedFs.mkdirSync.mockReturnValue(undefined as any);
-    mockedFs.writeFileSync.mockReturnValue(undefined as any);
+    mockedFs.mkdirSync.mockReturnValue(undefined);
+    mockedFs.writeFileSync.mockReturnValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -63,7 +73,10 @@ describe('CollectionService', () => {
       plantRepo.findOne.mockResolvedValue(null);
 
       await expect(
-        service.create('user-1', { plantId: 'plant-inconnue', type: PlantType.OWNED }),
+        service.create('user-1', {
+          plantId: 'plant-inconnue',
+          type: PlantType.OWNED,
+        }),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -71,7 +84,10 @@ describe('CollectionService', () => {
       userRepo.findOne.mockResolvedValue({ id: 'user-1' });
       plantRepo.findOne.mockResolvedValue({ id: 'plant-1' });
 
-      const result = await service.create('user-1', { plantId: 'plant-1', type: PlantType.OWNED });
+      const result = await service.create('user-1', {
+        plantId: 'plant-1',
+        type: PlantType.OWNED,
+      });
 
       expect(result.etatSante).toBe(HealthStatus.GOOD);
       expect(result.latitude).toBeNull();
@@ -81,34 +97,68 @@ describe('CollectionService', () => {
 
     it("crédite l'XP selon la rareté réelle dérivée du nombre de captures déjà existantes (25 XP si déjà capturée 5 fois ou plus = Commun)", async () => {
       userRepo.findOne.mockResolvedValue({ id: 'user-1' });
-      plantRepo.findOne.mockResolvedValue({ id: 'plant-1', badgeRarete: 'Commun' });
+      plantRepo.findOne.mockResolvedValue({
+        id: 'plant-1',
+        badgeRarete: 'Commun',
+      });
       collectionRepo.count.mockResolvedValue(5);
 
-      await service.create('user-1', { plantId: 'plant-1', type: PlantType.OWNED });
+      await service.create('user-1', {
+        plantId: 'plant-1',
+        type: PlantType.OWNED,
+      });
 
-      expect(userRepo.increment).toHaveBeenCalledWith({ id: 'user-1' }, 'experience', 25);
+      expect(userRepo.increment).toHaveBeenCalledWith(
+        { id: 'user-1' },
+        'experience',
+        25,
+      );
     });
 
     it('crédite 100 XP pour une toute première capture mondiale (Épique)', async () => {
       userRepo.findOne.mockResolvedValue({ id: 'user-1' });
-      plantRepo.findOne.mockResolvedValue({ id: 'plant-1', badgeRarete: 'Commun' });
+      plantRepo.findOne.mockResolvedValue({
+        id: 'plant-1',
+        badgeRarete: 'Commun',
+      });
       collectionRepo.count.mockResolvedValue(0);
 
-      await service.create('user-1', { plantId: 'plant-1', type: PlantType.DISCOVERED });
+      await service.create('user-1', {
+        plantId: 'plant-1',
+        type: PlantType.DISCOVERED,
+      });
 
-      expect(userRepo.increment).toHaveBeenCalledWith({ id: 'user-1' }, 'experience', 100);
-      expect(plantRepo.save).toHaveBeenCalledWith(expect.objectContaining({ badgeRarete: 'Épique' }));
+      expect(userRepo.increment).toHaveBeenCalledWith(
+        { id: 'user-1' },
+        'experience',
+        100,
+      );
+      expect(plantRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ badgeRarete: 'Épique' }),
+      );
     });
 
     it('crédite 50 XP et met à jour badgeRarete pour une capture "Rare" (entre 1 et 4 captures déjà existantes)', async () => {
       userRepo.findOne.mockResolvedValue({ id: 'user-1' });
-      plantRepo.findOne.mockResolvedValue({ id: 'plant-1', badgeRarete: 'Épique' });
+      plantRepo.findOne.mockResolvedValue({
+        id: 'plant-1',
+        badgeRarete: 'Épique',
+      });
       collectionRepo.count.mockResolvedValue(2);
 
-      await service.create('user-1', { plantId: 'plant-1', type: PlantType.OWNED });
+      await service.create('user-1', {
+        plantId: 'plant-1',
+        type: PlantType.OWNED,
+      });
 
-      expect(userRepo.increment).toHaveBeenCalledWith({ id: 'user-1' }, 'experience', 50);
-      expect(plantRepo.save).toHaveBeenCalledWith(expect.objectContaining({ badgeRarete: 'Rare' }));
+      expect(userRepo.increment).toHaveBeenCalledWith(
+        { id: 'user-1' },
+        'experience',
+        50,
+      );
+      expect(plantRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ badgeRarete: 'Rare' }),
+      );
     });
 
     it('persiste latitude/longitude quand le Geo-Tag est accepté', async () => {
@@ -138,14 +188,29 @@ describe('CollectionService', () => {
           {
             id: 'c1',
             plantId: 'p1',
-            plante: { nomScientifique: 'Lavandula angustifolia', nomCommun: 'Lavande vraie', famille: 'Lamiaceae', badgeRarete: 'Commun', toxicite: 'green', urlImage: null, frequenceArrosageJours: 5 },
+            plante: {
+              nomScientifique: 'Lavandula angustifolia',
+              nomCommun: 'Lavande vraie',
+              famille: 'Lamiaceae',
+              badgeRarete: 'Commun',
+              toxicite: 'green',
+              urlImage: null,
+              frequenceArrosageJours: 5,
+            },
             etatSante: HealthStatus.DANGER,
             dateAjout: new Date('2026-07-09'),
             derniereArrosage: new Date('2026-07-09T00:00:00.000Z'),
             latitude: null,
             longitude: null,
             historiquePhotos: [],
-            dernierDiagnostic: { estSain: false, maladieNom: 'Septoriose', scoreGlobal: 91, traitement: { biologique: 'Retirer les feuilles atteintes.' }, description: null, dateDiagnostic: '2026-07-20T00:00:00.000Z' },
+            dernierDiagnostic: {
+              estSain: false,
+              maladieNom: 'Septoriose',
+              scoreGlobal: 91,
+              traitement: { biologique: 'Retirer les feuilles atteintes.' },
+              description: null,
+              dateDiagnostic: '2026-07-20T00:00:00.000Z',
+            },
             typeCollection: PlantType.OWNED,
           },
         ]),
@@ -154,21 +219,30 @@ describe('CollectionService', () => {
 
       const result = await service.findByUserAndType('user-1', PlantType.OWNED);
 
-      expect(qb.andWhere).toHaveBeenCalledWith('c.typeCollection = :type', { type: PlantType.OWNED });
+      expect(qb.andWhere).toHaveBeenCalledWith('c.typeCollection = :type', {
+        type: PlantType.OWNED,
+      });
       expect(result).toHaveLength(1);
       expect(result[0].nomScientifique).toBe('Lavandula angustifolia');
       expect(result[0].famille).toBe('Lamiaceae');
-      expect(result[0].dernierDiagnostic).toMatchObject({ estSain: false, maladieNom: 'Septoriose' });
+      expect(result[0].dernierDiagnostic).toMatchObject({
+        estSain: false,
+        maladieNom: 'Septoriose',
+      });
       expect(result[0]).not.toHaveProperty('plante');
       // derniereArrosage (09/07) + frequenceArrosageJours (5j) = prochainArrosage.
-      expect(result[0].prochainArrosage).toEqual(new Date('2026-07-14T00:00:00.000Z'));
+      expect(result[0].prochainArrosage).toEqual(
+        new Date('2026-07-14T00:00:00.000Z'),
+      );
     });
   });
 
   describe('waterNow', () => {
     it("lève NotFoundException si la collection n'appartient pas à l'utilisateur", async () => {
       collectionRepo.findOne.mockResolvedValue(null);
-      await expect(service.waterNow('user-1', 'collection-1')).rejects.toThrow(NotFoundException);
+      await expect(service.waterNow('user-1', 'collection-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('met à jour derniereArrosage et recalcule prochainArrosage en conséquence', async () => {
@@ -177,7 +251,15 @@ describe('CollectionService', () => {
         id: 'collection-1',
         userId: 'user-1',
         plantId: 'p1',
-        plante: { nomScientifique: 'Lavandula angustifolia', nomCommun: 'Lavande vraie', famille: 'Lamiaceae', badgeRarete: 'Commun', toxicite: 'green', urlImage: null, frequenceArrosageJours: 5 },
+        plante: {
+          nomScientifique: 'Lavandula angustifolia',
+          nomCommun: 'Lavande vraie',
+          famille: 'Lamiaceae',
+          badgeRarete: 'Commun',
+          toxicite: 'green',
+          urlImage: null,
+          frequenceArrosageJours: 5,
+        },
         etatSante: HealthStatus.GOOD,
         dateAjout: before,
         derniereArrosage: before,
@@ -190,20 +272,27 @@ describe('CollectionService', () => {
 
       const result = await service.waterNow('user-1', 'collection-1');
 
-      expect(collectionRepo.save).toHaveBeenCalledWith(expect.objectContaining({ derniereArrosage: expect.any(Date) }));
-      const savedDerniereArrosage = collectionRepo.save.mock.calls[0][0].derniereArrosage;
+      expect(collectionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ derniereArrosage: expect.any(Date) }),
+      );
+      const savedDerniereArrosage =
+        collectionRepo.save.mock.calls[0][0].derniereArrosage;
       expect(savedDerniereArrosage.getTime()).toBeGreaterThan(before.getTime());
-      expect(result.prochainArrosage.getTime()).toBe(savedDerniereArrosage.getTime() + 5 * 24 * 60 * 60 * 1000);
+      expect(result.prochainArrosage.getTime()).toBe(
+        savedDerniereArrosage.getTime() + 5 * 24 * 60 * 60 * 1000,
+      );
     });
   });
 
   describe('delete', () => {
     it("lève NotFoundException si la collection n'appartient pas à l'utilisateur", async () => {
       collectionRepo.findOne.mockResolvedValue(null);
-      await expect(service.delete('user-1', 'collection-1')).rejects.toThrow(NotFoundException);
+      await expect(service.delete('user-1', 'collection-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
-    it('supprime quand la collection appartient bien à l\'utilisateur', async () => {
+    it("supprime quand la collection appartient bien à l'utilisateur", async () => {
       const collection = { id: 'collection-1', userId: 'user-1' };
       collectionRepo.findOne.mockResolvedValue(collection);
 
@@ -214,21 +303,38 @@ describe('CollectionService', () => {
 
   describe('addPhoto', () => {
     it(
-      "écrit le fichier sous apps/api/uploads/ (pas dist/uploads/ ni src/uploads/) — régression du " +
+      'écrit le fichier sous apps/api/uploads/ (pas dist/uploads/ ni src/uploads/) — régression du ' +
         "24/07/2026 : la photo uploadée atterrissait un niveau trop profond (2 x '..' au lieu de 3), " +
         "invisible dans les tests précédents qui ne vérifiaient que la forme de l'URL renvoyée, jamais " +
-        "un vrai GET HTTP sur le fichier (voir rapport.md)",
+        'un vrai GET HTTP sur le fichier (voir rapport.md)',
       async () => {
-        collectionRepo.findOne.mockResolvedValue({ id: 'collection-1', userId: 'user-1', historiquePhotos: [] });
+        collectionRepo.findOne.mockResolvedValue({
+          id: 'collection-1',
+          userId: 'user-1',
+          historiquePhotos: [],
+        });
         mockedFs.existsSync.mockReturnValue(false); // force la branche mkdirSync à s'exécuter
-        const file = { originalname: 'photo.jpg', buffer: Buffer.from('img') } as Express.Multer.File;
+        const file = {
+          originalname: 'photo.jpg',
+          buffer: Buffer.from('img'),
+        } as Express.Multer.File;
 
         await service.addPhoto('user-1', 'collection-1', file);
 
         // Calculé depuis le même __dirname que le service (fichiers co-localisés) :
         // seul le nombre de '..' est sous test, pas la valeur absolue du chemin.
-        const expectedUploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'collections', 'collection-1');
-        expect(mockedFs.mkdirSync).toHaveBeenCalledWith(expectedUploadDir, { recursive: true });
+        const expectedUploadDir = path.join(
+          __dirname,
+          '..',
+          '..',
+          '..',
+          'uploads',
+          'collections',
+          'collection-1',
+        );
+        expect(mockedFs.mkdirSync).toHaveBeenCalledWith(expectedUploadDir, {
+          recursive: true,
+        });
         expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
           expect.stringContaining(expectedUploadDir),
           file.buffer,

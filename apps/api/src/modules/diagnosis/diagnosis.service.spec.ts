@@ -19,15 +19,22 @@ describe('DiagnosisService', () => {
   beforeEach(async () => {
     collectionRepo = { findOne: jest.fn(), save: jest.fn(async (c) => c) };
     mockedFs.existsSync.mockReturnValue(true);
-    mockedFs.mkdirSync.mockReturnValue(undefined as any);
-    mockedFs.writeFileSync.mockReturnValue(undefined as any);
+    mockedFs.mkdirSync.mockReturnValue(undefined);
+    mockedFs.writeFileSync.mockReturnValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DiagnosisService,
         { provide: getRepositoryToken(Collection), useValue: collectionRepo },
         // FORCE_MOCK=true : force le mode mock indépendamment de PLANT_ID_API_KEY.
-        { provide: ConfigService, useValue: { get: jest.fn((key: string) => (key === 'FORCE_MOCK' ? 'true' : undefined)) } },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) =>
+              key === 'FORCE_MOCK' ? 'true' : undefined,
+            ),
+          },
+        },
       ],
     }).compile();
 
@@ -37,9 +44,13 @@ describe('DiagnosisService', () => {
   it("lève NotFoundException si la collection n'appartient pas à l'utilisateur", async () => {
     collectionRepo.findOne.mockResolvedValue(null);
 
-    await expect(service.diagnosePlantHealth('user-1', 'collection-inconnue', Buffer.from('img'))).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(
+      service.diagnosePlantHealth(
+        'user-1',
+        'collection-inconnue',
+        Buffer.from('img'),
+      ),
+    ).rejects.toThrow(NotFoundException);
   });
 
   it("lève BadRequestException si aucune image n'est fournie et qu'il n'y a pas d'historique", async () => {
@@ -50,9 +61,9 @@ describe('DiagnosisService', () => {
       etatSante: HealthStatus.GOOD,
     });
 
-    await expect(service.diagnosePlantHealth('user-1', 'collection-1', undefined)).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      service.diagnosePlantHealth('user-1', 'collection-1', undefined),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('met à jour etatSante à DANGER quand le diagnostic mock renvoie un état malade (probabilité de maladie >= 0.7)', async () => {
@@ -69,7 +80,11 @@ describe('DiagnosisService', () => {
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.01); // < 0.3 → estSain = false
 
     try {
-      const result = await service.diagnosePlantHealth('user-1', 'collection-1', Buffer.from('img'));
+      const result = await service.diagnosePlantHealth(
+        'user-1',
+        'collection-1',
+        Buffer.from('img'),
+      );
 
       expect(result.estSain).toBe(false);
       expect(collection.etatSante).toBe(HealthStatus.DANGER);
@@ -82,7 +97,9 @@ describe('DiagnosisService', () => {
         scoreGlobal: expect.any(Number),
         traitement: expect.objectContaining({ biologique: expect.any(String) }),
       });
-      expect(new Date(collection.dernierDiagnostic.dateDiagnostic).toString()).not.toBe('Invalid Date');
+      expect(
+        new Date(collection.dernierDiagnostic.dateDiagnostic).toString(),
+      ).not.toBe('Invalid Date');
     } finally {
       randomSpy.mockRestore();
     }
@@ -100,7 +117,11 @@ describe('DiagnosisService', () => {
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.9); // > 0.3 → estSain = true
 
     try {
-      const result = await service.diagnosePlantHealth('user-1', 'collection-1', Buffer.from('img'));
+      const result = await service.diagnosePlantHealth(
+        'user-1',
+        'collection-1',
+        Buffer.from('img'),
+      );
 
       expect(result.estSain).toBe(true);
       expect(collection.etatSante).toBe(HealthStatus.GOOD);
@@ -122,18 +143,31 @@ describe('DiagnosisService', () => {
       userId: 'user-1',
       historiquePhotos: [],
       etatSante: HealthStatus.GOOD,
-      dernierDiagnostic: { estSain: false, maladieNom: 'Ancienne maladie', scoreGlobal: 50, traitement: null, description: null, dateDiagnostic: '2020-01-01T00:00:00.000Z' },
+      dernierDiagnostic: {
+        estSain: false,
+        maladieNom: 'Ancienne maladie',
+        scoreGlobal: 50,
+        traitement: null,
+        description: null,
+        dateDiagnostic: '2020-01-01T00:00:00.000Z',
+      },
     };
     collectionRepo.findOne.mockResolvedValue(collection);
 
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.9); // sain cette fois
 
     try {
-      await service.diagnosePlantHealth('user-1', 'collection-1', Buffer.from('img'));
+      await service.diagnosePlantHealth(
+        'user-1',
+        'collection-1',
+        Buffer.from('img'),
+      );
 
       expect(collection.dernierDiagnostic.estSain).toBe(true);
       expect(collection.dernierDiagnostic.maladieNom).toBeNull();
-      expect(collection.dernierDiagnostic.dateDiagnostic).not.toBe('2020-01-01T00:00:00.000Z');
+      expect(collection.dernierDiagnostic.dateDiagnostic).not.toBe(
+        '2020-01-01T00:00:00.000Z',
+      );
     } finally {
       randomSpy.mockRestore();
     }
@@ -170,7 +204,12 @@ describe('DiagnosisService (vrai appel HTTP Plant.id Health)', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn((key: string) => ({ PLANT_ID_API_KEY: 'test-key', FORCE_MOCK: 'false' } as any)[key]),
+            get: jest.fn(
+              (key: string) =>
+                (
+                  ({ PLANT_ID_API_KEY: 'test-key', FORCE_MOCK: 'false' }) as any
+                )[key],
+            ),
           },
         },
       ],
@@ -182,10 +221,19 @@ describe('DiagnosisService (vrai appel HTTP Plant.id Health)', () => {
   it('envoie health/details/language en query string, jamais dans le corps JSON', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ result: { is_healthy: { binary: true, probability: 0.95 }, disease: { suggestions: [] } } }),
+      json: async () => ({
+        result: {
+          is_healthy: { binary: true, probability: 0.95 },
+          disease: { suggestions: [] },
+        },
+      }),
     });
 
-    await service.diagnosePlantHealth('user-1', 'collection-1', Buffer.from('img'));
+    await service.diagnosePlantHealth(
+      'user-1',
+      'collection-1',
+      Buffer.from('img'),
+    );
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [calledUrl, options] = fetchMock.mock.calls[0];
@@ -193,7 +241,10 @@ describe('DiagnosisService (vrai appel HTTP Plant.id Health)', () => {
     expect(calledUrl).toContain('language=fr');
     expect(calledUrl).toContain('details=');
     const body = JSON.parse(options.body);
-    expect(body).toEqual({ images: [Buffer.from('img').toString('base64')], similar_images: true });
+    expect(body).toEqual({
+      images: [Buffer.from('img').toString('base64')],
+      similar_images: true,
+    });
     expect(body.health).toBeUndefined();
     expect(body.details).toBeUndefined();
     expect(body.language).toBeUndefined();
@@ -213,7 +264,14 @@ describe('DiagnosisService (vrai appel HTTP Plant.id Health)', () => {
                 probability: 0.91,
                 details: {
                   description: 'Taches foliaires.',
-                  treatment: { biological: ['Retirer les feuilles atteintes.'], chemical: [], prevention: ['Espacer les plants.', 'Éviter l’arrosage par le feuillage.'] },
+                  treatment: {
+                    biological: ['Retirer les feuilles atteintes.'],
+                    chemical: [],
+                    prevention: [
+                      'Espacer les plants.',
+                      'Éviter l’arrosage par le feuillage.',
+                    ],
+                  },
                 },
               },
             ],
@@ -222,7 +280,11 @@ describe('DiagnosisService (vrai appel HTTP Plant.id Health)', () => {
       }),
     });
 
-    const result = await service.diagnosePlantHealth('user-1', 'collection-1', Buffer.from('img'));
+    const result = await service.diagnosePlantHealth(
+      'user-1',
+      'collection-1',
+      Buffer.from('img'),
+    );
 
     expect(result.suggestions[0].traitement).toEqual({
       biologique: 'Retirer les feuilles atteintes.',
@@ -238,8 +300,8 @@ describe('DiagnosisService (vrai appel HTTP Plant.id Health)', () => {
       text: async () => '{"error":"Unknown modifier"}',
     });
 
-    await expect(service.diagnosePlantHealth('user-1', 'collection-1', Buffer.from('img'))).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      service.diagnosePlantHealth('user-1', 'collection-1', Buffer.from('img')),
+    ).rejects.toThrow(BadRequestException);
   });
 });

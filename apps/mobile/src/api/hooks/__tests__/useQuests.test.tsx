@@ -43,7 +43,7 @@ describe('useQuests (integration: GET /quests/daily réel, plus de données dém
   it('calls GET /quests/daily and maps the real backend progression/completion/reward', async () => {
     mockedGet.mockImplementation((url: string) => {
       if (url === '/quests/daily') return Promise.resolve({ data: backendQuests });
-      if (url === '/users/me') return Promise.resolve({ data: { ...testUser, nomUtilisateur: testUser.pseudo, experience: testUser.xp, insignes: [] } });
+      if (url === '/users/me') return Promise.resolve({ data: { ...testUser, username: testUser.pseudo, experience: testUser.xp, insignes: [] } });
       return Promise.reject(new Error(`unexpected url ${url}`));
     });
 
@@ -63,7 +63,7 @@ describe('useQuests (integration: GET /quests/daily réel, plus de données dém
   it('uses the real i18n key for each known quest id instead of the raw French backend libelle', async () => {
     mockedGet.mockImplementation((url: string) => {
       if (url === '/quests/daily') return Promise.resolve({ data: backendQuests });
-      return Promise.resolve({ data: { ...testUser, nomUtilisateur: testUser.pseudo, experience: testUser.xp, insignes: [] } });
+      return Promise.resolve({ data: { ...testUser, username: testUser.pseudo, experience: testUser.xp, insignes: [] } });
     });
 
     const { result } = renderHook(() => useQuests(), { wrapper });
@@ -84,7 +84,7 @@ describe('useQuests (integration: GET /quests/daily réel, plus de données dém
           data: [{ id: 'future-quest', libelle: 'Un nouveau défi', type: 'quotidien', progression: 0, objectif: 1, complete: false, recompense: { xp: 0, pieces: 0 } }],
         });
       }
-      return Promise.resolve({ data: { ...testUser, nomUtilisateur: testUser.pseudo, experience: testUser.xp, insignes: [] } });
+      return Promise.resolve({ data: { ...testUser, username: testUser.pseudo, experience: testUser.xp, insignes: [] } });
     });
 
     const { result } = renderHook(() => useQuests(), { wrapper });
@@ -96,7 +96,7 @@ describe('useQuests (integration: GET /quests/daily réel, plus de données dém
   it('exposes the coins balance from the authenticated user, not a fixed demo value', async () => {
     mockedGet.mockImplementation((url: string) => {
       if (url === '/quests/daily') return Promise.resolve({ data: backendQuests });
-      return Promise.resolve({ data: { ...testUser, nomUtilisateur: testUser.pseudo, experience: testUser.xp, insignes: [] } });
+      return Promise.resolve({ data: { ...testUser, username: testUser.pseudo, experience: testUser.xp, insignes: [] } });
     });
 
     const { result } = renderHook(() => useQuests(), { wrapper });
@@ -108,7 +108,7 @@ describe('useQuests (integration: GET /quests/daily réel, plus de données dém
   it('refreshes the user profile after fetching quests, since a reward may just have been credited server-side', async () => {
     mockedGet.mockImplementation((url: string) => {
       if (url === '/quests/daily') return Promise.resolve({ data: backendQuests });
-      return Promise.resolve({ data: { ...testUser, nomUtilisateur: testUser.pseudo, experience: testUser.xp, insignes: [] } });
+      return Promise.resolve({ data: { ...testUser, username: testUser.pseudo, experience: testUser.xp, insignes: [] } });
     });
 
     const { result } = renderHook(() => useQuests(), { wrapper });

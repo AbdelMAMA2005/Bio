@@ -9,13 +9,16 @@
  * différent par espèce (ex. cactus = 1, tomate/basilic/muguet = 2) — voir
  * rapport.md.
  */
-export function describeWatering(watering: { min?: number; max?: number } | null | undefined): string | undefined {
+export function describeWatering(
+  watering: { min?: number; max?: number } | null | undefined,
+): string | undefined {
   if (!watering || (watering.min == null && watering.max == null)) {
     return undefined;
   }
 
   const labels = ['Faible', 'Modéré', 'Abondant'];
-  const labelFor = (value: number) => labels[Math.min(Math.max(Math.round(value), 1), 3) - 1];
+  const labelFor = (value: number) =>
+    labels[Math.min(Math.max(Math.round(value), 1), 3) - 1];
 
   const min = watering.min ?? watering.max!;
   const max = watering.max ?? watering.min!;
@@ -36,7 +39,9 @@ export const DEFAULT_WATERING_INTERVAL_DAYS = 7;
  * (derniereArrosage + N jours) — un cactus (1) est espacé (10j), une tomate/un basilic
  * (2) modéré (5j), une plante tropicale humide (3) fréquent (2j).
  */
-export function wateringIntervalDays(watering: { min?: number; max?: number } | null | undefined): number | undefined {
+export function wateringIntervalDays(
+  watering: { min?: number; max?: number } | null | undefined,
+): number | undefined {
   if (!watering || (watering.min == null && watering.max == null)) {
     return undefined;
   }

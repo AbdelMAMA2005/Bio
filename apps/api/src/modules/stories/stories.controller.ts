@@ -44,7 +44,9 @@ export class StoriesController {
     file: Express.Multer.File,
   ) {
     if (!file || !file.buffer) {
-      throw new BadRequestException('Aucun fichier fourni. Envoyez un fichier via le champ `image`.');
+      throw new BadRequestException(
+        'Aucun fichier fourni. Envoyez un fichier via le champ `image`.',
+      );
     }
     return this.storiesService.createStoryMedia(user.id, file);
   }
@@ -52,13 +54,19 @@ export class StoriesController {
   // ----- Enregistrer une vue sur un média -----
   @Post(':mediaId/view')
   @HttpCode(204)
-  async recordView(@CurrentUser() user: any, @Param('mediaId') mediaId: string) {
+  async recordView(
+    @CurrentUser() user: any,
+    @Param('mediaId') mediaId: string,
+  ) {
     await this.storiesService.recordView(mediaId, user.id);
   }
 
   // ----- Liste des vues d'un média (réservé à son auteur) -----
   @Get(':mediaId/viewers')
-  async getViewers(@CurrentUser() user: any, @Param('mediaId') mediaId: string) {
+  async getViewers(
+    @CurrentUser() user: any,
+    @Param('mediaId') mediaId: string,
+  ) {
     return this.storiesService.getViewers(mediaId, user.id);
   }
 }

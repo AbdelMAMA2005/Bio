@@ -1,10 +1,19 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, DeleteDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  DeleteDateColumn,
+} from 'typeorm';
 import { Collection } from './collection.entity';
 import { Post } from './posts.entity';
 import { Comment } from './comment.entity';
 import { Like } from './like.entity';
 import { Reminder } from './reminder.entity';
 import { Story } from './story.entity';
+import { Follower } from './follower.entity';
+import { Message } from './message.entity';
+import { Notification } from './notification.entity';
 
 @Entity('users')
 export class User {
@@ -14,11 +23,14 @@ export class User {
   @Column({ unique: true })
   email!: string;
 
+  @Column({ default: '' })
+  fullName!: string;
+
   @Column()
   motDePasseHache!: string;
 
-  @Column({ unique: true })
-  nomUtilisateur!: string;
+  @Column({ type: 'varchar', unique: true, nullable: true })
+  username!: string | null;
 
   @Column({ default: 0 })
   experience!: number;
@@ -41,6 +53,15 @@ export class User {
   @DeleteDateColumn({ nullable: true })
   dateSuppression!: Date | null;
 
+  @Column({ nullable: true })
+  resetPasswordToken!: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  resetPasswordExpires!: Date;
+
+  @Column({ default: true })
+  isPublicProfile!: boolean;
+
   @OneToMany(() => Collection, (collection) => collection.utilisateur)
   collectionsUtilisateur!: Collection[];
 
@@ -58,4 +79,19 @@ export class User {
 
   @OneToMany(() => Story, (story) => story.utilisateur)
   storiesUtilisateur!: Story[];
+
+  @OneToMany(() => Follower, (follower) => follower.follower)
+  followers!: Follower[];
+
+  @OneToMany(() => Follower, (follower) => follower.following)
+  following!: Follower[];
+
+  @OneToMany(() => Message, (message) => message.sender)
+  sentMessages!: Message[];
+
+  @OneToMany(() => Message, (message) => message.receiver)
+  receivedMessages!: Message[];
+
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications!: Notification[];
 }

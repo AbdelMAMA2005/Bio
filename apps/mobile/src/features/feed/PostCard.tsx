@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import type { FeedPost } from '@/api/types';
@@ -17,10 +17,12 @@ type Props = {
   onToggleLike: () => void;
   onOpenComments: () => void;
   onShare: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   sharing?: boolean;
 };
 
-export function PostCard({ post, onToggleLike, onOpenComments, onShare, sharing }: Props) {
+export function PostCard({ post, onToggleLike, onOpenComments, onShare, onEdit, onDelete, sharing }: Props) {
   const { t, i18n } = useTranslation();
   const { colors, isDark } = useAppTheme();
   const language = (i18n.language as SupportedLanguage) ?? 'fr';
@@ -84,6 +86,18 @@ export function PostCard({ post, onToggleLike, onOpenComments, onShare, sharing 
             <Icon name="ios_share" size={18} color={colors.muted} />
           )}
         </Pressable>
+        {onEdit && onDelete ? (
+          <Pressable
+            style={styles.moreButton}
+            onPress={() => Alert.alert(t('community.postMenu'), undefined, [
+              { text: t('community.editPost'), onPress: onEdit },
+              { text: t('community.deletePostCta'), style: 'destructive', onPress: onDelete },
+              { text: t('common.cancel'), style: 'cancel' },
+            ])}
+            hitSlop={6}>
+            <Icon name="more_vert" size={20} color={colors.muted} />
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -178,4 +192,5 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.numericBold,
     fontSize: 12.5,
   },
+  moreButton: { marginLeft: 'auto' },
 });

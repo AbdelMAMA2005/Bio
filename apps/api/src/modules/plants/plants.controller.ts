@@ -10,7 +10,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PlantsService } from './plants.service';
-import { CreatePlantDto, UpdatePlantDto, PlantListQueryDto, PlantResponseDto } from '../../dto';
+import {
+  CreatePlantDto,
+  UpdatePlantDto,
+  PlantListQueryDto,
+  PlantResponseDto,
+} from '../../dto';
 import { JwtAuthGuard, AdminGuard } from '../../common/guards';
 
 @Controller('plants')

@@ -25,7 +25,7 @@ describe('describeWatering', () => {
     expect(describeWatering({ max: 3 })).toBe('Abondant');
   });
 
-  it('renvoie undefined en l\'absence totale de donnée (Plant.id ne fournit pas toujours watering)', () => {
+  it("renvoie undefined en l'absence totale de donnée (Plant.id ne fournit pas toujours watering)", () => {
     expect(describeWatering(null)).toBeUndefined();
     expect(describeWatering(undefined)).toBeUndefined();
     expect(describeWatering({})).toBeUndefined();

@@ -126,12 +126,16 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.extraBold,
     fontSize: 22,
     textAlign: 'center',
+    width: '100%',
+    flexWrap: 'wrap',
   },
   body: {
     fontFamily: FontFamily.regular,
     fontSize: 14,
     lineHeight: 21,
     textAlign: 'center',
+    width: '100%',
+    flexWrap: 'wrap',
   },
   dots: {
     flexDirection: 'row',

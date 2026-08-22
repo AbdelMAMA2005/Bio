@@ -49,10 +49,10 @@ export function StoryViewersSheet({ mediaId, onClose }: Props) {
               renderItem={({ item }) => (
                 <View style={styles.viewerRow}>
                   <LinearGradient colors={AccentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-                    <Text style={styles.avatarInitial}>{item.nomUtilisateur.charAt(0).toUpperCase()}</Text>
+                    <Text style={styles.avatarInitial}>{item.username.charAt(0).toUpperCase()}</Text>
                   </LinearGradient>
                   <Text style={[styles.viewerName, { color: colors.text }]} numberOfLines={1}>
-                    {item.nomUtilisateur}
+                    {item.username}
                   </Text>
                   <Text style={[styles.viewerDate, { color: colors.muted }]}>{formatRelativeDate(item.dateVue, language)}</Text>
                 </View>

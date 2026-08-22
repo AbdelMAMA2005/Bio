@@ -16,7 +16,8 @@ const plantesExemples = [
       temperature: '18-25°C',
       rempotage: 'Tous les 2 ans au printemps',
     },
-    urlImage: 'https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=200',
   },
   {
     nomScientifique: 'Ficus elastica',
@@ -30,7 +31,8 @@ const plantesExemples = [
       temperature: '18-24°C',
       rempotage: 'Tous les 2-3 ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1586788224331-947f68671cf1?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1586788224331-947f68671cf1?w=200',
   },
   {
     nomScientifique: 'Spathiphyllum wallisii',
@@ -44,7 +46,8 @@ const plantesExemples = [
       temperature: '18-25°C',
       rempotage: 'Tous les ans au printemps',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593697821252-0c9137d9fc45?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593697821252-0c9137d9fc45?w=200',
   },
   {
     nomScientifique: 'Sansevieria trifasciata',
@@ -58,7 +61,8 @@ const plantesExemples = [
       temperature: '15-24°C',
       rempotage: 'Tous les 2-3 ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Zamioculcas zamiifolia',
@@ -72,7 +76,8 @@ const plantesExemples = [
       temperature: '18-26°C',
       rempotage: 'Tous les 2-3 ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Dracaena marginata',
@@ -86,7 +91,8 @@ const plantesExemples = [
       temperature: '18-24°C',
       rempotage: 'Tous les 2 ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Aloe vera',
@@ -100,7 +106,8 @@ const plantesExemples = [
       temperature: '18-24°C',
       rempotage: 'Tous les 2-3 ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Calathea orbifolia',
@@ -114,7 +121,8 @@ const plantesExemples = [
       temperature: '18-23°C',
       rempotage: 'Tous les ans au printemps',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Cactus astrophytum',
@@ -128,7 +136,8 @@ const plantesExemples = [
       temperature: '15-30°C',
       rempotage: 'Tous les 3-4 ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Nepenthes alata',
@@ -142,7 +151,8 @@ const plantesExemples = [
       temperature: '18-25°C',
       rempotage: 'Tous les 2 ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Pachira aquatica',
@@ -151,12 +161,13 @@ const plantesExemples = [
     toxicite: ToxicityLevel.GREEN,
     badgeRarete: 'Commun',
     conseilsEntretien: {
-      arrosage: 'Arroser modérément, ne pas laisser d\'eau dans la soucoupe',
+      arrosage: "Arroser modérément, ne pas laisser d'eau dans la soucoupe",
       lumiere: 'Lumière indirecte vive',
       temperature: '18-24°C',
       rempotage: 'Tous les 2 ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Begonia rex',
@@ -170,7 +181,8 @@ const plantesExemples = [
       temperature: '18-22°C',
       rempotage: 'Tous les ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Epipremnum aureum',
@@ -184,7 +196,8 @@ const plantesExemples = [
       temperature: '18-25°C',
       rempotage: 'Tous les 2 ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Strelitzia reginae',
@@ -198,7 +211,8 @@ const plantesExemples = [
       temperature: '18-25°C',
       rempotage: 'Tous les 2-3 ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Chlorophytum comosum',
@@ -212,7 +226,8 @@ const plantesExemples = [
       temperature: '15-24°C',
       rempotage: 'Tous les ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Ficus lyrata',
@@ -226,7 +241,8 @@ const plantesExemples = [
       temperature: '18-25°C',
       rempotage: 'Tous les 2 ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Dionaea muscipula',
@@ -240,7 +256,8 @@ const plantesExemples = [
       temperature: '18-27°C',
       rempotage: 'Tous les 2 ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Crassula ovata',
@@ -254,7 +271,8 @@ const plantesExemples = [
       temperature: '18-24°C',
       rempotage: 'Tous les 2-3 ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Anthurium andraeanum',
@@ -268,7 +286,8 @@ const plantesExemples = [
       temperature: '20-25°C',
       rempotage: 'Tous les ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
   {
     nomScientifique: 'Hoya carnosa',
@@ -282,7 +301,8 @@ const plantesExemples = [
       temperature: '18-24°C',
       rempotage: 'Tous les 2-3 ans',
     },
-    urlImage: 'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
+    urlImage:
+      'https://images.unsplash.com/photo-1593482892290-f54927ae5c9f?w=200',
   },
 ];
 

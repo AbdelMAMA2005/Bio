@@ -44,7 +44,11 @@ export class QuestsService {
     const startOfDay = new Date(`${date}T00:00:00.000Z`);
     const endOfDay = new Date(`${date}T23:59:59.999Z`);
 
-    const progressions = await this.computeRealProgressions(userId, startOfDay, endOfDay);
+    const progressions = await this.computeRealProgressions(
+      userId,
+      startOfDay,
+      endOfDay,
+    );
 
     const results: QuestResponseDto[] = [];
     for (const quest of QUEST_CATALOG) {
@@ -55,7 +59,13 @@ export class QuestsService {
       // désormais) créditée — évite une relecture séparée qui pourrait ne pas
       // refléter l'écriture qu'on vient de faire selon le niveau d'isolation.
       const recompenseCreditee = complete
-        ? await this.creditRewardOnce(userId, quest.id, date, quest.recompenseXp, quest.recompensePieces)
+        ? await this.creditRewardOnce(
+            userId,
+            quest.id,
+            date,
+            quest.recompenseXp,
+            quest.recompensePieces,
+          )
         : false;
 
       results.push({
@@ -85,27 +95,39 @@ export class QuestsService {
         .createQueryBuilder('log')
         .select('DISTINCT log.plantId', 'plantId')
         .where('log.userId = :userId', { userId })
-        .andWhere('log.dateCreation BETWEEN :start AND :end', { start: startOfDay, end: endOfDay })
+        .andWhere('log.dateCreation BETWEEN :start AND :end', {
+          start: startOfDay,
+          end: endOfDay,
+        })
         .getRawMany(),
       // Ajouts au Jardin (owned) aujourd'hui.
       this.collectionRepo
         .createQueryBuilder('c')
         .where('c.userId = :userId', { userId })
         .andWhere('c.typeCollection = :type', { type: PlantType.OWNED })
-        .andWhere('c.dateAjout BETWEEN :start AND :end', { start: startOfDay, end: endOfDay })
+        .andWhere('c.dateAjout BETWEEN :start AND :end', {
+          start: startOfDay,
+          end: endOfDay,
+        })
         .getCount(),
       // Publications créées aujourd'hui.
       this.postRepo
         .createQueryBuilder('p')
         .where('p.userId = :userId', { userId })
-        .andWhere('p.dateCreation BETWEEN :start AND :end', { start: startOfDay, end: endOfDay })
+        .andWhere('p.dateCreation BETWEEN :start AND :end', {
+          start: startOfDay,
+          end: endOfDay,
+        })
         .getCount(),
       // Likes reçus aujourd'hui sur n'importe laquelle de ses publications.
       this.likeRepo
         .createQueryBuilder('l')
         .innerJoin('l.publication', 'p')
         .where('p.userId = :userId', { userId })
-        .andWhere('l.dateCreation BETWEEN :start AND :end', { start: startOfDay, end: endOfDay })
+        .andWhere('l.dateCreation BETWEEN :start AND :end', {
+          start: startOfDay,
+          end: endOfDay,
+        })
         .getCount(),
     ]);
 
@@ -124,7 +146,9 @@ export class QuestsService {
     xp: number,
     pieces: number,
   ): Promise<boolean> {
-    const existing = await this.questProgressRepo.findOne({ where: { userId, questId, date } });
+    const existing = await this.questProgressRepo.findOne({
+      where: { userId, questId, date },
+    });
     if (existing?.recompenseCreditee) return true;
 
     if (xp > 0) {
@@ -139,7 +163,12 @@ export class QuestsService {
       await this.questProgressRepo.save(existing);
     } else {
       await this.questProgressRepo.save(
-        this.questProgressRepo.create({ userId, questId, date, recompenseCreditee: true }),
+        this.questProgressRepo.create({
+          userId,
+          questId,
+          date,
+          recompenseCreditee: true,
+        }),
       );
     }
     return true;

@@ -51,5 +51,7 @@ const styles = StyleSheet.create({
     color: AccentOnColor,
     fontFamily: FontFamily.extraBold,
     fontSize: 15,
+    textAlign: 'center',
+    paddingHorizontal: 4,
   },
 });

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import * as fs from 'fs';
@@ -7,7 +11,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { Collection as CollectionEntity } from '../../entities/collection.entity';
 import { Plant } from '../../entities/plant.entity';
 import { User } from '../../entities/user.entity';
-import type { CreateCollectionRequestDto, CreateCollectionResponseDto, GetCollectionResponseDto, UpdateCollectionDto } from '../../dto';
+import type {
+  CreateCollectionRequestDto,
+  CreateCollectionResponseDto,
+  GetCollectionResponseDto,
+  UpdateCollectionDto,
+} from '../../dto';
 import { PlantType } from '../../entities/enums/plant-type.enum';
 import { HealthStatus } from '../../entities/enums/health-status.enum';
 import { calculateXpForRarity } from '../../common/xp';
@@ -46,7 +55,9 @@ export class CollectionService {
     // (tous utilisateurs confondus) AVANT celle-ci — remplace le badgeRarete
     // auparavant toujours figé à "Commun" (BACKEND_ISSUES.md §5). Recalculée à
     // chaque nouvelle capture pour rester à jour avec l'usage réel de l'app.
-    const priorCaptures = await this.collectionRepo.count({ where: { plantId: dto.plantId } });
+    const priorCaptures = await this.collectionRepo.count({
+      where: { plantId: dto.plantId },
+    });
     const rarete = computeRarityFromPriorCaptures(priorCaptures);
     if (plant.badgeRarete !== rarete) {
       plant.badgeRarete = rarete;
@@ -56,7 +67,7 @@ export class CollectionService {
     const collection = new CollectionEntity();
     collection.userId = userId;
     collection.plantId = dto.plantId;
-    collection.typeCollection = dto.type as PlantType;
+    collection.typeCollection = dto.type;
     collection.latitude = dto.latitude || null;
     collection.longitude = dto.longitude || null;
     collection.etatSante = HealthStatus.GOOD;
@@ -68,7 +79,11 @@ export class CollectionService {
     // POST /identification renvoyait bien `xpGagne`, mais rien ne le créditait jamais
     // à l'utilisateur (bug corrigé ici, au moment où la plante rejoint réellement le
     // Jardin/Herbarium plutôt qu'au simple scan).
-    await this.userRepo.increment({ id: userId }, 'experience', calculateXpForRarity(rarete));
+    await this.userRepo.increment(
+      { id: userId },
+      'experience',
+      calculateXpForRarity(rarete),
+    );
 
     return {
       id: saved.id,
@@ -102,7 +117,10 @@ export class CollectionService {
   }
 
   // Récupérer un élément spécifique de la collection d'un utilisateur
-  async findOneByUser(id: string, userId: string): Promise<GetCollectionResponseDto> {
+  async findOneByUser(
+    id: string,
+    userId: string,
+  ): Promise<GetCollectionResponseDto> {
     const c = await this.collectionRepo.findOne({
       where: { id, userId },
       relations: { plante: true },
@@ -119,8 +137,11 @@ export class CollectionService {
    * toujours recalculé à la lecture, jamais une valeur stockée en base.
    */
   private computeProchainArrosage(c: CollectionEntity): Date {
-    const intervalJours = c.plante.frequenceArrosageJours ?? DEFAULT_WATERING_INTERVAL_DAYS;
-    return new Date(c.derniereArrosage.getTime() + intervalJours * 24 * 60 * 60 * 1000);
+    const intervalJours =
+      c.plante.frequenceArrosageJours ?? DEFAULT_WATERING_INTERVAL_DAYS;
+    return new Date(
+      c.derniereArrosage.getTime() + intervalJours * 24 * 60 * 60 * 1000,
+    );
   }
 
   private mapToResponseDto(c: CollectionEntity): GetCollectionResponseDto {
@@ -157,7 +178,9 @@ export class CollectionService {
       relations: { plante: true },
     });
     if (!c) {
-      throw new NotFoundException('Collection non trouvée ou ne vous appartient pas.');
+      throw new NotFoundException(
+        'Collection non trouvée ou ne vous appartient pas.',
+      );
     }
 
     if (dto.etatSante !== undefined) {
@@ -184,13 +207,18 @@ export class CollectionService {
    * l'utilisateur (bouton "Marquer comme arrosé", Mon Quotidien), distincte de
    * `dateAjout` qui ne bouge jamais après la capture.
    */
-  async waterNow(userId: string, id: string): Promise<GetCollectionResponseDto> {
+  async waterNow(
+    userId: string,
+    id: string,
+  ): Promise<GetCollectionResponseDto> {
     const c = await this.collectionRepo.findOne({
       where: { id, userId },
       relations: { plante: true },
     });
     if (!c) {
-      throw new NotFoundException('Collection non trouvée ou ne vous appartient pas.');
+      throw new NotFoundException(
+        'Collection non trouvée ou ne vous appartient pas.',
+      );
     }
 
     c.derniereArrosage = new Date();
@@ -205,7 +233,9 @@ export class CollectionService {
       where: { id, userId },
     });
     if (!collection) {
-      throw new NotFoundException('Collection non trouvée ou ne vous appartient pas.');
+      throw new NotFoundException(
+        'Collection non trouvée ou ne vous appartient pas.',
+      );
     }
     await this.collectionRepo.remove(collection);
   }
@@ -222,7 +252,9 @@ export class CollectionService {
     });
 
     if (!collection) {
-      throw new NotFoundException('Collection non trouvée ou ne vous appartient pas.');
+      throw new NotFoundException(
+        'Collection non trouvée ou ne vous appartient pas.',
+      );
     }
 
     // 2. Créer le dossier de l'utilisateur si nécessaire
@@ -232,7 +264,15 @@ export class CollectionService {
     // main.ts sert les statiques depuis apps/api/uploads/... — 404 systématique sur
     // toute photo uploadée, jamais détecté car aucun test ne faisait de vrai GET HTTP
     // sur l'URL renvoyée (voir rapport.md).
-    const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'collections', collectionId);
+    const uploadDir = path.join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      'uploads',
+      'collections',
+      collectionId,
+    );
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -255,5 +295,4 @@ export class CollectionService {
 
     return { historiquePhotos };
   }
-
 }

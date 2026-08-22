@@ -20,33 +20,34 @@ describe('login', () => {
     mockedPost.mockResolvedValueOnce({
       data: {
         accessToken: 'jwt-abc',
-        user: { id: 'u1', email: 'a@b.com', nomUtilisateur: 'Djawad', experience: 120, niveau: 2, pieces: 15 },
+        user: { id: 'u1', email: 'a@b.com', username: 'Djawad', experience: 120, niveau: 2, pieces: 15 },
       },
     });
 
     const result = await login('a@b.com', 'secret123');
 
     expect(mockedPost).toHaveBeenCalledWith('/auth/login', { email: 'a@b.com', motDePasse: 'secret123' });
-    expect(result).toEqual({ token: 'jwt-abc', user: { id: 'u1', pseudo: 'Djawad', email: 'a@b.com', niveau: 2, xp: 120, pieces: 15 } });
+    expect(result).toEqual({ token: 'jwt-abc', user: { id: 'u1', pseudo: 'Djawad', email: 'a@b.com', urlAvatar: null, niveau: 2, xp: 120, pieces: 15 } });
   });
 });
 
 describe('register', () => {
   it('registers then chains an immediate login, since /auth/register returns no token', async () => {
     mockedPost
-      .mockResolvedValueOnce({ data: { id: 'u2', email: 'new@b.com', nomUtilisateur: 'NewUser', experience: 0, niveau: 1 } })
+      .mockResolvedValueOnce({ data: { id: 'u2', email: 'new@b.com', username: 'NewUser', experience: 0, niveau: 1 } })
       .mockResolvedValueOnce({
         data: {
           accessToken: 'jwt-xyz',
-          user: { id: 'u2', email: 'new@b.com', nomUtilisateur: 'NewUser', experience: 0, niveau: 1 },
+          user: { id: 'u2', email: 'new@b.com', username: 'NewUser', experience: 0, niveau: 1 },
         },
       });
 
-    const result = await register('NewUser', 'new@b.com', 'secret123');
+    const result = await register('NewUser', 'newuser', 'new@b.com', 'secret123');
 
     expect(mockedPost).toHaveBeenNthCalledWith(1, '/auth/register', {
       email: 'new@b.com',
-      nomUtilisateur: 'NewUser',
+      fullName: 'NewUser',
+      username: 'newuser',
       motDePasse: 'secret123',
     });
     expect(mockedPost).toHaveBeenNthCalledWith(2, '/auth/login', { email: 'new@b.com', motDePasse: 'secret123' });
@@ -60,27 +61,27 @@ describe('loginWithGoogle', () => {
     mockedPost.mockResolvedValueOnce({
       data: {
         accessToken: 'jwt-google',
-        user: { id: 'u3', email: 'leo@gmail.com', nomUtilisateur: 'Leo', experience: 0, niveau: 1, pieces: 0 },
+        user: { id: 'u3', email: 'leo@gmail.com', username: 'Leo', experience: 0, niveau: 1, pieces: 0 },
       },
     });
 
     const result = await loginWithGoogle('google-id-token');
 
     expect(mockedPost).toHaveBeenCalledWith('/auth/google', { idToken: 'google-id-token' });
-    expect(result).toEqual({ token: 'jwt-google', user: { id: 'u3', pseudo: 'Leo', email: 'leo@gmail.com', niveau: 1, xp: 0, pieces: 0 } });
+    expect(result).toEqual({ token: 'jwt-google', needsUsername: false, user: { id: 'u3', pseudo: 'Leo', email: 'leo@gmail.com', urlAvatar: null, niveau: 1, xp: 0, pieces: 0 } });
   });
 });
 
 describe('updateProfile', () => {
-  it('sends the pseudo as nomUtilisateur to PATCH /users/me and adapts the response', async () => {
+  it('sends an email/fullName patch to PATCH /users/me and adapts the response', async () => {
     mockedPatch.mockResolvedValueOnce({
-      data: { id: 'u1', email: 'a@b.com', nomUtilisateur: 'NouveauPseudo', experience: 10, niveau: 1 },
+      data: { id: 'u1', email: 'new@b.com', username: 'Djawad', fullName: 'Nouveau Nom', experience: 10, niveau: 1 },
     });
 
-    const result = await updateProfile({ pseudo: 'NouveauPseudo' });
+    const result = await updateProfile({ email: 'new@b.com', fullName: 'Nouveau Nom' });
 
-    expect(mockedPatch).toHaveBeenCalledWith('/users/me', { nomUtilisateur: 'NouveauPseudo' });
-    expect(result.pseudo).toBe('NouveauPseudo');
+    expect(mockedPatch).toHaveBeenCalledWith('/users/me', { email: 'new@b.com', fullName: 'Nouveau Nom' });
+    expect(result.email).toBe('new@b.com');
   });
 });
 

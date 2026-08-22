@@ -10,7 +10,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { RemindersService } from './reminders.service';
-import { CreateReminderDto, UpdateReminderDto, ReminderFilterDto, ReminderResponseDto } from '../../dto';
+import {
+  CreateReminderDto,
+  UpdateReminderDto,
+  ReminderFilterDto,
+  ReminderResponseDto,
+} from '../../dto';
 import { JwtAuthGuard } from '../../common/guards';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -28,10 +33,7 @@ export class RemindersController {
   }
 
   @Get()
-  async findAll(
-    @CurrentUser() user: any,
-    @Query() filter: ReminderFilterDto,
-  ) {
+  async findAll(@CurrentUser() user: any, @Query() filter: ReminderFilterDto) {
     return this.remindersService.findAll(user.id, filter);
   }
 
@@ -45,10 +47,7 @@ export class RemindersController {
   }
 
   @Delete(':id')
-  async delete(
-    @CurrentUser() user: any,
-    @Param('id') id: string,
-  ) {
+  async delete(@CurrentUser() user: any, @Param('id') id: string) {
     await this.remindersService.delete(user.id, id);
     return { success: true };
   }

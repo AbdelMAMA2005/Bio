@@ -18,7 +18,7 @@ describe('Auth (e2e)', () => {
 
     const res = await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `user${Date.now()}`, motDePasse: 'motdepasse' })
+      .send({ email, username: `user${Date.now()}`, motDePasse: 'motdepasse' })
       .expect(201);
 
     expect(res.body).not.toHaveProperty('accessToken');
@@ -29,16 +29,16 @@ describe('Auth (e2e)', () => {
 
   it('POST /auth/register rejette un email déjà utilisé (409)', async () => {
     const email = uniqueEmail('duplicate');
-    const nomUtilisateur = `user${Date.now()}`;
+    const username = `user${Date.now()}`;
 
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur, motDePasse: 'motdepasse' })
+      .send({ email, username, motDePasse: 'motdepasse' })
       .expect(201);
 
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `${nomUtilisateur}-bis`, motDePasse: 'motdepasse' })
+      .send({ email, username: `${username}-bis`, motDePasse: 'motdepasse' })
       .expect(409);
   });
 
@@ -46,7 +46,11 @@ describe('Auth (e2e)', () => {
     const email = uniqueEmail('badlogin');
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `user${Date.now()}`, motDePasse: 'bon-mot-de-passe' })
+      .send({
+        email,
+        username: `user${Date.now()}`,
+        motDePasse: 'bon-mot-de-passe',
+      })
       .expect(201);
 
     const res = await request(app.getHttpServer())
@@ -61,7 +65,11 @@ describe('Auth (e2e)', () => {
     const email = uniqueEmail('goodlogin');
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `user${Date.now()}`, motDePasse: 'bon-mot-de-passe' })
+      .send({
+        email,
+        username: `user${Date.now()}`,
+        motDePasse: 'bon-mot-de-passe',
+      })
       .expect(201);
 
     const res = await request(app.getHttpServer())

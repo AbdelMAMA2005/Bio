@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { User } from '../../entities/user.entity';
@@ -12,15 +16,55 @@ export class UserService {
     private userRepository: Repository<User>,
   ) {}
 
-
-  async create(email: string, username: string, password: string): Promise<User> {
+  async create(
+    email: string,
+    username: string,
+    fullName: string,
+    password: string,
+  ): Promise<User> {
     const motDePasseHache = await argon2.hash(password);
     const utilisateur = this.userRepository.create({
       email,
-      nomUtilisateur: username,
+      username,
+      fullName,
       motDePasseHache,
     });
     return this.userRepository.save(utilisateur);
+  }
+
+  async checkUsernameAvailability(
+    query: string,
+  ): Promise<{ available: boolean; suggestions: string[] }> {
+    const cleanQuery = query.toLowerCase().replace(/[^a-z0-9._@]/g, '');
+    const formattedQuery = cleanQuery.startsWith('@') ? cleanQuery : `@${cleanQuery}`;
+    const user = await this.userRepository.findOne({
+      where: { username: formattedQuery },
+    });
+    
+    if (!user) {
+      return { available: true, suggestions: [] };
+    }
+
+    // If taken, suggest some alternatives based on the base name
+    const baseName = formattedQuery.substring(1);
+    const suggestions = await this.suggestUsernames(baseName);
+    return { available: false, suggestions };
+  }
+
+  async suggestUsernames(fullName: string): Promise<string[]> {
+    const slug = fullName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const suggestions: string[] = [];
+    const maxAttempts = 10;
+    
+    for (let i = 0; i < maxAttempts && suggestions.length < 3; i++) {
+      const rand = Math.floor(Math.random() * 1000);
+      const attempt = `@${slug}${rand}`;
+      const exists = await this.userRepository.findOne({ where: { username: attempt } });
+      if (!exists) {
+        suggestions.push(attempt);
+      }
+    }
+    return suggestions;
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -54,20 +98,32 @@ export class UserService {
       user.email = dto.email;
     }
 
-    if (dto.nomUtilisateur && dto.nomUtilisateur !== user.nomUtilisateur) {
-      const existing = await this.userRepository.findOne({
-        where: { nomUtilisateur: dto.nomUtilisateur, dateSuppression: IsNull() },
-      });
-      if (existing) {
-        throw new ConflictException("Nom d'utilisateur déjà utilisé");
-      }
-      user.nomUtilisateur = dto.nomUtilisateur;
+    if (dto.fullName && dto.fullName !== user.fullName) {
+      user.fullName = dto.fullName;
     }
 
     if (dto.urlAvatar !== undefined) {
       user.urlAvatar = dto.urlAvatar;
     }
 
+    return this.userRepository.save(user);
+  }
+
+  async setUsername(id: string, rawUsername: string): Promise<User> {
+    const user = await this.findById(id);
+    if (!user) throw new NotFoundException('Utilisateur non trouvé');
+    if (user.username && user.username.toLowerCase() !== user.email.toLowerCase()) {
+      throw new ConflictException('Le username ne peut plus être modifié.');
+    }
+
+    const username = rawUsername.trim().toLowerCase().replace(/^@?/, '@');
+    if (!/^@[a-z0-9._]{2,29}$/.test(username)) {
+      throw new ConflictException('Username invalide.');
+    }
+    const existing = await this.userRepository.findOne({ where: { username } });
+    if (existing) throw new ConflictException('Ce nom d\'utilisateur est déjà pris.');
+
+    user.username = username;
     return this.userRepository.save(user);
   }
 
@@ -104,7 +160,9 @@ export class UserService {
   async restore(id: string): Promise<void> {
     const result = await this.userRepository.restore(id);
     if (result.affected === 0) {
-      throw new NotFoundException(`Utilisateur ${id} non trouvé ou pas supprimé`);
+      throw new NotFoundException(
+        `Utilisateur ${id} non trouvé ou pas supprimé`,
+      );
     }
   }
 

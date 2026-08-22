@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { AccentGradient, AccentOnColor } from '@/theme/colors';
@@ -8,9 +9,10 @@ type Props = {
   initial: string;
   size?: number;
   onPress?: () => void;
+  uri?: string | null;
 };
 
-export function AvatarBadge({ initial, size = 42, onPress }: Props) {
+export function AvatarBadge({ initial, size = 42, onPress, uri }: Props) {
   return (
     <Pressable onPress={onPress} disabled={!onPress} hitSlop={6}>
       <LinearGradient
@@ -18,7 +20,7 @@ export function AvatarBadge({ initial, size = 42, onPress }: Props) {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.badge, { width: size, height: size, borderRadius: size / 2 }]}>
-        <Text style={[styles.initial, { fontSize: size * 0.4 }]}>{initial.toUpperCase()}</Text>
+        {uri ? <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} /> : <Text style={[styles.initial, { fontSize: size * 0.4 }]}>{initial.toUpperCase()}</Text>}
       </LinearGradient>
     </Pressable>
   );

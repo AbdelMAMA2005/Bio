@@ -11,12 +11,20 @@ import {
   BadRequestException,
   UnauthorizedException,
   NotFoundException,
+  Query,
+  Param,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../../common/guards';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UpdateUserDto, AddBadgeDto, DeleteAccountDto, UserProfileResponseDto } from '../../dto';
+import {
+  UpdateUserDto,
+  AddBadgeDto,
+  DeleteAccountDto,
+  UserProfileResponseDto,
+  SetUsernameDto,
+} from '../../dto';
 import * as argon2 from 'argon2';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -30,7 +38,8 @@ export class UserController {
     return {
       id: user.id,
       email: user.email,
-      nomUtilisateur: user.nomUtilisateur,
+      fullName: user.fullName || '',
+      username: user.username || '',
       experience: user.experience,
       niveau: user.niveau,
       insignes: user.insignes || [],
@@ -39,9 +48,28 @@ export class UserController {
     };
   }
 
+  @Get('check-username')
+  async checkUsername(@Query('q') query: string) {
+    if (!query) {
+      throw new BadRequestException('Query parameter "q" is required');
+    }
+    return this.userService.checkUsernameAvailability(query);
+  }
+
+  @Get('suggestions/:fullName')
+  async getSuggestions(@Param('fullName') fullName: string) {
+    if (!fullName) {
+      throw new BadRequestException('Param parameter "fullName" is required');
+    }
+    const suggestions = await this.userService.suggestUsernames(fullName);
+    return { suggestions };
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  async getMe(@CurrentUser() currentUser: any): Promise<UserProfileResponseDto> {
+  async getMe(
+    @CurrentUser() currentUser: any,
+  ): Promise<UserProfileResponseDto> {
     const user = await this.userService.findById(currentUser.id);
     if (!user) {
       throw new NotFoundException('Utilisateur non trouvé');
@@ -60,6 +88,16 @@ export class UserController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('me/username')
+  async setUsername(
+    @CurrentUser() currentUser: any,
+    @Body() dto: SetUsernameDto,
+  ): Promise<UserProfileResponseDto> {
+    const user = await this.userService.setUsername(currentUser.id, dto.username);
+    return this.mapToProfileDto(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('me/avatar')
   @UseInterceptors(FileInterceptor('image'))
   async uploadAvatar(
@@ -72,7 +110,14 @@ export class UserController {
 
     // Voir collection.service.ts#addPhoto pour le détail : 3 x '..' pour atteindre
     // apps/api/uploads/ (là où main.ts sert les statiques), pas 2.
-    const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'avatars');
+    const uploadDir = path.join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      'uploads',
+      'avatars',
+    );
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -109,7 +154,10 @@ export class UserController {
       throw new NotFoundException('Utilisateur non trouvé');
     }
 
-    const isPasswordValid = await argon2.verify(user.motDePasseHache, dto.motDePasse);
+    const isPasswordValid = await argon2.verify(
+      user.motDePasseHache,
+      dto.motDePasse,
+    );
     if (!isPasswordValid) {
       throw new UnauthorizedException('Mot de passe incorrect');
     }

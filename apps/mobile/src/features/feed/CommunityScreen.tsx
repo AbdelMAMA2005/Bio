@@ -2,17 +2,21 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useState } from 'react';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ErrorState } from '@/components/ErrorState';
 import { Icon } from '@/components/Icon';
 import { SegmentedControl } from '@/components/SegmentedControl';
-import { useFeed, usePublishPost, usePublishStoryMedia, useStories, useToggleLike } from '@/api/hooks/useFeed';
+import { useDeletePost, useFeed, usePublishPost, usePublishStoryMedia, useStories, useToggleLike, useUpdatePost } from '@/api/hooks/useFeed';
+import { useUnreadMessagesCount } from '@/api/hooks/useMessages';
+import { useUnreadNotificationsCount } from '@/api/hooks/useNotifications';
 import { CommentsSheet } from '@/features/feed/CommentsSheet';
 import { PostCard } from '@/features/feed/PostCard';
 import { PostComposerModal } from '@/features/feed/PostComposerModal';
+import { PostEditModal } from '@/features/feed/PostEditModal';
 import { sharePost } from '@/features/feed/sharePost';
 import { StoryActionSheet } from '@/features/feed/StoryActionSheet';
 import { StoryBubble } from '@/features/feed/StoryBubble';
@@ -23,12 +27,14 @@ import { AccentOnColor } from '@/theme/colors';
 import { HitTarget, Radius, Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
 import type { FeedPost, StoryGroup } from '@/api/types';
+import { useAuth } from '@/features/auth/AuthProvider';
 
 type FeedFilter = 'all' | 'near';
 
 export function CommunityScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
+  const router = useRouter();
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | undefined>();
   const [filter, setFilter] = useState<FeedFilter>('all');
   const feed = useFeed(coords, filter === 'near' ? 'near' : undefined);
@@ -36,6 +42,13 @@ export function CommunityScreen() {
   const toggleLike = useToggleLike();
   const publishStoryMedia = usePublishStoryMedia();
   const publishPost = usePublishPost();
+  const updatePost = useUpdatePost();
+  const deletePost = useDeletePost();
+  const { user } = useAuth();
+
+  // Compteurs non-lus pour les badges dans le header
+  const unreadMessages = useUnreadMessagesCount();
+  const unreadNotifications = useUnreadNotificationsCount();
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -44,8 +57,11 @@ export function CommunityScreen() {
   const [toast, setToast] = useState<{ title: string; subtitle: string } | null>(null);
   const [viewer, setViewer] = useState<{ groups: StoryGroup[]; groupIndex: number } | null>(null);
 
-  // "Ta story" (bulle dédiée, façon WhatsApp) séparée du reste : jamais dupliquée dans le
-  // défilement horizontal des autres bulles.
+  // Etat du modal d edition de publication
+  const [editingPost, setEditingPost] = useState<FeedPost | null>(null);
+
+  // "Ta story" (bulle dediee, facon WhatsApp) separee du reste : jamais dupliquee dans le
+  // defilement horizontal des autres bulles.
   const myStory = stories.data?.find((g) => g.estMoi);
   const otherStories = stories.data?.filter((g) => !g.estMoi) ?? [];
 
@@ -63,16 +79,16 @@ export function CommunityScreen() {
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       setCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
     } catch {
-      // Position indisponible (émulateur sans GPS, permission refusée en cours de
-      // route...) : le filtre "Près de moi" restera honnêtement vide plutôt que
-      // d'afficher des distances inventées.
+      // Position indisponible (emulateur sans GPS, permission refusee en cours de
+      // route...) : le filtre "Pres de moi" restera honnetement vide plutot que
+      // d afficher des distances inventees.
     }
   };
 
-  // Le filtre "near" n'interroge jamais le back sans position connue (voir useFeed.ts,
-  // `enabled: filter !== 'near' || !!coords`) : sans ce garde-fou, la requête resterait
-  // indéfiniment "en attente" (React Query) et l'écran afficherait un spinner permanent au
-  // lieu d'un vide honnête (permission refusée, position indisponible...).
+  // Le filtre "near" n interroge jamais le back sans position connue (voir useFeed.ts,
+  // `enabled: filter !== 'near' || !!coords`) : sans ce garde-fou, la requete resterait
+  // indefiniment "en attente" (React Query) et l ecran afficherait un spinner permanent au
+  // lieu d un vide honnete (permission refusee, position indisponible...).
   const nearWithoutCoords = filter === 'near' && !coords;
   const posts = nearWithoutCoords ? [] : (feed.data ?? []);
   const showLoading = feed.isPending && !nearWithoutCoords;
@@ -107,8 +123,8 @@ export function CommunityScreen() {
     try {
       await sharePost(post, t('community.shareDefaultMessage'));
     } catch {
-      // Échec réel (téléchargement de l'image impossible, aucune app cible…) — un partage
-      // simplement annulé par l'utilisateur ne lève jamais (voir sharePost.ts).
+      // Echec reel (telechargement de l image impossible, aucune app cible...) — un partage
+      // simplement annule par l utilisateur ne leve jamais (voir sharePost.ts).
       showToast(t('community.shareErrorTitle'), t('community.shareErrorSub'));
     } finally {
       setSharingPostId(null);
@@ -124,12 +140,53 @@ export function CommunityScreen() {
     await publishFromPicker(await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.6 }));
   };
 
+  const handleSaveEdit = async (caption: string) => {
+    if (!editingPost) return;
+    await updatePost.mutateAsync({ postId: editingPost.id, texte: caption });
+    setEditingPost(null);
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    showToast(t('community.editPostSaved'), t('community.newPost'));
+  };
+
+  const handleDeletePost = (item: FeedPost) => {
+    Alert.alert(t('community.deletePostTitle'), undefined, [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('community.deletePostCta'), style: 'destructive', onPress: () => deletePost.mutate(item.id) },
+    ]);
+  };
+
   return (
     <View style={[styles.fill, { backgroundColor: colors.screen }]}>
       <SafeAreaView style={styles.fill} edges={['top']}>
         <View style={styles.header}>
-          <Text style={[styles.subtitle, { color: colors.muted }]}>{t('community.subtitle')}</Text>
-          <Text style={[styles.title, { color: colors.text }]}>{t('community.title')}</Text>
+          <View style={styles.headerLeft}>
+            <Text style={[styles.subtitle, { color: colors.muted }]}>{t('community.subtitle')}</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{t('community.title')}</Text>
+          </View>
+          <View style={styles.headerActions}>
+            {/* Icone Messages avec badge non-lus */}
+            <Pressable style={styles.headerIcon} hitSlop={8} onPress={() => router.push('/messages')}>
+              <Icon name="chat_bubble" size={22} color={colors.text} />
+              {(unreadMessages.data ?? 0) > 0 ? (
+                <View style={[styles.badge, { backgroundColor: colors.active }]}>
+                  <Text style={styles.badgeText}>
+                    {(unreadMessages.data ?? 0) > 9 ? '9+' : String(unreadMessages.data)}
+                  </Text>
+                </View>
+              ) : null}
+            </Pressable>
+            {/* Icone Notifications avec badge non-lus */}
+            <Pressable style={styles.headerIcon} hitSlop={8} onPress={() => router.push('/notifications')}>
+              <Icon name="notifications" size={22} color={colors.text} />
+              {(unreadNotifications.data ?? 0) > 0 ? (
+                <View style={[styles.badge, { backgroundColor: colors.active }]}>
+                  <Text style={styles.badgeText}>
+                    {(unreadNotifications.data ?? 0) > 9 ? '9+' : String(unreadNotifications.data)}
+                  </Text>
+                </View>
+              ) : null}
+            </Pressable>
+          </View>
         </View>
 
         {showLoading ? (
@@ -155,7 +212,7 @@ export function CommunityScreen() {
                       <StoryBubble
                         variant="story"
                         name={t('community.yourStory')}
-                        initial={myStory.nomUtilisateur.charAt(0).toUpperCase()}
+                        initial={myStory.username.charAt(0).toUpperCase()}
                         thumbnailUri={myStory.medias[myStory.medias.length - 1]?.urlMedia}
                         seen
                         onPress={() => setViewer({ groups: [myStory], groupIndex: 0 })}
@@ -168,8 +225,8 @@ export function CommunityScreen() {
                   renderItem={({ item, index }) => (
                     <StoryBubble
                       variant="story"
-                      name={item.nomUtilisateur}
-                      initial={item.nomUtilisateur.charAt(0).toUpperCase()}
+                      name={item.username}
+                      initial={item.username.charAt(0).toUpperCase()}
                       thumbnailUri={item.medias[item.medias.length - 1]?.urlMedia}
                       seen={item.entierementVue}
                       onPress={() => setViewer({ groups: otherStories, groupIndex: index })}
@@ -202,6 +259,8 @@ export function CommunityScreen() {
                 onToggleLike={() => toggleLike.mutate(item.id)}
                 onOpenComments={() => setCommentsPostId(item.id)}
                 onShare={() => handleShare(item)}
+                onEdit={item.authorId === user?.id ? () => setEditingPost(item) : undefined}
+                onDelete={item.authorId === user?.id ? () => handleDeletePost(item) : undefined}
                 sharing={sharingPostId === item.id}
               />
             )}
@@ -228,6 +287,15 @@ export function CommunityScreen() {
         publishing={publishPost.isPending}
       />
 
+      {/* Modal edition de publication - cross-platform, integre au theme */}
+      <PostEditModal
+        visible={!!editingPost}
+        initialCaption={editingPost?.caption ?? ''}
+        saving={updatePost.isPending}
+        onClose={() => setEditingPost(null)}
+        onSave={handleSaveEdit}
+      />
+
       <CommentsSheet postId={commentsPostId} onClose={() => setCommentsPostId(null)} />
 
       {viewer ? (
@@ -246,9 +314,41 @@ export function CommunityScreen() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   header: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xs,
     paddingBottom: Spacing.sm,
+  },
+  headerLeft: {
+    gap: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingBottom: 2,
+  },
+  headerIcon: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontFamily: FontFamily.bold,
+    lineHeight: 12,
   },
   subtitle: {
     fontFamily: FontFamily.semiBold,

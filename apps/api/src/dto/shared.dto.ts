@@ -1,35 +1,71 @@
 import { ToxicityLevel } from '../entities/enums/toxicity-level.enum';
 import { PlantType } from '../entities/enums/plant-type.enum';
 import { HealthStatus } from '../entities/enums/health-status.enum';
-import { IsEmail, IsNotEmpty, MinLength, IsEnum, IsIn, IsOptional, IsNumber, IsString, IsUUID, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import {
+  IsEmail,
+  IsNotEmpty,
+  MinLength,
+  IsEnum,
+  IsIn,
+  IsOptional,
+  IsNumber,
+  IsString,
+  IsUUID,
+  Matches,
+  Min,
+} from 'class-validator';
 
 // ----- DTOs pour l'identification -----
 export class IdentifyPlantRequestDto {
+  @ApiProperty({
+    example: 'data:image/jpeg;base64,/9j/4AAQSkZJRg...',
+    description: "Image en Base64 ou URL de l'image pour identification",
+  })
   @IsNotEmpty()
   @IsString()
   imageBase64!: string; // ou FormData selon votre choix
 }
 
 export class IdentifyPlantResponseDto {
+  @ApiProperty({ example: 'uuid-1234-5678-90ab' })
   plantId!: string;
+  @ApiProperty({ example: 'Monstera deliciosa' })
   nomScientifique!: string;
+  @ApiProperty({ example: 'Monstera' })
   nomCommun!: string;
+  @ApiProperty({ example: 'Araceae' })
   famille!: string | null;
+  @ApiProperty({ example: 'orange', enum: ToxicityLevel })
   toxicite!: ToxicityLevel;
+  @ApiProperty({ example: 'Commune' })
   badgeRarete!: string | null;
   /** Description réelle de l'espèce (Plant.id `description.value`), null si non fournie. */
+  @ApiProperty({
+    example: "Plante d'intérieur populaire avec de grandes feuilles découpées.",
+  })
   aPropos!: string | null;
-  conseilsEntretien!:
-    | {
-        lumiere?: string;
-        sol?: string;
-        arrosage?: string;
-        multiplication?: string;
-      }
-    | null;
+  @ApiProperty({
+    example: {
+      lumiere: 'Lumière indirecte brillante',
+      sol: 'Terreau bien drainé',
+      arrosage: 'Laisser sécher le sol entre les arrosages',
+      multiplication: 'Par bouturage de tige',
+    },
+  })
+  conseilsEntretien!: {
+    lumiere?: string;
+    sol?: string;
+    arrosage?: string;
+    multiplication?: string;
+  } | null;
+  @ApiProperty({ example: 'https://images.example.com/monstera.jpg' })
   urlImage!: string | null;
+  @ApiProperty({ example: 150 })
   xpGagne!: number;
   /** Score de confiance réel de Plant.id (0-100), voir identification.service.ts. */
+  @ApiProperty({ example: 98 })
   confiance!: number;
 }
 
@@ -74,14 +110,12 @@ export class GetCollectionResponseDto {
   urlImage!: string | null;
   /** Description réelle de l'espèce (Plant.id `description.value`), null si non fournie. */
   aPropos!: string | null;
-  conseilsEntretien!:
-    | {
-        lumiere?: string;
-        sol?: string;
-        arrosage?: string;
-        multiplication?: string;
-      }
-    | null;
+  conseilsEntretien!: {
+    lumiere?: string;
+    sol?: string;
+    arrosage?: string;
+    multiplication?: string;
+  } | null;
   latitude!: number | null;
   longitude!: number | null;
   historiquePhotos!: string[];
@@ -94,7 +128,11 @@ export class GetCollectionResponseDto {
   dernierDiagnostic!: {
     maladieNom: string | null;
     scoreGlobal: number;
-    traitement: { biologique?: string; chimique?: string; prevention?: string } | null;
+    traitement: {
+      biologique?: string;
+      chimique?: string;
+      prevention?: string;
+    } | null;
     description: string | null;
     estSain: boolean;
     dateDiagnostic: string;
@@ -113,37 +151,58 @@ export class GetCollectionResponseDto {
 
 // ----- DTOs pour Auth -----
 export class RegisterRequestDto {
+  @ApiProperty({ example: 'jean.dupont@example.com' })
   @IsEmail()
   email!: string;
 
+  @ApiProperty({ example: 'Jean Dupont' })
   @IsNotEmpty()
-  nomUtilisateur!: string;
+  fullName!: string;
 
-  @MinLength(4)
+  @ApiPropertyOptional({ example: 'jean_dpt' })
+  @IsOptional()
+  username?: string;
+
+  @ApiProperty({ example: 'MotDePasse123' })
+  @MinLength(8)
+  @Matches(/^(?=.*[A-Za-z])(?=.*\d).{8,}$/, { message: 'Le mot de passe doit contenir au moins 8 caractères, dont 1 lettre et 1 chiffre.' })
   motDePasse!: string;
 }
 
 export class RegisterResponseDto {
+  @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
   id!: string;
+  @ApiProperty({ example: 'jean.dupont@example.com' })
   email!: string;
-  nomUtilisateur!: string;
+  @ApiProperty({ example: 'Jean Dupont' })
+  fullName!: string;
+  @ApiProperty({ example: 'jean_dpt' })
+  username!: string | null;
+  @ApiProperty({ example: 100 })
   experience!: number;
+  @ApiProperty({ example: 2 })
   niveau!: number;
+  @ApiProperty({ example: ['badge_1', 'badge_2'] })
   insignes!: string[];
+  @ApiProperty({ example: 50 })
   pieces!: number;
 }
 
 export class LoginRequestDto {
+  @ApiProperty({ example: 'jean.dupont@example.com' })
   @IsEmail()
   email!: string;
 
+  @ApiProperty({ example: 'MotDePasse123' })
   @IsNotEmpty()
+  @Matches(/^(?=.*[A-Za-z])(?=.*\d).{8,}$/)
   motDePasse!: string;
 }
 
 export class LoginResponseDto {
   accessToken!: string;
   user!: RegisterResponseDto;
+  needsUsername!: boolean;
 }
 
 export class GoogleLoginRequestDto {
@@ -153,16 +212,14 @@ export class GoogleLoginRequestDto {
 
 // ----- DTOs pour le Feed -----
 
-import { Type } from 'class-transformer';
-
 export class CreatePostRequestDto {
   @IsOptional()
   @IsUUID()
   collectionId?: string; // Plante taguée (optionnelle)
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  contenuTexte!: string;
+  contenuTexte?: string;
 
   @IsOptional()
   @IsString()
@@ -178,7 +235,7 @@ export class CreatePostResponseDto {
   dateCreation!: Date;
   auteur!: {
     id: string;
-    nomUtilisateur: string;
+    username: string;
     urlAvatar?: string | null;
   };
   plante?: {
@@ -215,7 +272,7 @@ export class CreateCommentResponseDto {
   dateCreation!: Date;
   auteur!: {
     id: string;
-    nomUtilisateur: string;
+    username: string;
     urlAvatar?: string | null;
   };
 }
@@ -265,7 +322,7 @@ export class FeedQueryDto {
 export class CreateStoryResponseDto {
   id!: string;
   idUtilisateur!: string;
-  nomUtilisateur!: string;
+  username!: string;
   urlAvatar!: string | null;
   urlMedia!: string;
   mediaType!: 'image' | 'video';
@@ -289,7 +346,7 @@ export class StoryMediaDto {
 /** Une bulle de story = tous les médias actifs d'un même auteur, regroupés à la lecture. */
 export class StoryGroupDto {
   idUtilisateur!: string;
-  nomUtilisateur!: string;
+  username!: string;
   urlAvatar!: string | null;
   /** `true` si l'appelant courant est l'auteur de cette bulle ("Ta story"). */
   estMoi!: boolean;
@@ -301,7 +358,7 @@ export class StoryGroupDto {
 /** Une entrée de la liste "vu par" (GET /stories/:id/viewers, réservé à l'auteur du média). */
 export class StoryViewerDto {
   idUtilisateur!: string;
-  nomUtilisateur!: string;
+  username!: string;
   urlAvatar!: string | null;
   dateVue!: Date;
 }
@@ -338,11 +395,17 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
-  nomUtilisateur?: string;
+  fullName?: string;
 
   @IsOptional()
   @IsString()
   urlAvatar?: string;
+}
+
+export class SetUsernameDto {
+  @IsNotEmpty()
+  @IsString()
+  username!: string;
 }
 
 export class AddBadgeDto {
@@ -360,7 +423,8 @@ export class DeleteAccountDto {
 export class UserProfileResponseDto {
   id!: string;
   email!: string;
-  nomUtilisateur!: string;
+  fullName!: string;
+  username!: string;
   experience!: number;
   niveau!: number;
   insignes!: string[];

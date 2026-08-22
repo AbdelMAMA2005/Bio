@@ -9,9 +9,7 @@ import { FeedController } from './feed.controller';
 import { FeedService } from './feed.service';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Post, Like, Comment, User, Collection]),
-  ],
+  imports: [TypeOrmModule.forFeature([Post, Like, Comment, User, Collection])],
   controllers: [FeedController],
   providers: [FeedService],
   exports: [FeedService],

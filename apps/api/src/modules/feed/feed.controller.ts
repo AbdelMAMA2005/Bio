@@ -65,28 +65,19 @@ export class FeedController {
 
   // ----- Récupérer le feed -----
   @Get()
-  async getFeed(
-    @CurrentUser() user: any,
-    @Query() query: FeedQueryDto,
-  ) {
+  async getFeed(@CurrentUser() user: any, @Query() query: FeedQueryDto) {
     return this.feedService.getFeed(user.id, query);
   }
 
   // ----- Liker/Unliker une publication (toggle) -----
   @Post('posts/:id/like')
-  async toggleLike(
-    @CurrentUser() user: any,
-    @Param('id') postId: string,
-  ) {
+  async toggleLike(@CurrentUser() user: any, @Param('id') postId: string) {
     return this.feedService.toggleLike(user.id, postId);
   }
 
   // ----- Retirer un like (déliker) -----
   @Delete('posts/:id/like')
-  async unlikePost(
-    @CurrentUser() user: any,
-    @Param('id') postId: string,
-  ) {
+  async unlikePost(@CurrentUser() user: any, @Param('id') postId: string) {
     return this.feedService.unlikePost(user.id, postId);
   }
 
@@ -119,10 +110,7 @@ export class FeedController {
 
   // ----- Supprimer une publication -----
   @Delete('posts/:id')
-  async deletePost(
-    @CurrentUser() user: any,
-    @Param('id') postId: string,
-  ) {
+  async deletePost(@CurrentUser() user: any, @Param('id') postId: string) {
     return this.feedService.deletePost(user.id, postId);
   }
 }

@@ -17,7 +17,7 @@ function makeUser(overrides: Partial<User> = {}): User {
     id: 'user-1',
     email: 'djawad@planai.app',
     motDePasseHache: 'hashed',
-    nomUtilisateur: 'Djawad',
+    username: 'Djawad',
     experience: 0,
     estAdmin: false,
     niveau: 1,
@@ -47,7 +47,10 @@ describe('UserService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UserService, { provide: getRepositoryToken(User), useValue: repo }],
+      providers: [
+        UserService,
+        { provide: getRepositoryToken(User), useValue: repo },
+      ],
     }).compile();
 
     service = module.get<UserService>(UserService);
@@ -59,11 +62,16 @@ describe('UserService', () => {
 
   describe('create', () => {
     it('hache le mot de passe et persiste le nouvel utilisateur', async () => {
-      const user = await service.create('djawad@planai.app', 'Djawad', 'motdepasse');
+      const user = await service.create(
+        'djawad@planai.app',
+        'Djawad',
+        'Djawad Doe',
+        'motdepasse',
+      );
 
       expect(repo.save).toHaveBeenCalled();
       expect(user.email).toBe('djawad@planai.app');
-      expect(user.nomUtilisateur).toBe('Djawad');
+      expect(user.username).toBe('Djawad');
       expect(user.motDePasseHache).not.toBe('motdepasse');
     });
   });
@@ -74,34 +82,44 @@ describe('UserService', () => {
       await service.findByEmail('djawad@planai.app');
 
       expect(repo.findOne).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ email: 'djawad@planai.app' }) }),
+        expect.objectContaining({
+          where: expect.objectContaining({ email: 'djawad@planai.app' }),
+        }),
       );
     });
   });
 
   describe('updateProfile', () => {
-    it('lève NotFoundException si l\'utilisateur n\'existe pas', async () => {
+    it("lève NotFoundException si l'utilisateur n'existe pas", async () => {
       repo.findOne.mockResolvedValue(null);
-      await expect(service.updateProfile('unknown', { nomUtilisateur: 'X' })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.updateProfile('unknown', { fullName: 'X' }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('lève ConflictException si le nouvel email est déjà pris par un autre compte', async () => {
       const current = makeUser();
       repo.findOne
         .mockResolvedValueOnce(current) // findById
-        .mockResolvedValueOnce(makeUser({ id: 'other', email: 'pris@planai.app' })); // email check
+        .mockResolvedValueOnce(
+          makeUser({ id: 'other', email: 'pris@planai.app' }),
+        ); // email check
 
-      await expect(service.updateProfile('user-1', { email: 'pris@planai.app' })).rejects.toThrow(ConflictException);
+      await expect(
+        service.updateProfile('user-1', { email: 'pris@planai.app' }),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('met à jour le pseudo quand il est disponible', async () => {
       const current = makeUser();
       repo.findOne
         .mockResolvedValueOnce(current) // findById
-        .mockResolvedValueOnce(null); // nomUtilisateur check, libre
+        .mockResolvedValueOnce(null); // username check, libre
 
-      const updated = await service.updateProfile('user-1', { nomUtilisateur: 'NouveauPseudo' });
-      expect(updated.nomUtilisateur).toBe('NouveauPseudo');
+      const updated = await service.updateProfile('user-1', {
+        fullName: 'Nouveau Pseudo',
+      });
+      expect(updated.fullName).toBe('Nouveau Pseudo');
     });
   });
 
@@ -115,14 +133,19 @@ describe('UserService', () => {
 
       repo.findOne.mockResolvedValue(afterAdd);
       const afterDuplicate = await service.addBadge('user-1', 'explorateur');
-      expect(afterDuplicate.insignes).toEqual(['premiere-capture', 'explorateur']);
+      expect(afterDuplicate.insignes).toEqual([
+        'premiere-capture',
+        'explorateur',
+      ]);
     });
   });
 
   describe('softDelete', () => {
-    it('lève NotFoundException si aucune ligne n\'est affectée', async () => {
+    it("lève NotFoundException si aucune ligne n'est affectée", async () => {
       repo.softDelete.mockResolvedValue({ affected: 0 });
-      await expect(service.softDelete('unknown')).rejects.toThrow(NotFoundException);
+      await expect(service.softDelete('unknown')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('résout sans erreur quand la suppression logique réussit', async () => {

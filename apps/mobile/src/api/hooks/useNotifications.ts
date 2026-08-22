@@ -1,7 +1,8 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { apiClient } from '@/api/client';
 import { USE_MOCK_API } from '@/api/config';
+import { queryKeys } from '@/api/queryKeys';
 
 type RegisterDeviceInput = { expoPushToken: string; plateforme: string };
 
@@ -28,4 +29,44 @@ async function unregisterDevice(expoPushToken?: string): Promise<void> {
 
 export function useUnregisterDeviceToken() {
   return useMutation({ mutationFn: unregisterDevice });
+}
+
+/**
+ * GET /notifications/unread-count
+ * Retourne le nombre de notifications non lues pour l'utilisateur connecté.
+ * Rafraîchi automatiquement toutes les 30 s pour maintenir le badge à jour.
+ */
+async function fetchUnreadNotificationsCount(): Promise<number> {
+  if (USE_MOCK_API) return 0;
+  const { data } = await apiClient.get<{ count: number }>('/notifications/unread-count');
+  return data.count;
+}
+
+export function useUnreadNotificationsCount() {
+  return useQuery({
+    queryKey: queryKeys.notificationsUnread,
+    queryFn: fetchUnreadNotificationsCount,
+    refetchInterval: 30_000,
+    // Ne bloque pas le rendu si la requête échoue (backend inaccessible en dev)
+    retry: false,
+  });
+}
+
+export type AppNotification = {
+  id: string;
+  type: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+};
+
+export function useNotifications() {
+  return useQuery({
+    queryKey: ['notifications', 'list'],
+    queryFn: async () => {
+      if (USE_MOCK_API) return [] as AppNotification[];
+      const { data } = await apiClient.get<AppNotification[]>('/notifications');
+      return data;
+    },
+  });
 }

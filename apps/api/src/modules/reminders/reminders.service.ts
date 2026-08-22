@@ -3,7 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Reminder } from '../../entities/reminder.entity';
 import { Collection } from '../../entities/collection.entity';
-import { CreateReminderDto, UpdateReminderDto, ReminderFilterDto, ReminderResponseDto } from '../../dto';
+import {
+  CreateReminderDto,
+  UpdateReminderDto,
+  ReminderFilterDto,
+  ReminderResponseDto,
+} from '../../dto';
 
 @Injectable()
 export class RemindersService {
@@ -25,12 +30,17 @@ export class RemindersService {
     };
   }
 
-  async create(userId: string, dto: CreateReminderDto): Promise<ReminderResponseDto> {
+  async create(
+    userId: string,
+    dto: CreateReminderDto,
+  ): Promise<ReminderResponseDto> {
     const collection = await this.collectionRepo.findOne({
       where: { id: dto.collectionId, userId },
     });
     if (!collection) {
-      throw new NotFoundException('Collection non trouvée ou ne vous appartient pas');
+      throw new NotFoundException(
+        'Collection non trouvée ou ne vous appartient pas',
+      );
     }
 
     const reminder = this.reminderRepo.create({
@@ -45,12 +55,16 @@ export class RemindersService {
     return this.mapToDto(saved);
   }
 
-  async findAll(userId: string, filter: ReminderFilterDto): Promise<{ items: ReminderResponseDto[]; total: number }> {
+  async findAll(
+    userId: string,
+    filter: ReminderFilterDto,
+  ): Promise<{ items: ReminderResponseDto[]; total: number }> {
     const page = filter.page || 1;
     const limit = filter.limit || 20;
     const skip = (page - 1) * limit;
 
-    const qb = this.reminderRepo.createQueryBuilder('r')
+    const qb = this.reminderRepo
+      .createQueryBuilder('r')
       .where('r.userId = :userId', { userId });
 
     if (filter.estNotifie !== undefined) {
@@ -64,17 +78,23 @@ export class RemindersService {
 
     const [reminders, total] = await qb.getManyAndCount();
     return {
-      items: reminders.map(r => this.mapToDto(r)),
+      items: reminders.map((r) => this.mapToDto(r)),
       total,
     };
   }
 
-  async update(userId: string, id: string, dto: UpdateReminderDto): Promise<ReminderResponseDto> {
+  async update(
+    userId: string,
+    id: string,
+    dto: UpdateReminderDto,
+  ): Promise<ReminderResponseDto> {
     const reminder = await this.reminderRepo.findOne({
       where: { id, userId },
     });
     if (!reminder) {
-      throw new NotFoundException('Rappel non trouvé ou ne vous appartient pas');
+      throw new NotFoundException(
+        'Rappel non trouvé ou ne vous appartient pas',
+      );
     }
 
     if (dto.typeRappel !== undefined) {
@@ -93,7 +113,9 @@ export class RemindersService {
       where: { id, userId },
     });
     if (!reminder) {
-      throw new NotFoundException('Rappel non trouvé ou ne vous appartient pas');
+      throw new NotFoundException(
+        'Rappel non trouvé ou ne vous appartient pas',
+      );
     }
     await this.reminderRepo.remove(reminder);
   }
@@ -103,7 +125,9 @@ export class RemindersService {
       where: { id, userId },
     });
     if (!reminder) {
-      throw new NotFoundException('Rappel non trouvé ou ne vous appartient pas');
+      throw new NotFoundException(
+        'Rappel non trouvé ou ne vous appartient pas',
+      );
     }
 
     reminder.estNotifie = true;

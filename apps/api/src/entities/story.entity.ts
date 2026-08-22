@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  Index,
+} from 'typeorm';
 import { User } from './user.entity';
 import { StoryMediaType } from './enums/story-media-type.enum';
 
@@ -20,7 +27,9 @@ export class Story {
   @Column('uuid')
   userId!: string;
 
-  @ManyToOne(() => User, (utilisateur) => utilisateur.storiesUtilisateur, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (utilisateur) => utilisateur.storiesUtilisateur, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'userId' })
   utilisateur!: User;
 

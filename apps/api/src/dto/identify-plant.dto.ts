@@ -21,13 +21,13 @@ export class IdentificationResponseDto {
 
   @ApiProperty({
     description: 'Niveau de toxicité de la plante',
-    enum: ['green', 'orange', 'red'], 
+    enum: ['green', 'orange', 'red'],
     example: 'orange',
   })
   toxicity!: 'green' | 'orange' | 'red';
 
   @ApiProperty({
-    description: 'URL de l\'image de la plante',
+    description: "URL de l'image de la plante",
     example: 'https://images.example.com/monstera.jpg',
   })
   imageUrl!: string;

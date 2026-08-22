@@ -61,6 +61,7 @@ export type StoryGroup = Omit<SharedStoryGroup, 'medias'> & { medias: StoryMedia
 
 export type FeedPost = {
   id: string;
+  authorId: string;
   authorInitial: string;
   authorName: string;
   createdAt: string;

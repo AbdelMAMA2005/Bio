@@ -75,13 +75,13 @@ describe('serializeConseilsEntretien', () => {
 });
 
 describe('userFromBackend', () => {
-  it('maps nomUtilisateur/experience to the front pseudo/xp fields', () => {
-    const backend: BackendUser = { id: 'u1', email: 'a@b.com', nomUtilisateur: 'Djawad', experience: 240, niveau: 3, pieces: 50 };
+  it('maps username/experience to the front pseudo/xp fields', () => {
+    const backend: BackendUser = { id: 'u1', email: 'a@b.com', username: 'Djawad', experience: 240, niveau: 3, pieces: 50 };
     expect(userFromBackend(backend)).toEqual({ id: 'u1', pseudo: 'Djawad', email: 'a@b.com', niveau: 3, xp: 240, pieces: 50 });
   });
 
   it('defaults pieces to 0 when the backend omits it (older payload shape)', () => {
-    const backend: BackendUser = { id: 'u1', email: 'a@b.com', nomUtilisateur: 'Djawad', experience: 240, niveau: 3 };
+    const backend: BackendUser = { id: 'u1', email: 'a@b.com', username: 'Djawad', experience: 240, niveau: 3 };
     expect(userFromBackend(backend).pieces).toBe(0);
   });
 });
@@ -300,7 +300,7 @@ describe('toFeedPost', () => {
     idUtilisateur: 'user-1',
     contenuTexte: 'Bonjour le monde',
     dateCreation: '2026-07-01T00:00:00.000Z',
-    auteur: { id: 'user-1', nomUtilisateur: 'djawad', urlAvatar: null },
+    auteur: { id: 'user-1', username: 'djawad', urlAvatar: null },
     likesCount: 3,
     commentairesCount: 1,
     estLikedParUtilisateur: true,
@@ -402,7 +402,7 @@ describe('diagnosisFromBackend', () => {
 describe('toStoryGroup', () => {
   const backend: BackendStoryGroup = {
     idUtilisateur: 'user-1',
-    nomUtilisateur: 'djawad',
+    username: 'djawad',
     urlAvatar: null,
     estMoi: false,
     entierementVue: false,
@@ -444,7 +444,7 @@ describe('toComment', () => {
       idUtilisateur: 'user-1',
       contenu: 'Belle plante !',
       dateCreation: '2026-07-24T10:00:00.000Z',
-      auteur: { id: 'user-1', nomUtilisateur: 'djawad', urlAvatar: null },
+      auteur: { id: 'user-1', username: 'djawad', urlAvatar: null },
     };
 
     expect(toComment(backend)).toEqual({

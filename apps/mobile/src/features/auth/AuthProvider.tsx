@@ -12,6 +12,12 @@ import {
   updateProfile as apiUpdateProfile,
   deleteAccount as apiDeleteAccount,
   fetchProfile as apiFetchProfile,
+  checkUsernameAvailability as apiCheckUsernameAvailability,
+  getSuggestions as apiGetSuggestions,
+  forgotPassword as apiForgotPassword,
+  resetPassword as apiResetPassword,
+  setUsername as apiSetUsername,
+  uploadAvatar as apiUploadAvatar,
 } from '@/features/auth/authApi';
 import { mockChangePassword, mockDeleteAccount, mockUpdateProfile } from '@/features/auth/mockAuthApi';
 import { xpTargetForLevel } from '@/features/account/levels';
@@ -21,12 +27,18 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   isBusy: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (pseudo: string, email: string, password: string) => Promise<void>;
-  loginWithGoogle: (idToken: string) => Promise<void>;
+  register: (fullName: string, username: string, email: string, password: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<boolean>;
+  setUsername: (username: string) => Promise<void>;
+  uploadAvatar: (imageUri: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateProfile: (patch: Partial<Pick<User, 'pseudo'>>) => Promise<void>;
+  updateProfile: (patch: Partial<Pick<User, 'email' | 'fullName'>>) => Promise<void>;
   changePassword: (current: string, next: string) => Promise<void>;
   deleteAccount: (password: string) => Promise<void>;
+  checkUsernameAvailability: (username: string) => Promise<{ available: boolean; suggestions: string[] }>;
+  getSuggestions: (fullName: string) => Promise<{ suggestions: string[] }>;
+  forgotPassword: (email: string) => Promise<{ message: string }>;
+  resetPassword: (email: string, token: string, newPassword: string) => Promise<{ message: string }>;
   addXp: (amount: number) => void;
   /**
    * Relit /users/me et remplace l'état local par la vérité serveur — utilisé
@@ -88,10 +100,10 @@ export function AuthProvider({
           setIsBusy(false);
         }
       },
-      register: async (pseudo, email, password) => {
+      register: async (fullName, username, email, password) => {
         setIsBusy(true);
         try {
-          const { token, user: registeredUser } = await apiRegister(pseudo, email, password);
+          const { token, user: registeredUser } = await apiRegister(fullName, username, email, password);
           setAuthToken(token);
           await writeSession({ token, user: registeredUser });
           setUser(registeredUser);
@@ -102,13 +114,26 @@ export function AuthProvider({
       loginWithGoogle: async (idToken) => {
         setIsBusy(true);
         try {
-          const { token, user: googleUser } = await apiLoginWithGoogle(idToken);
+          const { token, user: googleUser, needsUsername } = await apiLoginWithGoogle(idToken);
           setAuthToken(token);
           await writeSession({ token, user: googleUser });
           setUser(googleUser);
+          return needsUsername;
         } finally {
           setIsBusy(false);
         }
+      },
+      setUsername: async (username) => {
+        const updated = await apiSetUsername(username);
+        setUser(updated);
+        const session = await readSession();
+        if (session) await writeSession({ ...session, user: updated });
+      },
+      uploadAvatar: async (imageUri) => {
+        const updated = await apiUploadAvatar(imageUri);
+        setUser(updated);
+        const session = await readSession();
+        if (session) await writeSession({ ...session, user: updated });
       },
       logout: async () => {
         setAuthToken(null);
@@ -147,6 +172,18 @@ export function AuthProvider({
         setAuthToken(null);
         await clearSession();
         setUser(null);
+      },
+      checkUsernameAvailability: async (username) => {
+        return apiCheckUsernameAvailability(username);
+      },
+      getSuggestions: async (fullName) => {
+        return apiGetSuggestions(fullName);
+      },
+      forgotPassword: async (email) => {
+        return apiForgotPassword(email);
+      },
+      resetPassword: async (email, token, newPassword) => {
+        return apiResetPassword(email, token, newPassword);
       },
       refreshUser: async () => {
         // Pas de session active (mock/tests, ou 401 déjà géré ailleurs) : rien à

@@ -41,8 +41,8 @@ export function LoginScreen() {
       const idToken = await googleSignIn();
       if (!idToken) return; // annulé par l'utilisateur
 
-      await loginWithGoogle(idToken);
-      router.replace('/jardin');
+      const needsUsername = await loginWithGoogle(idToken);
+      router.replace(needsUsername ? '/google-username' : '/jardin');
     } catch (e) {
       console.error('[handleGoogle] échec de la connexion Google', e);
       setError(t('auth.genericError'));
@@ -72,7 +72,11 @@ export function LoginScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable hitSlop={8} style={styles.forgotWrap}>
+        <Pressable
+          hitSlop={8}
+          style={styles.forgotWrap}
+          onPress={() => router.push('/(auth)/forgot-password')}
+        >
           <Text style={[styles.forgot, { color: colors.active }]}>{t('auth.forgotPassword')}</Text>
         </Pressable>
 

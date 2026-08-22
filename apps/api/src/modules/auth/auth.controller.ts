@@ -1,6 +1,18 @@
-import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterRequestDto, LoginRequestDto, GoogleLoginRequestDto } from '../../dto';
+import {
+  RegisterRequestDto,
+  LoginRequestDto,
+  GoogleLoginRequestDto,
+} from '../../dto';
 import { LocalAuthGuard } from '../../common/guards';
 
 @Controller('auth')
@@ -24,5 +36,23 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async google(@Body() dto: GoogleLoginRequestDto) {
     return this.authService.loginWithGoogle(dto.idToken);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() body: { email: string }) {
+    return this.authService.forgotPassword(body.email);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(
+    @Body() body: { email: string; token: string; newPassword: string },
+  ) {
+    return this.authService.resetPassword(
+      body.email,
+      body.token,
+      body.newPassword,
+    );
   }
 }

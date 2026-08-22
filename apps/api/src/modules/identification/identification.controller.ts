@@ -36,8 +36,13 @@ export class IdentificationController {
     file: Express.Multer.File,
   ): Promise<IdentifyPlantResponseDto> {
     if (!file || !file.buffer) {
-      throw new BadRequestException('Aucune image fournie. Envoyez un fichier via le champ `image`.');
+      throw new BadRequestException(
+        'Aucune image fournie. Envoyez un fichier via le champ `image`.',
+      );
     }
-    return this.identificationService.identifyPlantFromBuffer(user.id, file.buffer);
+    return this.identificationService.identifyPlantFromBuffer(
+      user.id,
+      file.buffer,
+    );
   }
 }

@@ -26,14 +26,28 @@ describe('QuestsService', () => {
   let postRepo: { createQueryBuilder: jest.Mock };
   let likeRepo: { createQueryBuilder: jest.Mock };
   let userRepo: { increment: jest.Mock };
-  let questProgressRepo: { findOne: jest.Mock; save: jest.Mock; create: jest.Mock };
+  let questProgressRepo: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+    create: jest.Mock;
+  };
 
   /** Par défaut, aucune progression sur aucun défi. */
-  function setProgress({ scans = 0, gardenAdds = 0, posts = 0, likes = 0 } = {}) {
+  function setProgress({
+    scans = 0,
+    gardenAdds = 0,
+    posts = 0,
+    likes = 0,
+  } = {}) {
     identificationLogRepo.createQueryBuilder.mockReturnValue(
-      qbMock('getRawMany', Array.from({ length: scans }, (_, i) => ({ plantId: `plant-${i}` }))),
+      qbMock(
+        'getRawMany',
+        Array.from({ length: scans }, (_, i) => ({ plantId: `plant-${i}` })),
+      ),
     );
-    collectionRepo.createQueryBuilder.mockReturnValue(qbMock('getCount', gardenAdds));
+    collectionRepo.createQueryBuilder.mockReturnValue(
+      qbMock('getCount', gardenAdds),
+    );
     postRepo.createQueryBuilder.mockReturnValue(qbMock('getCount', posts));
     likeRepo.createQueryBuilder.mockReturnValue(qbMock('getCount', likes));
   }
@@ -54,12 +68,18 @@ describe('QuestsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QuestsService,
-        { provide: getRepositoryToken(IdentificationLog), useValue: identificationLogRepo },
+        {
+          provide: getRepositoryToken(IdentificationLog),
+          useValue: identificationLogRepo,
+        },
         { provide: getRepositoryToken(Collection), useValue: collectionRepo },
         { provide: getRepositoryToken(Post), useValue: postRepo },
         { provide: getRepositoryToken(Like), useValue: likeRepo },
         { provide: getRepositoryToken(User), useValue: userRepo },
-        { provide: getRepositoryToken(QuestProgress), useValue: questProgressRepo },
+        {
+          provide: getRepositoryToken(QuestProgress),
+          useValue: questProgressRepo,
+        },
       ],
     }).compile();
 
@@ -70,7 +90,12 @@ describe('QuestsService', () => {
     const quests = await service.getDailyQuests('user-1');
 
     expect(quests).toHaveLength(4);
-    expect(quests.map((q) => q.id)).toEqual(['scan-3', 'add-garden', 'publish-tip', 'get-5-likes']);
+    expect(quests.map((q) => q.id)).toEqual([
+      'scan-3',
+      'add-garden',
+      'publish-tip',
+      'get-5-likes',
+    ]);
     expect(quests.every((q) => q.progression === 0 && !q.complete)).toBe(true);
     expect(userRepo.increment).not.toHaveBeenCalled();
   });
@@ -87,7 +112,7 @@ describe('QuestsService', () => {
     expect(userRepo.increment).not.toHaveBeenCalled();
   });
 
-  it('plafonne la progression à l\'objectif même si la vraie donnée le dépasse', async () => {
+  it("plafonne la progression à l'objectif même si la vraie donnée le dépasse", async () => {
     setProgress({ scans: 7 });
 
     const quests = await service.getDailyQuests('user-1');
@@ -104,10 +129,22 @@ describe('QuestsService', () => {
 
     expect(tipQuest.complete).toBe(true);
     expect(tipQuest.recompense).toEqual({ xp: 25, pieces: 10 });
-    expect(userRepo.increment).toHaveBeenCalledWith({ id: 'user-1' }, 'experience', 25);
-    expect(userRepo.increment).toHaveBeenCalledWith({ id: 'user-1' }, 'pieces', 10);
+    expect(userRepo.increment).toHaveBeenCalledWith(
+      { id: 'user-1' },
+      'experience',
+      25,
+    );
+    expect(userRepo.increment).toHaveBeenCalledWith(
+      { id: 'user-1' },
+      'pieces',
+      10,
+    );
     expect(questProgressRepo.save).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'user-1', questId: 'publish-tip', recompenseCreditee: true }),
+      expect.objectContaining({
+        userId: 'user-1',
+        questId: 'publish-tip',
+        recompenseCreditee: true,
+      }),
     );
   });
 
@@ -126,7 +163,7 @@ describe('QuestsService', () => {
     expect(userRepo.increment).not.toHaveBeenCalled();
   });
 
-  it('un défi sans récompense pièces (scan-3) ne crédite que l\'XP', async () => {
+  it("un défi sans récompense pièces (scan-3) ne crédite que l'XP", async () => {
     setProgress({ scans: 3 });
 
     const quests = await service.getDailyQuests('user-1');
@@ -134,7 +171,15 @@ describe('QuestsService', () => {
 
     expect(scanQuest.complete).toBe(true);
     expect(scanQuest.recompense).toEqual({ xp: 30, pieces: 0 });
-    expect(userRepo.increment).toHaveBeenCalledWith({ id: 'user-1' }, 'experience', 30);
-    expect(userRepo.increment).not.toHaveBeenCalledWith({ id: 'user-1' }, 'pieces', expect.anything());
+    expect(userRepo.increment).toHaveBeenCalledWith(
+      { id: 'user-1' },
+      'experience',
+      30,
+    );
+    expect(userRepo.increment).not.toHaveBeenCalledWith(
+      { id: 'user-1' },
+      'pieces',
+      expect.anything(),
+    );
   });
 });

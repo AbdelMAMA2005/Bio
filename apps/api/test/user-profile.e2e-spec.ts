@@ -12,7 +12,11 @@ describe('Profil utilisateur (e2e)', () => {
     const email = uniqueEmail('profile');
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `profile${Date.now()}`, motDePasse: 'motdepasse' })
+      .send({
+        email,
+        username: `profile${Date.now()}`,
+        motDePasse: 'motdepasse',
+      })
       .expect(201);
     const login = await request(app.getHttpServer())
       .post('/auth/login')
@@ -40,10 +44,10 @@ describe('Profil utilisateur (e2e)', () => {
     const res = await request(app.getHttpServer())
       .patch('/users/me')
       .set('Authorization', `Bearer ${token}`)
-      .send({ nomUtilisateur: nouveauPseudo })
+      .send({ username: nouveauPseudo })
       .expect(200);
 
-    expect(res.body.nomUtilisateur).toBe(nouveauPseudo);
+    expect(res.body.username).toBe(nouveauPseudo);
   });
 
   it('POST /users/me/badges ajoute un badge, visible ensuite sur GET /users/me', async () => {
@@ -68,11 +72,15 @@ describe('Profil utilisateur (e2e)', () => {
       .expect(401);
   });
 
-  it("DELETE /users/me supprime le compte avec le bon mot de passe, puis le login échoue ensuite", async () => {
+  it('DELETE /users/me supprime le compte avec le bon mot de passe, puis le login échoue ensuite', async () => {
     const email = uniqueEmail('to-delete');
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `todelete${Date.now()}`, motDePasse: 'motdepasse' })
+      .send({
+        email,
+        username: `todelete${Date.now()}`,
+        motDePasse: 'motdepasse',
+      })
       .expect(201);
     const login = await request(app.getHttpServer())
       .post('/auth/login')

@@ -44,10 +44,7 @@ export class CollectionController {
   }
 
   @Get(':id')
-  async findOne(
-    @CurrentUser() user: any,
-    @Param('id') id: string,
-  ) {
+  async findOne(@CurrentUser() user: any, @Param('id') id: string) {
     return this.collectionService.findOneByUser(id, user.id);
   }
 
@@ -61,10 +58,7 @@ export class CollectionController {
   }
 
   @Delete(':id')
-  async delete(
-    @CurrentUser() user: any,
-    @Param('id') id: string,
-  ) {
+  async delete(@CurrentUser() user: any, @Param('id') id: string) {
     await this.collectionService.delete(user.id, id);
     return { success: true };
   }
@@ -93,10 +87,7 @@ export class CollectionController {
 
   // Marquer la plante comme arrosée maintenant (recalcule prochainArrosage)
   @Post(':id/water')
-  async water(
-    @CurrentUser() user: any,
-    @Param('id') id: string,
-  ) {
+  async water(@CurrentUser() user: any, @Param('id') id: string) {
     return this.collectionService.waterNow(user.id, id);
   }
 }

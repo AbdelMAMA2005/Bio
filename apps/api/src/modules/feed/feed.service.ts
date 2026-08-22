@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, In } from 'typeorm';
 import * as fs from 'fs';
@@ -53,7 +58,9 @@ export class FeedService {
         relations: { plante: true },
       });
       if (!collection) {
-        throw new NotFoundException('Collection non trouvée ou ne vous appartient pas');
+        throw new NotFoundException(
+          'Collection non trouvée ou ne vous appartient pas',
+        );
       }
     }
 
@@ -64,7 +71,14 @@ export class FeedService {
     // casser un appel JSON existant, mais un fichier fourni est toujours prioritaire.
     let urlImage: string | null = dto.imageUrl || null;
     if (file) {
-      const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'posts');
+      const uploadDir = path.join(
+        __dirname,
+        '..',
+        '..',
+        '..',
+        'uploads',
+        'posts',
+      );
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
@@ -77,7 +91,7 @@ export class FeedService {
     const post = new PostEntity();
     post.userId = userId;
     post.collectionId = dto.collectionId || null;
-    post.contenuTexte = dto.contenuTexte;
+    post.contenuTexte = dto.contenuTexte ?? '';
     post.urlImage = urlImage;
     // Hérite du Geo-Tag de la plante taguée (si elle en a un) : c'est ce qui
     // permet au filtre "Près de moi" (cahier des charges §3.3) de fonctionner
@@ -101,7 +115,10 @@ export class FeedService {
   }
 
   // ----- Récupérer le feed (paginé) -----
-  async getFeed(userId: string, query: FeedQueryDto): Promise<{ items: CreatePostResponseDto[]; total: number }> {
+  async getFeed(
+    userId: string,
+    query: FeedQueryDto,
+  ): Promise<{ items: CreatePostResponseDto[]; total: number }> {
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
@@ -120,9 +137,15 @@ export class FeedService {
     // SQL (acos/cos/sin natifs à Postgres, pas besoin de PostGIS) ; LEAST/GREATEST bornent
     // l'argument d'acos à [-1,1] pour éviter un NaN dû aux arrondis flottants sur une
     // distance quasi nulle.
-    if (query.filter === 'near' && query.latitude !== undefined && query.longitude !== undefined) {
+    if (
+      query.filter === 'near' &&
+      query.latitude !== undefined &&
+      query.longitude !== undefined
+    ) {
       const radius = query.radiusMetres ?? 5000;
-      qb.andWhere('p.latitude IS NOT NULL AND p.longitude IS NOT NULL').andWhere(
+      qb.andWhere(
+        'p.latitude IS NOT NULL AND p.longitude IS NOT NULL',
+      ).andWhere(
         `(6371000 * acos(
             LEAST(1, GREATEST(-1,
               cos(radians(:lat)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians(:lon))
@@ -157,7 +180,12 @@ export class FeedService {
           this.commentRepo.count({ where: { postId: post.id } }),
         ]);
 
-        const dto = this.mapToResponseDto(post, userId, query.latitude, query.longitude);
+        const dto = this.mapToResponseDto(
+          post,
+          userId,
+          query.latitude,
+          query.longitude,
+        );
         dto.likesCount = likesCount;
         dto.commentairesCount = commentairesCount;
         dto.estLikedParUtilisateur = likedPostIds.has(post.id);
@@ -169,13 +197,19 @@ export class FeedService {
   }
 
   // ----- Mettre à jour une publication -----
-  async updatePost(userId: string, postId: string, dto: UpdatePostDto): Promise<CreatePostResponseDto> {
+  async updatePost(
+    userId: string,
+    postId: string,
+    dto: UpdatePostDto,
+  ): Promise<CreatePostResponseDto> {
     const post = await this.postRepo.findOne({
       where: { id: postId, userId },
       relations: { utilisateur: true, collection: { plante: true } },
     });
     if (!post) {
-      throw new NotFoundException('Publication non trouvée ou vous n\'êtes pas l\'auteur');
+      throw new NotFoundException(
+        "Publication non trouvée ou vous n'êtes pas l'auteur",
+      );
     }
 
     if (dto.contenuTexte !== undefined) {
@@ -192,7 +226,9 @@ export class FeedService {
       this.commentRepo.count({ where: { postId: saved.id } }),
     ]);
 
-    const isLiked = await this.likeRepo.count({ where: { postId: saved.id, userId } });
+    const isLiked = await this.likeRepo.count({
+      where: { postId: saved.id, userId },
+    });
 
     const response = this.mapToResponseDto(saved, userId);
     response.likesCount = likesCount;
@@ -202,7 +238,10 @@ export class FeedService {
   }
 
   // ----- Liker ou unliker une publication (toggle) -----
-  async toggleLike(userId: string, postId: string): Promise<{ liked: boolean; likesCount: number }> {
+  async toggleLike(
+    userId: string,
+    postId: string,
+  ): Promise<{ liked: boolean; likesCount: number }> {
     const post = await this.postRepo.findOne({ where: { id: postId } });
     if (!post) {
       throw new NotFoundException('Publication non trouvée');
@@ -214,7 +253,9 @@ export class FeedService {
 
     if (existingLike) {
       await this.likeRepo.remove(existingLike);
-      const likesCount = await this.likeRepo.count({ where: { postId: postId } });
+      const likesCount = await this.likeRepo.count({
+        where: { postId: postId },
+      });
       return { liked: false, likesCount };
     } else {
       const like = this.likeRepo.create({
@@ -222,13 +263,18 @@ export class FeedService {
         userId: userId,
       });
       await this.likeRepo.save(like);
-      const likesCount = await this.likeRepo.count({ where: { postId: postId } });
+      const likesCount = await this.likeRepo.count({
+        where: { postId: postId },
+      });
       return { liked: true, likesCount };
     }
   }
 
   // ----- Retirer un like explicitement -----
-  async unlikePost(userId: string, postId: string): Promise<{ liked: boolean; likesCount: number }> {
+  async unlikePost(
+    userId: string,
+    postId: string,
+  ): Promise<{ liked: boolean; likesCount: number }> {
     const post = await this.postRepo.findOne({ where: { id: postId } });
     if (!post) {
       throw new NotFoundException('Publication non trouvée');
@@ -279,7 +325,7 @@ export class FeedService {
       dateCreation: saved.dateCreation,
       auteur: {
         id: user.id,
-        nomUtilisateur: user.nomUtilisateur,
+        username: user.username ?? '',
         urlAvatar: user.urlAvatar,
       },
     };
@@ -302,14 +348,18 @@ export class FeedService {
       dateCreation: c.dateCreation,
       auteur: {
         id: c.utilisateur.id,
-        nomUtilisateur: c.utilisateur.nomUtilisateur,
+        username: c.utilisateur.username ?? '',
         urlAvatar: c.utilisateur.urlAvatar,
       },
     }));
   }
 
   // ----- Supprimer un commentaire -----
-  async deleteComment(userId: string, postId: string, commentId: string): Promise<void> {
+  async deleteComment(
+    userId: string,
+    postId: string,
+    commentId: string,
+  ): Promise<void> {
     const comment = await this.commentRepo.findOne({
       where: { id: commentId, postId },
       relations: { publication: true },
@@ -319,7 +369,9 @@ export class FeedService {
     }
 
     if (comment.userId !== userId && comment.publication.userId !== userId) {
-      throw new ForbiddenException("Vous n'êtes pas autorisé à supprimer ce commentaire");
+      throw new ForbiddenException(
+        "Vous n'êtes pas autorisé à supprimer ce commentaire",
+      );
     }
 
     await this.commentRepo.remove(comment);
@@ -331,7 +383,9 @@ export class FeedService {
       where: { id: postId, userId: userId },
     });
     if (!post) {
-      throw new NotFoundException('Publication non trouvée ou vous n\'êtes pas l\'auteur');
+      throw new NotFoundException(
+        "Publication non trouvée ou vous n'êtes pas l'auteur",
+      );
     }
 
     // Supprimer les likes et commentaires en cascade via TypeORM
@@ -341,7 +395,12 @@ export class FeedService {
   // ----- Distance à vol d'oiseau (formule de haversine), en mètres -----
   private static readonly EARTH_RADIUS_METERS = 6_371_000;
 
-  private haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  private haversineMeters(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
     const toRad = (deg: number) => (deg * Math.PI) / 180;
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
@@ -364,7 +423,14 @@ export class FeedService {
       callerLongitude !== undefined &&
       post.latitude !== null &&
       post.longitude !== null
-        ? Math.round(this.haversineMeters(callerLatitude, callerLongitude, post.latitude, post.longitude))
+        ? Math.round(
+            this.haversineMeters(
+              callerLatitude,
+              callerLongitude,
+              post.latitude,
+              post.longitude,
+            ),
+          )
         : null;
 
     return {
@@ -376,7 +442,7 @@ export class FeedService {
       dateCreation: post.dateCreation,
       auteur: {
         id: post.utilisateur.id,
-        nomUtilisateur: post.utilisateur.nomUtilisateur,
+        username: post.utilisateur.username ?? '',
         urlAvatar: post.utilisateur.urlAvatar,
       },
       plante: post.collection?.plante

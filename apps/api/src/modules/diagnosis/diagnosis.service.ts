@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -19,10 +25,15 @@ function joinTreatment(raw: {
   biological?: string[];
   chemical?: string[];
   prevention?: string[];
-}): { biologique?: string; chimique?: string; prevention?: string } | undefined {
-  const biologique = raw.biological?.length ? raw.biological.join(' ') : undefined;
+}):
+  { biologique?: string; chimique?: string; prevention?: string } | undefined {
+  const biologique = raw.biological?.length
+    ? raw.biological.join(' ')
+    : undefined;
   const chimique = raw.chemical?.length ? raw.chemical.join(' ') : undefined;
-  const prevention = raw.prevention?.length ? raw.prevention.join(' ') : undefined;
+  const prevention = raw.prevention?.length
+    ? raw.prevention.join(' ')
+    : undefined;
   if (!biologique && !chimique && !prevention) return undefined;
   return { biologique, chimique, prevention };
 }
@@ -39,7 +50,8 @@ export class DiagnosisService {
     private readonly configService: ConfigService,
   ) {
     this.apiKey = this.configService.get<string>('PLANT_ID_API_KEY')!;
-    this.useMock = !this.apiKey || this.configService.get<string>('FORCE_MOCK') === 'true';
+    this.useMock =
+      !this.apiKey || this.configService.get<string>('FORCE_MOCK') === 'true';
   }
 
   private getAbsolutePhotoPath(photoUrl: string): string {
@@ -64,18 +76,24 @@ export class DiagnosisService {
     });
 
     if (!collection) {
-      throw new NotFoundException('Collection non trouvée ou ne vous appartient pas.');
+      throw new NotFoundException(
+        'Collection non trouvée ou ne vous appartient pas.',
+      );
     }
 
     // 2. Si aucune image fournie, utiliser la dernière photo de l'historique
     let bufferToUse = imageBuffer;
     if (!bufferToUse) {
-      if (!collection.historiquePhotos || collection.historiquePhotos.length === 0) {
+      if (
+        !collection.historiquePhotos ||
+        collection.historiquePhotos.length === 0
+      ) {
         throw new BadRequestException(
           'Aucune image disponible pour le diagnostic. Veuillez fournir une photo de la plante.',
         );
       }
-      const lastPhoto = collection.historiquePhotos[collection.historiquePhotos.length - 1];
+      const lastPhoto =
+        collection.historiquePhotos[collection.historiquePhotos.length - 1];
       const absolutePath = this.getAbsolutePhotoPath(lastPhoto);
       if (fs.existsSync(absolutePath)) {
         bufferToUse = fs.readFileSync(absolutePath);
@@ -97,7 +115,15 @@ export class DiagnosisService {
 
     // 4. Si une image a été fournie lors de l'appel, la sauvegarder et l'ajouter à l'historique
     if (imageBuffer) {
-      const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'collections', collectionId);
+      const uploadDir = path.join(
+        __dirname,
+        '..',
+        '..',
+        '..',
+        'uploads',
+        'collections',
+        collectionId,
+      );
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
@@ -106,7 +132,10 @@ export class DiagnosisService {
       fs.writeFileSync(filePath, imageBuffer);
 
       const imageUrl = `/uploads/collections/${collectionId}/${filename}`;
-      collection.historiquePhotos = [...(collection.historiquePhotos || []), imageUrl];
+      collection.historiquePhotos = [
+        ...(collection.historiquePhotos || []),
+        imageUrl,
+      ];
     }
 
     // 5. Mettre à jour l'état de santé de la collection
@@ -131,8 +160,12 @@ export class DiagnosisService {
     collection.dernierDiagnostic = {
       maladieNom: diagnosisResult.estSain ? null : (topSuggestion?.nom ?? null),
       scoreGlobal: diagnosisResult.scoreGlobal,
-      traitement: diagnosisResult.estSain ? null : (topSuggestion?.traitement ?? null),
-      description: diagnosisResult.estSain ? null : (topSuggestion?.description ?? null),
+      traitement: diagnosisResult.estSain
+        ? null
+        : (topSuggestion?.traitement ?? null),
+      description: diagnosisResult.estSain
+        ? null
+        : (topSuggestion?.description ?? null),
       estSain: diagnosisResult.estSain,
       dateDiagnostic: new Date().toISOString(),
     };
@@ -154,9 +187,13 @@ export class DiagnosisService {
    * nécessaire pour obtenir un texte de traitement — sans lui, `suggestions[].details` ne
    * contient que `language`/`entity_id`, jamais de texte exploitable.
    */
-  private async callPlantIdHealth(imageBuffer: Buffer): Promise<DiagnosisResponseDto> {
+  private async callPlantIdHealth(
+    imageBuffer: Buffer,
+  ): Promise<DiagnosisResponseDto> {
     const imageBase64 = imageBuffer.toString('base64');
-    const baseUrl = this.configService.get<string>('PLANT_ID_API_URL_health') || 'https://api.plant.id/v3/health_assessment';
+    const baseUrl =
+      this.configService.get<string>('PLANT_ID_API_URL_health') ||
+      'https://api.plant.id/v3/health_assessment';
     const url = `${baseUrl}?health=all&details=local_name,description,treatment,classification,common_names,cause&language=fr`;
 
     try {
@@ -174,8 +211,12 @@ export class DiagnosisService {
 
       if (!response.ok) {
         const errorBody = await response.text().catch(() => '');
-        this.logger.error(`❌ Erreur Plant.id Health (HTTP ${response.status}): ${errorBody}`);
-        throw new BadRequestException("Erreur lors de l'appel à l'API Plant.id Health");
+        this.logger.error(
+          `❌ Erreur Plant.id Health (HTTP ${response.status}): ${errorBody}`,
+        );
+        throw new BadRequestException(
+          "Erreur lors de l'appel à l'API Plant.id Health",
+        );
       }
 
       const data = await response.json();
@@ -193,10 +234,14 @@ export class DiagnosisService {
           nom: s.name || 'Inconnu',
           probabilite: s.probability || 0,
           estNuisible: s.is_harmful ?? true,
-          traitement: s.details?.treatment ? joinTreatment(s.details.treatment) : undefined,
+          traitement: s.details?.treatment
+            ? joinTreatment(s.details.treatment)
+            : undefined,
           description: s.details?.description || s.details?.local_name || null,
         })),
-        scoreGlobal: estSain ? Math.round(probabiliteSante * 100) : Math.round((1 - probabiliteSante) * 100),
+        scoreGlobal: estSain
+          ? Math.round(probabiliteSante * 100)
+          : Math.round((1 - probabiliteSante) * 100),
       };
     } catch (error: any) {
       if (error instanceof BadRequestException) throw error;
@@ -210,20 +255,22 @@ export class DiagnosisService {
   // ----- Mode mock -----
   private mockDiagnosis(collection: Collection): DiagnosisResponseDto {
     const estSain = Math.random() > 0.3; // 70% de chances d'être sain
-    const suggestions = estSain ? [] : [
-      {
-        id: 'mock-disease-1',
-        nom: 'Carence en eau (simulée)',
-        probabilite: 0.85,
-        estNuisible: true,
-        traitement: {
-          biologique: 'Paillage et apport de compost',
-          chimique: 'Engrais riche en potassium',
-          prevention: 'Arrosage régulier en été',
-        },
-        description: 'Les feuilles montrent des signes de flétrissement.',
-      },
-    ];
+    const suggestions = estSain
+      ? []
+      : [
+          {
+            id: 'mock-disease-1',
+            nom: 'Carence en eau (simulée)',
+            probabilite: 0.85,
+            estNuisible: true,
+            traitement: {
+              biologique: 'Paillage et apport de compost',
+              chimique: 'Engrais riche en potassium',
+              prevention: 'Arrosage régulier en été',
+            },
+            description: 'Les feuilles montrent des signes de flétrissement.',
+          },
+        ];
 
     const probabiliteSante = estSain ? 0.9 : 0.3;
 
@@ -231,7 +278,9 @@ export class DiagnosisService {
       estSain,
       probabiliteSante,
       suggestions,
-      scoreGlobal: estSain ? Math.round(probabiliteSante * 100) : Math.round((1 - probabiliteSante) * 100),
+      scoreGlobal: estSain
+        ? Math.round(probabiliteSante * 100)
+        : Math.round((1 - probabiliteSante) * 100),
     };
   }
 }

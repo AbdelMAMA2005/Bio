@@ -9,7 +9,9 @@ export type Toxicite = 'toxique' | 'non_toxique' | 'incertaine';
 export interface User {
   id: string;
   pseudo: string;
+  fullName?: string;
   email: string;
+  urlAvatar?: string | null;
   niveau: number;
   xp: number;
   pieces: number;
@@ -63,7 +65,7 @@ export interface StoryMedia {
  */
 export interface StoryGroup {
   idUtilisateur: string;
-  nomUtilisateur: string;
+  username: string;
   urlAvatar: string | null;
   /** `true` si l'utilisateur courant est l'auteur de cette bulle ("Ta story"). */
   estMoi: boolean;
@@ -75,7 +77,7 @@ export interface StoryGroup {
 /** Une entrée de la liste "vu par" — réservée à l'auteur du média (comportement WhatsApp). */
 export interface StoryViewer {
   idUtilisateur: string;
-  nomUtilisateur: string;
+  username: string;
   urlAvatar: string | null;
   dateVue: string;
 }

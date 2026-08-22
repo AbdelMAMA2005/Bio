@@ -121,6 +121,24 @@ export function useStoryViewers(mediaId: string | undefined) {
 
 type PublishPostInput = { imageUri: string; texte: string; collectionItemId?: string };
 
+export function useUpdatePost() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ postId, texte }: { postId: string; texte: string }) => {
+      await apiClient.patch(`/feed/posts/${postId}`, { contenuTexte: texte });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.feed }),
+  });
+}
+
+export function useDeletePost() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (postId: string) => { await apiClient.delete(`/feed/posts/${postId}`); },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.feed }),
+  });
+}
+
 /**
  * POST /feed/posts (multipart, champ `image`) — envoie la vraie photo prise dans le
  * composeur, plus `contenuTexte`/`collectionId` en champs multipart. Avant le 24/07/2026,

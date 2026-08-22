@@ -1,7 +1,7 @@
 import type { User } from '@planai/shared';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -23,9 +23,15 @@ import { FontsToLoad } from '@/theme/typography';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootNavigator() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { seen: onboardingSeen } = useOnboarding();
   const { isDark } = useAppTheme();
+  const router = useRouter();
+  const needsUsername = !!user && (!user.pseudo || user.pseudo.toLowerCase() === user.email.toLowerCase());
+
+  useEffect(() => {
+    if (onboardingSeen && isAuthenticated && needsUsername) router.replace('/google-username');
+  }, [isAuthenticated, needsUsername, onboardingSeen, router]);
 
   // Monté une seule fois au niveau racine pour capter le tap sur une notification
   // d'arrosage quel que soit l'écran affiché (voir useWateringNotifications.ts).
@@ -42,6 +48,10 @@ function RootNavigator() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="compte" options={{ presentation: 'modal' }} />
           <Stack.Screen name="badges" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="followers" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="messages" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="google-username" />
           <Stack.Screen name="plante/[id]" />
           <Stack.Screen name="conseil/[type]" />
         </Stack.Protected>

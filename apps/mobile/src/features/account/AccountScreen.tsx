@@ -1,14 +1,14 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AvatarBadge } from '@/components/AvatarBadge';
 import { CircleIconButton } from '@/components/CircleIconButton';
 import { GradientButton } from '@/components/GradientButton';
 import { Icon } from '@/components/Icon';
-import { SecondaryButton } from '@/components/SecondaryButton';
 import { SectionCard } from '@/components/SectionCard';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { SettingRow } from '@/components/SettingRow';
@@ -23,18 +23,18 @@ import { setAppLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/i
 import { useAppTheme } from '@/theme';
 import { Radius, Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
+import { apiClient } from '@/api/client';
+import { API_BASE_URL } from '@/api/config';
 
 export function AccountScreen() {
   const { t, i18n } = useTranslation();
   const { colors } = useAppTheme();
   const router = useRouter();
-  const { user, updateProfile, changePassword, logout, deleteAccount, isBusy } = useAuth();
+  const { user, changePassword, logout, deleteAccount, uploadAvatar, isBusy } = useAuth();
   const { preference, setPreference } = useAppTheme();
   const stats = useAccountStats();
   const { notifications, setNotifications, geoPrivacy, setGeoPrivacy } = usePreferences();
 
-  const [editingProfile, setEditingProfile] = useState(false);
-  const [pseudoDraft, setPseudoDraft] = useState(user?.pseudo ?? '');
   const [passwordFormOpen, setPasswordFormOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -42,16 +42,29 @@ export function AccountScreen() {
   const [deleteFormOpen, setDeleteFormOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const userId = user?.id;
+
+  const chooseAvatar = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+    if (!result.canceled && result.assets[0]) await uploadAvatar(result.assets[0].uri);
+  };
+
+  useEffect(() => {
+    if (!userId) return;
+    apiClient.get<{ count: number }>(`/followers/${userId}/followers`).then(({ data }) => setFollowersCount(data.count)).catch(() => {});
+    apiClient.get<{ count: number }>(`/followers/${userId}/following`).then(({ data }) => setFollowingCount(data.count)).catch(() => {});
+  }, [userId]);
 
   if (!user) return null;
 
+  const avatarUri = user.urlAvatar && !user.urlAvatar.startsWith('http') ? `${API_BASE_URL}${user.urlAvatar}` : user.urlAvatar;
+
   const target = xpTargetForLevel(user.niveau);
   const progress = levelProgress(user.niveau, user.xp);
-
-  const saveProfile = async () => {
-    await updateProfile({ pseudo: pseudoDraft.trim() || user.pseudo });
-    setEditingProfile(false);
-  };
 
   const submitPasswordChange = async () => {
     setPasswordMessage(null);
@@ -96,28 +109,18 @@ export function AccountScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* Carte profil */}
           <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
-            <AvatarBadge initial={user.pseudo.charAt(0)} size={72} />
-            {editingProfile ? (
-              <View style={styles.editRow}>
-                <TextField icon="person" value={pseudoDraft} onChangeText={setPseudoDraft} />
-              </View>
-            ) : (
-              <Text style={[styles.pseudo, { color: colors.text }]}>{user.pseudo}</Text>
-            )}
+            <AvatarBadge initial={(user.fullName || user.pseudo).charAt(0)} uri={avatarUri} size={72} onPress={chooseAvatar} />
+            <Text style={[styles.pseudo, { color: colors.text }]}>{user.fullName || user.pseudo}</Text>
+            <Text style={[styles.username, { color: colors.muted }]}>{user.pseudo}</Text>
             <Text style={[styles.email, { color: colors.muted }]}>{user.email}</Text>
-            {editingProfile ? (
-              <SecondaryButton label={t('account.saveCta')} onPress={saveProfile} loading={isBusy} style={styles.editCta} />
-            ) : (
-              <SecondaryButton
-                label={t('account.editCta')}
-                icon="edit"
-                onPress={() => {
-                  setPseudoDraft(user.pseudo);
-                  setEditingProfile(true);
-                }}
-                style={styles.editCta}
-              />
-            )}
+            <View style={styles.socialStats}>
+              <Pressable onPress={() => router.push({ pathname: '/followers', params: { userId: user.id, tab: 'following' } })}>
+                <Text style={[styles.socialStat, { color: colors.text }]}><Text style={styles.socialStatValue}>{followingCount}</Text> {t('account.followingLabel')}</Text>
+              </Pressable>
+              <Pressable onPress={() => router.push({ pathname: '/followers', params: { userId: user.id, tab: 'followers' } })}>
+                <Text style={[styles.socialStat, { color: colors.text }]}><Text style={styles.socialStatValue}>{followersCount}</Text> {t('account.followersLabel')}</Text>
+              </Pressable>
+            </View>
           </View>
 
           {/* Niveau / XP */}
@@ -299,6 +302,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginTop: Spacing.xs,
   },
+  username: { fontFamily: FontFamily.regular, fontSize: 12 },
+  socialStats: { flexDirection: 'row', gap: Spacing.lg, marginTop: Spacing.xs },
+  socialStat: { fontFamily: FontFamily.regular, fontSize: 12 },
+  socialStatValue: { fontFamily: FontFamily.bold },
   email: {
     fontFamily: FontFamily.regular,
     fontSize: 12.5,

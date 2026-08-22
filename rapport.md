@@ -330,7 +330,7 @@ cette session chargé), deux comptes réels créés via `POST /auth/register` :
    pas 2). Le même appel fait par l'auteur sur son propre média → `204` mais **aucune ligne
    créée** (`getViewers` ne le liste jamais).
 3. **Confidentialité des vues** — `GET /stories/:mediaId/viewers` par l'auteur → liste réelle
-   (1 vue, vrai `nomUtilisateur`, vrai `dateVue`). Même appel par le viewer (pas l'auteur) →
+   (1 vue, vrai `username`, vrai `dateVue`). Même appel par le viewer (pas l'auteur) →
    **403** `Forbidden`, pas une liste vide silencieuse.
 4. **Propagation `vuParMoi`/`vuesCount`** — après la vue, `GET /stories` recalculé pour le
    viewer montre `vuParMoi: true, vuesCount: 1` sur le média vu, `vuParMoi: false, vuesCount: 0`

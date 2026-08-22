@@ -104,9 +104,9 @@ Le référentiel `plants` a désormais son propre module exposé (`GET /plants`,
 
 ```json
 // Body
-{ "email": "djawad@planai.app", "nomUtilisateur": "Djawad", "motDePasse": "********" }
+{ "email": "djawad@planai.app", "username": "Djawad", "motDePasse": "********" }
 // 201 — PAS de token (contrairement à ce qu'on avait envisagé)
-{ "id": "uuid", "email": "djawad@planai.app", "nomUtilisateur": "Djawad", "experience": 0, "niveau": 1, "insignes": [] }
+{ "id": "uuid", "email": "djawad@planai.app", "username": "Djawad", "experience": 0, "niveau": 1, "insignes": [] }
 ```
 
 Le front enchaîne un `POST /auth/login` juste après pour obtenir un token et connecter
@@ -118,7 +118,7 @@ l'utilisateur immédiatement (voir `apps/mobile/src/features/auth/authApi.ts`).
 // Body
 { "email": "djawad@planai.app", "motDePasse": "********" }
 // 200
-{ "accessToken": "jwt...", "user": { "id": "uuid", "email": "...", "nomUtilisateur": "...", "experience": 0, "niveau": 1, "insignes": [] } }
+{ "accessToken": "jwt...", "user": { "id": "uuid", "email": "...", "username": "...", "experience": 0, "niveau": 1, "insignes": [] } }
 ```
 
 ⚠️ Champ `motDePasse`, pas `password`. Pas de `refreshToken` dans la réponse.
@@ -129,7 +129,7 @@ l'utilisateur immédiatement (voir `apps/mobile/src/features/auth/authApi.ts`).
 // Body
 { "idToken": "google-id-token..." }
 // 200 — même forme que POST /auth/login
-{ "accessToken": "jwt...", "user": { "id": "uuid", "email": "...", "nomUtilisateur": "...", "experience": 0, "niveau": 1, "insignes": [], "pieces": 0 } }
+{ "accessToken": "jwt...", "user": { "id": "uuid", "email": "...", "username": "...", "experience": 0, "niveau": 1, "insignes": [], "pieces": 0 } }
 ```
 
 Vérifie le `idToken` avec `google-auth-library` (`OAuth2Client.verifyIdToken`, audience =
@@ -179,7 +179,7 @@ devenir la vraie base de la §2 (profil) ci-dessous.
 ```json
 // 200
 {
-  "id": "uuid", "email": "djawad@planai.app", "nomUtilisateur": "Djawad",
+  "id": "uuid", "email": "djawad@planai.app", "username": "Djawad",
   "experience": 2480, "niveau": 12, "insignes": ["botaniste-debutant"], "pieces": 340, "urlAvatar": null
 }
 ```
@@ -198,7 +198,7 @@ la façon dont le front reconstitue l'affichage complet.
 ### ✅ PATCH /users/me
 
 ```json
-// Body partiel — { "email"?, "nomUtilisateur"?, "urlAvatar"? } → 409 si email/pseudo déjà pris
+// Body partiel — { "email"?, "username"?, "urlAvatar"? } → 409 si email/pseudo déjà pris
 // 200 — même forme que GET /users/me
 ```
 
@@ -465,7 +465,7 @@ jamais une catégorie vide inventée.
       "contenuTexte": "Trouvée en pleine floraison...",
       "imageUrl": "/uploads/posts/.../photo.jpg",
       "dateCreation": "2026-07-15T08:00:00.000Z",
-      "auteur": { "id": "uuid", "nomUtilisateur": "Marco_Botanic", "urlAvatar": null },
+      "auteur": { "id": "uuid", "username": "Marco_Botanic", "urlAvatar": null },
       "plante": { "id": "uuid", "nomScientifique": "...", "nomCommun": "...", "badgeRarete": "Commun", "urlImage": null },
       "typeCollection": "discovered",
       "likesCount": 248,
@@ -551,7 +551,7 @@ de groupe dédiée.
 [
   {
     "idUtilisateur": "uuid",
-    "nomUtilisateur": "Djawad",
+    "username": "Djawad",
     "urlAvatar": null,
     "estMoi": false,             // true si l'appelant est l'auteur ("Ta story")
     "entierementVue": false,     // true seulement si TOUS les médias ont été vus par l'appelant
@@ -574,7 +574,7 @@ de groupe dédiée.
 // POST /stories — multipart/form-data, champ `image`
 image: file (jpg/jpeg/png/webp, 5 Mo max — vidéo explicitement rejetée, voir note ci-dessous)
 // 201 → CreateStoryResponseDto (forme "à plat", pas un StoryGroupDto) :
-{ "id", "idUtilisateur", "nomUtilisateur", "urlAvatar", "urlMedia", "mediaType", "dateCreation", "dateExpiration" }
+{ "id", "idUtilisateur", "username", "urlAvatar", "urlMedia", "mediaType", "dateCreation", "dateExpiration" }
 ```
 
 S'empile dans la bulle existante de l'auteur pour la journée (comportement "ajouter un
@@ -595,7 +595,7 @@ statut — vérifié : 204 renvoyé, mais l'auteur n'apparaît jamais dans `GET
 ```
 // GET /stories/:mediaId/viewers → 200 — réservé à l'auteur du média, 403 sinon
 [
-  { "idUtilisateur": "uuid", "nomUtilisateur": "...", "urlAvatar": null, "dateVue": "2026-07-24T15:52:23.681Z" }
+  { "idUtilisateur": "uuid", "username": "...", "urlAvatar": null, "dateVue": "2026-07-24T15:52:23.681Z" }
 ]
 ```
 

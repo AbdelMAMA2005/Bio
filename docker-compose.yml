@@ -31,7 +31,7 @@ services:
     container_name: planai-api
     restart: unless-stopped
     env_file:
-      - .env
+      - ./apps/api/.env
     environment:
       # À l'intérieur du réseau Docker, l'API joint Postgres via le nom du
       # service ("db") sur son port interne standard — ces deux valeurs
@@ -39,6 +39,10 @@ services:
       # depuis l'HÔTE, ex. pour psql ou pgAdmin). Voir DOCKER.md.
       DB_HOST: db
       DB_PORT: '5432'
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_DATABASE: ${DB_DATABASE:-planai_db}
+      PORT: '3000'
     ports:
       - '${PORT:-3000}:3000'
     depends_on:

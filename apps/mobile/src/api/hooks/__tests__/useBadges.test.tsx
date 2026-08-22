@@ -23,7 +23,7 @@ beforeEach(() => {
 describe('useBadges (integration: GET /users/me -> catalogue croisé avec insignes)', () => {
   it('marks catalog badges present in the backend insignes as obtained', async () => {
     mockedGet.mockResolvedValueOnce({
-      data: { id: 'u1', email: 'a@b.com', nomUtilisateur: 'Djawad', experience: 0, niveau: 1, insignes: ['botaniste-debutant'] },
+      data: { id: 'u1', email: 'a@b.com', username: 'Djawad', experience: 0, niveau: 1, insignes: ['botaniste-debutant'] },
     });
 
     const { result } = renderHook(() => useBadges(), { wrapper });
@@ -38,7 +38,7 @@ describe('useBadges (integration: GET /users/me -> catalogue croisé avec insign
 
   it('returns every badge locked when the backend has no insignes yet', async () => {
     mockedGet.mockResolvedValueOnce({
-      data: { id: 'u1', email: 'a@b.com', nomUtilisateur: 'Djawad', experience: 0, niveau: 1, insignes: [] },
+      data: { id: 'u1', email: 'a@b.com', username: 'Djawad', experience: 0, niveau: 1, insignes: [] },
     });
 
     const { result } = renderHook(() => useBadges(), { wrapper });

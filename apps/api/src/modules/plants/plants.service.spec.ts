@@ -60,8 +60,12 @@ describe('PlantsService', () => {
         '(LOWER(p.nomScientifique) LIKE :nom OR LOWER(p.nomCommun) LIKE :nom)',
         { nom: '%rosa%' },
       );
-      expect(qb.andWhere).toHaveBeenCalledWith('LOWER(p.famille) = :famille', { famille: 'rosaceae' });
-      expect(qb.andWhere).toHaveBeenCalledWith('p.toxicite = :toxicite', { toxicite: 'red' });
+      expect(qb.andWhere).toHaveBeenCalledWith('LOWER(p.famille) = :famille', {
+        famille: 'rosaceae',
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith('p.toxicite = :toxicite', {
+        toxicite: 'red',
+      });
       expect(qb.skip).toHaveBeenCalledWith(10);
       expect(qb.take).toHaveBeenCalledWith(10);
       expect(result).toEqual({ items: [], total: 0 });
@@ -69,9 +73,11 @@ describe('PlantsService', () => {
   });
 
   describe('findOne', () => {
-    it('lève NotFoundException si la plante n\'existe pas', async () => {
+    it("lève NotFoundException si la plante n'existe pas", async () => {
       plantRepo.findOne.mockResolvedValue(null);
-      await expect(service.findOne('inconnu')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('inconnu')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('retourne la plante mappée en DTO', async () => {
@@ -113,9 +119,11 @@ describe('PlantsService', () => {
   });
 
   describe('update', () => {
-    it('lève NotFoundException si la plante n\'existe pas', async () => {
+    it("lève NotFoundException si la plante n'existe pas", async () => {
       plantRepo.findOne.mockResolvedValue(null);
-      await expect(service.update('inconnu', { nomCommun: 'x' } as any)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update('inconnu', { nomCommun: 'x' } as any),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('ne modifie que les champs fournis', async () => {
@@ -132,7 +140,9 @@ describe('PlantsService', () => {
       plantRepo.findOne.mockResolvedValue(existing);
       plantRepo.save.mockImplementation(async (p) => p);
 
-      const result = await service.update('plant-1', { nomCommun: 'Rose ancienne' } as any);
+      const result = await service.update('plant-1', {
+        nomCommun: 'Rose ancienne',
+      });
 
       expect(result.nomCommun).toBe('Rose ancienne');
       expect(result.nomScientifique).toBe('Rosa gallica');
@@ -140,16 +150,20 @@ describe('PlantsService', () => {
   });
 
   describe('delete', () => {
-    it('lève NotFoundException si la plante n\'existe pas', async () => {
+    it("lève NotFoundException si la plante n'existe pas", async () => {
       plantRepo.findOne.mockResolvedValue(null);
-      await expect(service.delete('inconnu')).rejects.toThrow(NotFoundException);
+      await expect(service.delete('inconnu')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('refuse la suppression si la plante est présente dans des collections', async () => {
       plantRepo.findOne.mockResolvedValue({ id: 'plant-1' });
       collectionRepo.count.mockResolvedValue(2);
 
-      await expect(service.delete('plant-1')).rejects.toThrow(BadRequestException);
+      await expect(service.delete('plant-1')).rejects.toThrow(
+        BadRequestException,
+      );
       expect(plantRepo.remove).not.toHaveBeenCalled();
     });
 

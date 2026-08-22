@@ -160,11 +160,11 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
 
             <View style={styles.header} pointerEvents="box-none">
               <LinearGradient colors={AccentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-                <Text style={styles.avatarInitial}>{group.nomUtilisateur.charAt(0).toUpperCase()}</Text>
+                <Text style={styles.avatarInitial}>{group.username.charAt(0).toUpperCase()}</Text>
               </LinearGradient>
               <View style={styles.headerText}>
                 <Text style={styles.headerName} numberOfLines={1}>
-                  {group.estMoi ? t('community.yourStory') : group.nomUtilisateur}
+                  {group.estMoi ? t('community.yourStory') : group.username}
                 </Text>
                 <Text style={styles.headerDate}>{formatRelativeDate(media.dateCreation, language)}</Text>
               </View>

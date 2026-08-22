@@ -142,7 +142,7 @@ Les noms de tables PostgreSQL sont en anglais (`users`, `plants`, `collection`, 
 | `id` | `string` (UUID) | Identifiant unique |
 | `email` | `string` | Adresse email (unique) |
 | `motDePasseHache` | `string` | Mot de passe hashé (argon2) |
-| `nomUtilisateur` | `string` | Pseudo (unique) |
+| `username` | `string` | Pseudo (unique) |
 | `experience` | `number` | Points d'expérience cumulés |
 | `niveau` | `number` | Niveau actuel (calculé) |
 | `urlAvatar` | `string \| null` | URL de l'avatar |
@@ -417,7 +417,7 @@ cd apps/mobile && npx expo start   # Expo reste sur l'hôte, voir demarrage.md /
 
 ## ✅ Ce que Djawad doit retenir
 
-- Les **noms des propriétés** à utiliser dans `react-query` et dans les écrans sont ceux du tableau **Modèle de données** (ex: `nomUtilisateur`, `dateAjout`, `etatSante`, `contenuTexte`).
+- Les **noms des propriétés** à utiliser dans `react-query` et dans les écrans sont ceux du tableau **Modèle de données** (ex: `username`, `dateAjout`, `etatSante`, `contenuTexte`).
 - Les **types d'énumération** sont les mêmes qu'il devra afficher (ex: `toxicite: 'green'` → afficher "Non toxique" ; `type: 'owned'` → afficher dans "Mon Jardin").
 - Les relations principales :  
   - Une `Collection` appartient à un `User` et à une `Plant`.  
