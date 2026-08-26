@@ -6,17 +6,20 @@ import {
   Param,
   UseGuards,
   BadRequestException,
+  Body,
+  Patch,
 } from '@nestjs/common';
 import { FollowerService } from './followers.service';
 import { JwtAuthGuard } from '../../common/guards';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { ConnectionCircle } from '../../entities/enums/connection-circle.enum';
 
-@Controller('followers')
+@Controller('connections')
 export class FollowersController {
   constructor(private readonly followerService: FollowerService) {}
 
   @UseGuards(JwtAuthGuard)
-  @Post(':userId/follow')
+  @Post(':userId/connect')
   async followUser(
     @CurrentUser() currentUser: any,
     @Param('userId') userIdToFollow: string,
@@ -25,7 +28,7 @@ export class FollowersController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Delete(':userId/unfollow')
+  @Delete(':userId/disconnect')
   async unfollowUser(
     @CurrentUser() currentUser: any,
     @Param('userId') userIdToUnfollow: string,
@@ -34,29 +37,40 @@ export class FollowersController {
     return { message: 'Vous ne suivez plus cet utilisateur' };
   }
 
-  @Get(':userId/followers')
+  @Get(':userId/connections')
   async getFollowers(@Param('userId') userId: string) {
     const followers = await this.followerService.getFollowers(userId);
     const count = await this.followerService.getFollowersCount(userId);
     return {
       count,
-      followers: followers.map((f) => ({ ...f.follower, id: f.follower.id })),
+      connections: followers.map((f) => ({ ...f.follower, id: f.follower.id, circle: f.circle })),
     };
   }
 
-  @Get(':userId/following')
+  @Get(':userId/connected')
   async getFollowing(@Param('userId') userId: string) {
     const following = await this.followerService.getFollowing(userId);
     const count = await this.followerService.getFollowingCount(userId);
     return {
       count,
-      following: following.map((f) => ({ ...f.following, id: f.following.id })),
+      connections: following.map((f) => ({ ...f.following, id: f.following.id, circle: f.circle })),
     };
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get(':userId/is-following')
-  async isFollowing(
+  @Patch(':userId/circle')
+  async setCircle(
+    @CurrentUser() currentUser: any,
+    @Param('userId') userId: string,
+    @Body('circle') circle: ConnectionCircle,
+  ) {
+    if (![1, 2, 3].includes(Number(circle))) throw new BadRequestException('Cercle invalide');
+    return this.followerService.setCircle(currentUser.id, userId, Number(circle) as ConnectionCircle);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':userId/is-connected')
+  async isConnected(
     @CurrentUser() currentUser: any,
     @Param('userId') userIdToCheck: string,
   ) {
@@ -64,6 +78,6 @@ export class FollowersController {
       currentUser.id,
       userIdToCheck,
     );
-    return { isFollowing };
+    return { isConnected: isFollowing };
   }
 }

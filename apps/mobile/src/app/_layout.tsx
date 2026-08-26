@@ -48,12 +48,14 @@ function RootNavigator() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="compte" options={{ presentation: 'modal' }} />
           <Stack.Screen name="badges" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="followers" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="connections" options={{ presentation: 'modal' }} />
           <Stack.Screen name="messages" options={{ presentation: 'modal' }} />
           <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
           <Stack.Screen name="google-username" />
           <Stack.Screen name="plante/[id]" />
           <Stack.Screen name="conseil/[type]" />
+          <Stack.Screen name="profil/[id]" />
+          <Stack.Screen name="confirm-email" />
         </Stack.Protected>
         <Stack.Protected guard={onboardingSeen && !isAuthenticated}>
           <Stack.Screen name="(auth)" />

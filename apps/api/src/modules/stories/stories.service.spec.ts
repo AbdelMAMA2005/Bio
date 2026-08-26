@@ -7,6 +7,10 @@ import { Story } from '../../entities/story.entity';
 import { StoryView } from '../../entities/story-view.entity';
 import { User } from '../../entities/user.entity';
 import { StoryMediaType } from '../../entities/enums/story-media-type.enum';
+import { Follower } from '../../entities/follower.entity';
+import { StoryLike } from '../../entities/story-like.entity';
+import { StoryComment } from '../../entities/story-comment.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 jest.mock('fs');
 const mockedFs = fs as jest.Mocked<typeof fs>;
@@ -27,6 +31,10 @@ describe('StoriesService', () => {
     createQueryBuilder: jest.Mock;
   };
   let userRepo: { findOne: jest.Mock };
+  const followerRepo = { findOne: jest.fn() };
+  const storyLikeRepo = { findOne: jest.fn(), count: jest.fn().mockResolvedValue(0), create: jest.fn((d) => d), save: jest.fn(), remove: jest.fn() };
+  const storyCommentRepo = { findOne: jest.fn(), count: jest.fn().mockResolvedValue(0), create: jest.fn((d) => d), save: jest.fn() };
+  const notificationsService = { createNotification: jest.fn() };
 
   beforeEach(async () => {
     storyRepo = {
@@ -54,6 +62,10 @@ describe('StoriesService', () => {
         { provide: getRepositoryToken(Story), useValue: storyRepo },
         { provide: getRepositoryToken(StoryView), useValue: storyViewRepo },
         { provide: getRepositoryToken(User), useValue: userRepo },
+        { provide: getRepositoryToken(Follower), useValue: followerRepo },
+        { provide: getRepositoryToken(StoryLike), useValue: storyLikeRepo },
+        { provide: getRepositoryToken(StoryComment), useValue: storyCommentRepo },
+        { provide: NotificationsService, useValue: notificationsService },
       ],
     }).compile();
 

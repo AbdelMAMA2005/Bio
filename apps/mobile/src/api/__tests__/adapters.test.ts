@@ -415,6 +415,9 @@ describe('toStoryGroup', () => {
         dateExpiration: '2026-07-25T10:00:00.000Z',
         vuParMoi: false,
         vuesCount: 2,
+        likesCount: 4,
+        commentairesCount: 1,
+        estLikedParUtilisateur: false,
       },
     ],
   };

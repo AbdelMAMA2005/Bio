@@ -7,10 +7,10 @@ export class Plant {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column()
+  @Column({ type: 'varchar' })
   nomScientifique!: string;
 
-  @Column()
+  @Column({ type: 'varchar' })
   nomCommun!: string;
 
   @Column({ type: 'text', nullable: true })

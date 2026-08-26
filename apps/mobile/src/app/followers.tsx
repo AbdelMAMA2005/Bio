@@ -1,5 +1,5 @@
-﻿import { FollowersListScreen } from '@/features/account/FollowersListScreen';
+﻿import { ConnectionsListScreen } from '@/features/account/ConnectionsListScreen';
 
 export default function Followers() {
-  return <FollowersListScreen />;
+  return <ConnectionsListScreen />;
 }

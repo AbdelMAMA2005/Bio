@@ -11,6 +11,7 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
   HttpCode,
+  Body,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { StoriesService } from './stories.service';
@@ -59,6 +60,21 @@ export class StoriesController {
     @Param('mediaId') mediaId: string,
   ) {
     await this.storiesService.recordView(mediaId, user.id);
+  }
+
+  @Post(':mediaId/like')
+  async toggleLike(@CurrentUser() user: any, @Param('mediaId') mediaId: string) {
+    return this.storiesService.toggleLike(mediaId, user.id);
+  }
+
+  @Post(':mediaId/comments')
+  async addComment(@CurrentUser() user: any, @Param('mediaId') mediaId: string, @Body('content') content: string) {
+    return this.storiesService.addComment(mediaId, user.id, content);
+  }
+
+  @Get(':mediaId/comments')
+  async getComments(@CurrentUser() user: any, @Param('mediaId') mediaId: string) {
+    return this.storiesService.getComments(mediaId, user.id);
   }
 
   // ----- Liste des vues d'un média (réservé à son auteur) -----

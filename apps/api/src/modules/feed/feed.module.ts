@@ -7,9 +7,10 @@ import { User } from '../../entities/user.entity';
 import { Collection } from '../../entities/collection.entity';
 import { FeedController } from './feed.controller';
 import { FeedService } from './feed.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Post, Like, Comment, User, Collection])],
+  imports: [TypeOrmModule.forFeature([Post, Like, Comment, User, Collection]), NotificationsModule],
   controllers: [FeedController],
   providers: [FeedService],
   exports: [FeedService],

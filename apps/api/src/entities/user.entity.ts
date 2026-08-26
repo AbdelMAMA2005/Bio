@@ -44,7 +44,7 @@ export class User {
   @Column({ default: 1 })
   niveau!: number;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   urlAvatar!: string;
 
   @Column({ type: 'jsonb', default: [] })
@@ -53,7 +53,7 @@ export class User {
   @DeleteDateColumn({ nullable: true })
   dateSuppression!: Date | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   resetPasswordToken!: string;
 
   @Column({ type: 'timestamp', nullable: true })
@@ -61,6 +61,18 @@ export class User {
 
   @Column({ default: true })
   isPublicProfile!: boolean;
+
+  @Column({ default: true })
+  publicStories!: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  pendingEmail!: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  pendingEmailToken!: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  pendingEmailExpires!: Date | null;
 
   @OneToMany(() => Collection, (collection) => collection.utilisateur)
   collectionsUtilisateur!: Collection[];

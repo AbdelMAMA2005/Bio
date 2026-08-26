@@ -141,6 +141,7 @@ export const herbariumDiscoveries: HerbariumDiscovery[] = [
 export const feedPosts: FeedPost[] = [
   {
     id: 'post-1',
+    authorId: 'user-m',
     authorInitial: 'M',
     authorName: 'Marco_Botanic',
     createdAt: daysAgoIso(1 / 12),
@@ -155,6 +156,7 @@ export const feedPosts: FeedPost[] = [
   },
   {
     id: 'post-2',
+    authorId: 'user-s',
     authorInitial: 'S',
     authorName: 'Sophie.Verde',
     createdAt: daysAgoIso(5 / 24),
@@ -169,6 +171,7 @@ export const feedPosts: FeedPost[] = [
   },
   {
     id: 'post-3',
+    authorId: 'user-t',
     authorInitial: 'T',
     authorName: 'Theo_Green',
     createdAt: daysAgoIso(1),
@@ -183,6 +186,7 @@ export const feedPosts: FeedPost[] = [
   },
   {
     id: 'post-4',
+    authorId: 'user-a',
     authorInitial: 'A',
     authorName: 'Aida.Plants',
     createdAt: daysAgoIso(1),
@@ -296,6 +300,7 @@ export function addPost(input: { imageUri: string; texte: string; collectionItem
 
   const post: FeedPost = {
     id: `post-${Date.now()}`,
+    authorId: currentUser.id,
     authorInitial: currentUser.pseudo.charAt(0),
     authorName: currentUser.pseudo,
     createdAt: new Date().toISOString(),

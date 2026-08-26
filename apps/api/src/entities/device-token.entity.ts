@@ -16,10 +16,10 @@ export class DeviceToken {
   @Column('uuid')
   userId!: string;
 
-  @Column()
+  @Column({ type: 'varchar' })
   expoPushToken!: string;
 
-  @Column()
+  @Column({ type: 'varchar' })
   plateforme!: string;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })

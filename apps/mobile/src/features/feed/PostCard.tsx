@@ -2,6 +2,9 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { scheduleOnRN } from 'react-native-worklets';
+import { useRouter } from 'expo-router';
 
 import { Icon } from '@/components/Icon';
 import type { FeedPost } from '@/api/types';
@@ -27,6 +30,13 @@ export function PostCard({ post, onToggleLike, onOpenComments, onShare, onEdit, 
   const { colors, isDark } = useAppTheme();
   const language = (i18n.language as SupportedLanguage) ?? 'fr';
   const rarityPalette = post.plant ? (isDark ? RarityColors : RarityColorsLight)[post.plant.rarete] : null;
+  const router = useRouter();
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .maxDelay(280)
+    .onEnd((_event, success) => {
+      if (success) scheduleOnRN(onToggleLike);
+    });
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
@@ -35,7 +45,9 @@ export function PostCard({ post, onToggleLike, onOpenComments, onShare, onEdit, 
           <Text style={styles.avatarInitial}>{post.authorInitial}</Text>
         </LinearGradient>
         <View style={styles.headerText}>
-          <Text style={[styles.authorName, { color: colors.text }]}>{post.authorName}</Text>
+          <Pressable onPress={() => router.push({ pathname: '/profil/[id]', params: { id: post.authorId } })}>
+            <Text style={[styles.authorName, { color: colors.text }]}>{`@${post.authorName}`}</Text>
+          </Pressable>
           <Text style={[styles.meta, { color: colors.muted }]}>{formatRelativeDate(post.createdAt, language)}</Text>
         </View>
       </View>
@@ -50,9 +62,13 @@ export function PostCard({ post, onToggleLike, onOpenComments, onShare, onEdit, 
       {post.caption ? <Text style={[styles.caption, { color: colors.text }]}>{post.caption}</Text> : null}
 
       {post.imageUri ? (
-        <Image source={{ uri: post.imageUri }} style={styles.image} />
+        <GestureDetector gesture={doubleTapGesture}>
+          <Image source={{ uri: post.imageUri }} style={styles.image} />
+        </GestureDetector>
       ) : post.plant?.urlImage ? (
-        <Image source={{ uri: post.plant.urlImage }} style={styles.image} />
+        <GestureDetector gesture={doubleTapGesture}>
+          <Image source={{ uri: post.plant.urlImage }} style={styles.image} />
+        </GestureDetector>
       ) : post.plant && rarityPalette ? (
         <View style={[styles.image, styles.imageFallback, { backgroundColor: rarityPalette.bg }]}>
           <Icon name={post.plant.icon} size={56} color={rarityPalette.text} />

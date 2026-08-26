@@ -8,6 +8,7 @@ import { Like as LikeEntity } from '../../entities/like.entity';
 import { Comment as CommentEntity } from '../../entities/comment.entity';
 import { User } from '../../entities/user.entity';
 import { Collection } from '../../entities/collection.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 // createPost() écrit la photo du post sur disque (uploads/posts) quand un fichier est
 // fourni : on mocke fs pour rester sans effet de bord réel, comme les autres services
@@ -39,6 +40,7 @@ describe('FeedService', () => {
   };
   let userRepo: { findOne: jest.Mock };
   let collectionRepo: { findOne: jest.Mock };
+  const notificationsService = { createNotification: jest.fn() };
 
   beforeEach(async () => {
     postRepo = {
@@ -76,6 +78,7 @@ describe('FeedService', () => {
         { provide: getRepositoryToken(CommentEntity), useValue: commentRepo },
         { provide: getRepositoryToken(User), useValue: userRepo },
         { provide: getRepositoryToken(Collection), useValue: collectionRepo },
+        { provide: NotificationsService, useValue: notificationsService },
       ],
     }).compile();
 

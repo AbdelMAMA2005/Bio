@@ -15,6 +15,8 @@ export interface User {
   niveau: number;
   xp: number;
   pieces: number;
+  publicStories?: boolean;
+  pendingEmail?: string | null;
 }
 
 export interface Plante {
@@ -57,6 +59,9 @@ export interface StoryMedia {
   /** Vu par l'utilisateur courant — toujours `true` pour ses propres médias. */
   vuParMoi: boolean;
   vuesCount: number;
+  likesCount: number;
+  commentairesCount: number;
+  estLikedParUtilisateur: boolean;
 }
 
 /**

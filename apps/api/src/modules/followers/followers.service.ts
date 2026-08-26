@@ -7,6 +7,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Follower } from '../../entities/follower.entity';
 import { User } from '../../entities/user.entity';
+import { ConnectionCircle } from '../../entities/enums/connection-circle.enum';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../../entities/notification.entity';
 
 @Injectable()
 export class FollowerService {
@@ -15,6 +18,7 @@ export class FollowerService {
     private followerRepository: Repository<Follower>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private notificationsService: NotificationsService,
   ) {}
 
   async followUser(followerId: string, followingId: string): Promise<Follower> {
@@ -48,7 +52,17 @@ export class FollowerService {
       isApproved: following.isPublicProfile, // Auto-approved if profile is public
     });
 
-    return this.followerRepository.save(follow);
+    const saved = await this.followerRepository.save(follow);
+    
+    // Créer une notification FOLLOW
+    await this.notificationsService.createNotification(
+      followingId,
+      NotificationType.FOLLOW,
+      `${follower.username || follower.fullName} vous suit maintenant`,
+      followerId,
+    );
+
+    return saved;
   }
 
   async unfollowUser(followerId: string, followingId: string): Promise<void> {
@@ -86,6 +100,25 @@ export class FollowerService {
       where: { followerId, followingId, isApproved: true },
     });
     return !!follow;
+  }
+
+  async setCircle(
+    followerId: string,
+    followingId: string,
+    circle: ConnectionCircle,
+  ): Promise<Follower> {
+    const connection = await this.followerRepository.findOne({ where: { followerId, followingId } });
+    if (!connection) throw new NotFoundException('Connexion non trouvée');
+    connection.circle = circle;
+    return this.followerRepository.save(connection);
+  }
+
+  async getCircle(viewerId: string, authorId: string): Promise<ConnectionCircle | null> {
+    if (viewerId === authorId) return ConnectionCircle.CLOSE_FRIENDS;
+    const connection = await this.followerRepository.findOne({
+      where: { followerId: viewerId, followingId: authorId, isApproved: true },
+    });
+    return connection?.circle ?? null;
   }
 
   async approveFollowRequest(

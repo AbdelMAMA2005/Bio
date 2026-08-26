@@ -12,6 +12,12 @@ import { Story } from '../../entities/story.entity';
 import { StoryView } from '../../entities/story-view.entity';
 import { User } from '../../entities/user.entity';
 import { StoryMediaType } from '../../entities/enums/story-media-type.enum';
+import { Follower } from '../../entities/follower.entity';
+import { StoryLike } from '../../entities/story-like.entity';
+import { StoryComment } from '../../entities/story-comment.entity';
+import { ConnectionCircle } from '../../entities/enums/connection-circle.enum';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../../entities/notification.entity';
 import {
   CreateStoryResponseDto,
   StoryGroupDto,
@@ -30,6 +36,13 @@ export class StoriesService {
     private storyViewRepo: Repository<StoryView>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @InjectRepository(Follower)
+    private followerRepo: Repository<Follower>,
+    @InjectRepository(StoryLike)
+    private storyLikeRepo: Repository<StoryLike>,
+    @InjectRepository(StoryComment)
+    private storyCommentRepo: Repository<StoryComment>,
+    private notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -46,6 +59,19 @@ export class StoriesService {
       .andWhere('u.dateSuppression IS NULL')
       .orderBy('s.dateCreation', 'ASC')
       .getMany();
+
+    const visibleStories = [] as Story[];
+    for (const story of stories) {
+      if (story.userId === callerId || story.utilisateur.publicStories !== false) {
+        visibleStories.push(story);
+        continue;
+      }
+      const connection = await this.followerRepo.findOne({
+        where: { followerId: callerId, followingId: story.userId, isApproved: true },
+      });
+      if (connection && connection.circle !== ConnectionCircle.PUBLIC) visibleStories.push(story);
+    }
+    stories.splice(0, stories.length, ...visibleStories);
 
     if (stories.length === 0) {
       return [];
@@ -81,7 +107,7 @@ export class StoriesService {
       const estMoi = userId === callerId;
       const author = medias[0].utilisateur;
 
-      const mediaDtos: StoryMediaDto[] = medias.map((media) => ({
+      const mediaDtos: StoryMediaDto[] = await Promise.all(medias.map(async (media) => ({
         id: media.id,
         urlMedia: media.urlMedia,
         mediaType: media.mediaType,
@@ -91,7 +117,10 @@ export class StoriesService {
         // propre bulle.
         vuParMoi: estMoi || viewedByMeIds.has(media.id),
         vuesCount: viewCountByStoryId.get(media.id) ?? 0,
-      }));
+        likesCount: await this.storyLikeRepo.count({ where: { storyId: media.id } }),
+        commentairesCount: await this.storyCommentRepo.count({ where: { storyId: media.id } }),
+        estLikedParUtilisateur: !!(await this.storyLikeRepo.findOne({ where: { storyId: media.id, userId: callerId } })),
+      })));
 
       groups.push({
         idUtilisateur: userId,
@@ -179,6 +208,7 @@ export class StoriesService {
     if (!story) {
       throw new NotFoundException('Média de story non trouvé');
     }
+    await this.assertCanInteract(story, viewerId);
     if (story.userId === viewerId) {
       return;
     }
@@ -192,6 +222,83 @@ export class StoriesService {
 
     const view = this.storyViewRepo.create({ storyId: mediaId, viewerId });
     await this.storyViewRepo.save(view);
+  }
+
+  async toggleLike(mediaId: string, userId: string): Promise<{ liked: boolean }> {
+    const story = await this.storyRepo.findOne({ where: { id: mediaId } });
+    if (!story) throw new NotFoundException('Média de story non trouvé');
+    await this.assertCanInteract(story, userId);
+    
+    const existing = await this.storyLikeRepo.findOne({ where: { storyId: mediaId, userId } });
+    if (existing) { 
+      await this.storyLikeRepo.remove(existing); 
+      return { liked: false }; 
+    }
+    
+    await this.storyLikeRepo.save(this.storyLikeRepo.create({ storyId: mediaId, userId }));
+    
+    // Créer une notification si ce n'est pas l'auteur de la story
+    if (story.userId !== userId) {
+      const user = await this.userRepo.findOne({ where: { id: userId } });
+      await this.notificationsService.createNotification(
+        story.userId,
+        NotificationType.LIKE,
+        `${user?.username || user?.fullName || 'Quelqu\'un'} a aimé votre statut`,
+        userId,
+      );
+    }
+    
+    return { liked: true };
+  }
+
+  async addComment(mediaId: string, userId: string, content: string): Promise<StoryComment> {
+    const story = await this.storyRepo.findOne({ where: { id: mediaId } });
+    if (!story) throw new NotFoundException('Média de story non trouvé');
+    await this.assertCanInteract(story, userId);
+    if (!content.trim()) throw new ForbiddenException('Le commentaire ne peut pas être vide');
+    
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const comment = await this.storyCommentRepo.save(this.storyCommentRepo.create({ storyId: mediaId, userId, content: content.trim() }));
+    
+    // Créer une notification si ce n'est pas l'auteur de la story
+    if (story.userId !== userId && user) {
+      await this.notificationsService.createNotification(
+        story.userId,
+        NotificationType.COMMENT,
+        `${user.username || user.fullName} a commenté votre statut`,
+        userId,
+      );
+    }
+    
+    return comment;
+  }
+
+  async getComments(mediaId: string, userId: string) {
+    const story = await this.storyRepo.findOne({ where: { id: mediaId } });
+    if (!story) throw new NotFoundException('Média de story non trouvé');
+    await this.assertCanInteract(story, userId);
+
+    const comments = await this.storyCommentRepo.find({
+      where: { storyId: mediaId },
+      relations: { user: true },
+      order: { createdAt: 'ASC' },
+    });
+
+    return comments.map((comment) => ({
+      id: comment.id,
+      userId: comment.userId,
+      username: comment.user?.username ?? '',
+      content: comment.content,
+      createdAt: comment.createdAt,
+    }));
+  }
+
+  private async assertCanInteract(story: Story, userId: string): Promise<void> {
+    if (story.userId === userId) return;
+    const author = await this.userRepo.findOne({ where: { id: story.userId, dateSuppression: IsNull() } });
+    if (author?.publicStories !== false) return;
+    const connection = await this.followerRepo.findOne({ where: { followerId: userId, followingId: story.userId, isApproved: true } });
+    if (!connection || connection.circle === ConnectionCircle.PUBLIC) throw new ForbiddenException('Cette story est réservée aux connexions des cercles 1 et 2');
   }
 
   /** Liste des vues d'un média — réservée à l'auteur (comportement WhatsApp : privé). */

@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Message } from '../../entities/message.entity';
 import { User } from '../../entities/user.entity';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../../entities/notification.entity';
 
 @Injectable()
 export class MessagesService {
@@ -11,6 +13,7 @@ export class MessagesService {
     private messageRepository: Repository<Message>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private notificationsService: NotificationsService,
   ) {}
 
   async sendMessage(
@@ -27,13 +30,27 @@ export class MessagesService {
       throw new NotFoundException('Destinataire non trouvé');
     }
 
+    const sender = await this.userRepository.findOne({
+      where: { id: senderId, dateSuppression: IsNull() },
+    });
+
     const message = this.messageRepository.create({
       senderId,
       receiverId,
       content,
     });
 
-    return this.messageRepository.save(message);
+    const saved = await this.messageRepository.save(message);
+    
+    // Créer une notification MESSAGE pour le destinataire
+    await this.notificationsService.createNotification(
+      receiverId,
+      NotificationType.MESSAGE,
+      `${sender?.username || sender?.fullName || 'Quelqu\'un'} vous a envoyé un message`,
+      senderId,
+    );
+
+    return saved;
   }
 
   async getConversation(

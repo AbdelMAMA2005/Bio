@@ -26,32 +26,41 @@ Ce document regroupe les fonctionnalités à réaliser et les décisions à conf
 - [x] Conserver le username comme identifiant technique et unique du compte.
 - [x] Afficher l'adresse email en lecture seule dans les informations du compte.
 - [x] Afficher le username séparément du `fullName`, même lorsque l'ancien compte utilisait l'email comme username.
-- [ ] Ajouter plus tard une édition dédiée de l'adresse email.
-- [ ] Prévoir ultérieurement l'envoi d'un email de confirmation lors d'un changement d'adresse email.
+- [x] Ajouter une édition dédiée de l'adresse email.
+- [x] Prévoir l'envoi d'un email de confirmation lors d'un changement d'adresse email.
 
-> **Hors périmètre pour le moment :** le système de confirmation des nouvelles adresses email sera réalisé dans une prochaine étape.
-### 4. Followers, cercles et visibilité des statuts
+> **État validé :** le système de confirmation de nouvelle adresse email est implémenté côté backend et activé depuis l’écran “My Account”.
+### 4. Connexions, cercles et visibilité des statuts
 
-- [x] Permettre aux utilisateurs de suivre d'autres utilisateurs (API backend existante).
-- [ ] Permettre à chaque utilisateur de choisir qui peut voir ses statuts/stories.
-- [ ] Enregistrer en base de données le niveau de relation ou le cercle associé à chaque follower.
-- [ ] Prévoir au moins trois niveaux de cercle : cercle 1, cercle 2 et cercle 3.
-- [ ] Appliquer les règles de visibilité selon le cercle choisi par l'auteur du statut.
-- [ ] Permettre de mettre un cœur sur les statuts visibles, quel que soit le cercle de l'utilisateur.
-- [ ] Autoriser les commentaires uniquement lorsque le niveau de cercle le permet.
-- [ ] Définir précisément les droits de visibilité et de commentaire de chaque cercle avant implémentation.
+- [x] Permettre aux utilisateurs de se connecter à d'autres utilisateurs (API backend existante).
+- [x] Permettre à chaque utilisateur de choisir la visibilité de ses statuts/stories dans les paramètres.
+- [x] Activer par défaut l'option « Rendre mes statuts publics ».
+- [x] Lorsque cette option est activée, rendre les statuts visibles par tous les utilisateurs de la base de données.
+- [x] Autoriser tous les utilisateurs à voir, aimer et commenter un statut public.
+- [x] Lorsque l'option publique est désactivée, limiter la visibilité aux connexions des cercles 1 et 2.
+- [x] Lorsque l'option publique est désactivée, autoriser les likes et les commentaires uniquement aux utilisateurs des cercles 1 et 2.
+- [x] Enregistrer en base de données le niveau de relation ou le cercle associé à chaque connexion.
+- [x] Prévoir au moins trois niveaux de cercle : cercle 1, cercle 2 et cercle 3.
+- [x] Appliquer les règles de visibilité selon le cercle choisi par l'auteur du statut.
+- [x] Permettre de mettre un cœur sur tout statut visible.
+- [x] Afficher sur chaque statut une barre de réponse permettant d'écrire un commentaire et d'ajouter des émojis, dans un usage similaire à Instagram ou WhatsApp.
+- [x] Rendre l'icône ou l'avatar de l'auteur cliquable depuis la page des statuts et diriger vers son profil.
+- [x] Permettre de se connecter à l'auteur depuis son profil.
+- [x] Définir précisément les droits de visibilité et de commentaire de chaque cercle avant implémentation.
 **Règles métier explicites pour les cercles :**
-- Hiérarchie : Cercle 1 (Amis proches), Cercle 2 (Connaissances), Cercle 3 (Public / Tous les followers).
-- Visibilité : Un statut publié pour le "Cercle 2" est visible par le Cercle 1 et 2.
-- Commentaires : Autorisés uniquement pour le Cercle 1 et le Cercle 2 (Cercle 3 = lecture + like uniquement).
+- Hiérarchie : Cercle 1 (Amis proches), Cercle 2 (Connaissances), Cercle 3 (Public / Tous les utilisateurs).
+- Mode public : il est activé par défaut ; le statut est visible, aimable et commentable par tous les utilisateurs.
+- Mode non public : le statut est visible uniquement par les connexions des cercles 1 et 2.
+- Mode non public : les connexions des cercles 1 et 2 peuvent voir, aimer et commenter le statut.
+- Le cercle 3 correspond au mode public et n'ajoute pas de restriction lorsque le mode public est activé.
 ### 5. Messages et notifications dans Community
 
 - [x] Ajouter une icône Messages en haut de l'écran « Community ».
 - [x] Ajouter une icône Notifications en haut de l'écran « Community ».
 - [x] Permettre aux utilisateurs d'envoyer et de recevoir des messages privés (API backend existante).
-- [x] Afficher les notifications liées aux follows, messages, commentaires et réactions (API backend existante).
+- [x] Afficher les notifications liées aux connexions, messages, commentaires et réactions (API backend existante).
 - [x] Afficher un indicateur lorsqu'il existe des messages ou notifications non lus.
-- [ ] Respecter les règles de confidentialité et de visibilité définies pour les followers et les cercles.
+- [x] Respecter les règles de confidentialité et de visibilité définies pour les connexions et les cercles.
 
 > **État au 22/08/2026 :** les boutons Messages et Notifications de Community sont actifs et
 > ouvrent leurs écrans respectifs. Les cercles et leur confidentialité restent à implémenter.
@@ -60,10 +69,10 @@ Ce document regroupe les fonctionnalités à réaliser et les décisions à conf
 
 - [x] Afficher le username dans le profil, même lorsqu'il est différent de l'adresse email.
 - [x] Permettre de choisir ou remplacer la photo de profil depuis « My Account ».
-- [x] Afficher le nombre d'abonnements et le nombre de followers sur le profil.
-- [x] Récupérer et afficher les compteurs depuis les endpoints followers existants.
-- [x] Ajouter la navigation vers la liste complète des followers et des abonnements.
-- [ ] Ajouter la gestion visuelle des cercles 1, 2 et 3 sur le profil et les statuts.
+- [x] Afficher le nombre de connexions et d'abonnements sur le profil.
+- [x] Récupérer et afficher les compteurs depuis les endpoints de connexions existants.
+- [x] Ajouter la navigation vers la liste complète des connexions et des abonnements.
+- [x] Ajouter la gestion visuelle des cercles 1, 2 et 3 sur le profil et les statuts.
 
 ## ✅ Déjà corrigé
 
@@ -80,5 +89,5 @@ Ce document regroupe les fonctionnalités à réaliser et les décisions à conf
 - [x] **Backend - Swagger** : Les exemples dans le Swagger ne sont pas bien renseignés. *Corrigé : Les DTOs d'inscription, de login, d'identification et de leurs réponses ont été mis à jour avec les exemples explicites demandés via `@ApiProperty()`, et le plugin CLI Swagger a été activé.*
 - [x] **Community - Édition de publication (bug critique)** : L'ancien `Alert.prompt` (iOS uniquement, mauvaise UX, sort du thème) a été remplacé par un vrai `PostEditModal` cross-platform — bottom sheet animée avec TextInput préchargé, intégré au thème de l'app. Le menu contextuel (PostCard) et les textes de confirmation de suppression ont aussi été internationalisés (fr/en/es).
 - [x] **Community - Icônes Messages & Notifications** : Ajout des icônes Messages (chat_bubble) et Notifications dans le header de l'écran Community, avec badges rouges affichant le nombre de non-lus. Hooks `useUnreadMessagesCount` et `useUnreadNotificationsCount` avec polling automatique toutes les 30s.
-- [x] **Profil social - Navigation followers/following** : Les compteurs abonnements/followers dans AccountScreen sont maintenant cliquables et naviguent vers un nouvel écran `FollowersListScreen` (route `/followers`) avec onglets Followers/Abonnements, liste des utilisateurs, et textes internationalisés (fr/en/es).
+- [x] **Profil social - Navigation des connexions** : Les compteurs abonnements/connexions dans AccountScreen sont maintenant cliquables et naviguent vers un nouvel écran `FollowersListScreen` (route `/followers`) avec onglets Connexions/Abonnements, liste des utilisateurs, et textes internationalisés (fr/en/es).
 

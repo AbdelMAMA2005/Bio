@@ -403,6 +403,7 @@ export type BackendPost = {
 };
 
 export function toFeedPost(post: BackendPost, apiBaseUrl: string): FeedPost {
+  const username = post.auteur.username.replace(/^@/, '');
   const resolvedImageUrl = post.imageUrl
     ? post.imageUrl.startsWith('http')
       ? post.imageUrl
@@ -412,8 +413,8 @@ export function toFeedPost(post: BackendPost, apiBaseUrl: string): FeedPost {
   return {
     id: post.id,
     authorId: post.idUtilisateur,
-    authorInitial: post.auteur.username.charAt(0).toUpperCase(),
-    authorName: post.auteur.username,
+    authorInitial: username.charAt(0).toUpperCase(),
+    authorName: username,
     createdAt: post.dateCreation,
     plant: post.plante
       ? toPlantWithIcon(post.plante.id, {
@@ -449,6 +450,9 @@ export type BackendStoryMedia = {
   dateExpiration: string;
   vuParMoi: boolean;
   vuesCount: number;
+  likesCount: number;
+  commentairesCount: number;
+  estLikedParUtilisateur: boolean;
 };
 
 export type BackendStoryGroup = {
@@ -467,7 +471,7 @@ function toStoryMedia(media: BackendStoryMedia, apiBaseUrl: string): StoryMedia 
 export function toStoryGroup(group: BackendStoryGroup, apiBaseUrl: string): StoryGroup {
   return {
     idUtilisateur: group.idUtilisateur,
-    username: group.username,
+    username: group.username.replace(/^@/, ''),
     urlAvatar: group.urlAvatar,
     estMoi: group.estMoi,
     entierementVue: group.entierementVue,
@@ -487,10 +491,12 @@ export type BackendComment = {
 };
 
 export function toComment(comment: BackendComment): FeedComment {
+  const username = comment.auteur.username.replace(/^@/, '');
   return {
     id: comment.id,
-    authorInitial: comment.auteur.username.charAt(0).toUpperCase(),
-    authorName: comment.auteur.username,
+    authorId: comment.idUtilisateur,
+    authorInitial: username.charAt(0).toUpperCase(),
+    authorName: username,
     createdAt: comment.dateCreation,
     text: comment.contenu,
   };

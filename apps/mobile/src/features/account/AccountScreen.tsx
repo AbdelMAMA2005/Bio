@@ -33,7 +33,9 @@ export function AccountScreen() {
   const { user, changePassword, logout, deleteAccount, uploadAvatar, isBusy } = useAuth();
   const { preference, setPreference } = useAppTheme();
   const stats = useAccountStats();
-  const { notifications, setNotifications, geoPrivacy, setGeoPrivacy } = usePreferences();
+  const { notifications, setNotifications, geoPrivacy, setGeoPrivacy, publicStories, setPublicStories } = usePreferences();
+  const [emailDraft, setEmailDraft] = useState(user?.email ?? '');
+  const [emailMessage, setEmailMessage] = useState<string | null>(null);
 
   const [passwordFormOpen, setPasswordFormOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -46,6 +48,26 @@ export function AccountScreen() {
   const [followingCount, setFollowingCount] = useState(0);
   const userId = user?.id;
 
+  const requestEmailChange = async () => {
+    if (!user) return;
+    if (!emailDraft.trim() || emailDraft.trim() === user.email) return;
+    try {
+      await apiClient.patch('/users/me', { email: emailDraft.trim() });
+      setEmailMessage(t('account.emailConfirmationSent'));
+    } catch {
+      setEmailMessage(t('account.emailChangeError'));
+    }
+  };
+
+  const updatePublicStories = async (next: boolean) => {
+    setPublicStories(next);
+    try {
+      await apiClient.patch('/users/me', { publicStories: next });
+    } catch {
+      setPublicStories(!next);
+    }
+  };
+
   const chooseAvatar = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
@@ -55,8 +77,8 @@ export function AccountScreen() {
 
   useEffect(() => {
     if (!userId) return;
-    apiClient.get<{ count: number }>(`/followers/${userId}/followers`).then(({ data }) => setFollowersCount(data.count)).catch(() => {});
-    apiClient.get<{ count: number }>(`/followers/${userId}/following`).then(({ data }) => setFollowingCount(data.count)).catch(() => {});
+    apiClient.get<{ count: number }>(`/connections/${userId}/connections`).then(({ data }) => setFollowersCount(data.count)).catch(() => {});
+    apiClient.get<{ count: number }>(`/connections/${userId}/connected`).then(({ data }) => setFollowingCount(data.count)).catch(() => {});
   }, [userId]);
 
   if (!user) return null;
@@ -113,12 +135,13 @@ export function AccountScreen() {
             <Text style={[styles.pseudo, { color: colors.text }]}>{user.fullName || user.pseudo}</Text>
             <Text style={[styles.username, { color: colors.muted }]}>{user.pseudo}</Text>
             <Text style={[styles.email, { color: colors.muted }]}>{user.email}</Text>
+            {user.pendingEmail ? <Text style={[styles.email, { color: colors.active }]}>{t('account.pendingEmail', { email: user.pendingEmail })}</Text> : null}
             <View style={styles.socialStats}>
-              <Pressable onPress={() => router.push({ pathname: '/followers', params: { userId: user.id, tab: 'following' } })}>
-                <Text style={[styles.socialStat, { color: colors.text }]}><Text style={styles.socialStatValue}>{followingCount}</Text> {t('account.followingLabel')}</Text>
+              <Pressable onPress={() => router.push({ pathname: '/connections', params: { userId: user.id, tab: 'connected' } })}>
+                <Text style={[styles.socialStat, { color: colors.text }]}><Text style={styles.socialStatValue}>{followingCount}</Text> {t('account.connectedLabel')}</Text>
               </Pressable>
-              <Pressable onPress={() => router.push({ pathname: '/followers', params: { userId: user.id, tab: 'followers' } })}>
-                <Text style={[styles.socialStat, { color: colors.text }]}><Text style={styles.socialStatValue}>{followersCount}</Text> {t('account.followersLabel')}</Text>
+              <Pressable onPress={() => router.push({ pathname: '/connections', params: { userId: user.id, tab: 'connections' } })}>
+                <Text style={[styles.socialStat, { color: colors.text }]}><Text style={styles.socialStatValue}>{followersCount}</Text> {t('account.connectionsLabel')}</Text>
               </Pressable>
             </View>
           </View>
@@ -186,10 +209,21 @@ export function AccountScreen() {
               hint={t('account.geoPrivacyHint')}
               trailing={<ToggleSwitch value={geoPrivacy} onValueChange={setGeoPrivacy} />}
             />
+            <SettingRow
+              icon="public"
+              label={t('account.publicStories')}
+              hint={t('account.publicStoriesHint')}
+              trailing={<ToggleSwitch value={publicStories} onValueChange={updatePublicStories} />}
+            />
           </SectionCard>
 
           {/* Compte */}
           <SectionCard title={t('account.accountSectionTitle')}>
+            <View style={[styles.passwordForm, { borderBottomColor: colors.hairline }]}>
+              <TextField icon="mail" placeholder={t('account.emailPlaceholder')} keyboardType="email-address" value={emailDraft} onChangeText={setEmailDraft} />
+              {emailMessage ? <Text style={[styles.passwordMessage, { color: colors.active }]}>{emailMessage}</Text> : null}
+              <GradientButton label={t('account.requestEmailChange')} onPress={requestEmailChange} disabled={!emailDraft.trim() || emailDraft.trim() === user.email} />
+            </View>
             <SettingRow
               icon="workspace_premium"
               label={t('account.myBadges')}

@@ -3,17 +3,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dimensions, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 import { Icon } from '@/components/Icon';
-import { useRecordStoryView } from '@/api/hooks/useFeed';
+import { useAddStoryComment, useRecordStoryView, useStoryComments, useToggleStoryLike } from '@/api/hooks/useFeed';
 import { StoryViewersSheet } from '@/features/feed/StoryViewersSheet';
 import type { SupportedLanguage } from '@/i18n';
-import { formatRelativeDate } from '@/utils/format';
+import { formatRelativeDate, formatUsername } from '@/utils/format';
 import { Palette, AccentGradient, AccentOnColor } from '@/theme/colors';
 import { HitTarget, Radius, Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
@@ -44,19 +45,38 @@ function firstUnseenIndex(group: StoryGroup): number {
  */
 export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
   const { t, i18n } = useTranslation();
+  const router = useRouter();
   const language = (i18n.language as SupportedLanguage) ?? 'fr';
   const recordView = useRecordStoryView();
+  const toggleLike = useToggleStoryLike();
+  const addComment = useAddStoryComment();
+  const [comment, setComment] = useState('');
   const [position, setPosition] = useState(() => ({
     groupIndex: initialGroupIndex,
     mediaIndex: firstUnseenIndex(groups[initialGroupIndex]),
   }));
   const [paused, setPaused] = useState(false);
   const [viewersMediaId, setViewersMediaId] = useState<string | null>(null);
+  const [likeOverrides, setLikeOverrides] = useState<Record<string, boolean>>({});
   const screenWidth = useMemo(() => Dimensions.get('window').width, []);
 
   const group = groups[position.groupIndex];
   const media = group.medias[position.mediaIndex];
+  const storyComments = useStoryComments(media.id);
+  const liked = likeOverrides[media.id] ?? media.estLikedParUtilisateur;
+  const likesCount = media.likesCount + (likeOverrides[media.id] === undefined ? 0 : liked === media.estLikedParUtilisateur ? 0 : liked ? 1 : -1);
   const resetKey = `${position.groupIndex}-${position.mediaIndex}`;
+
+  const handleLike = () => {
+    if (group.estMoi) return;
+    const previous = liked;
+    const optimistic = !previous;
+    setLikeOverrides((current) => ({ ...current, [media.id]: optimistic }));
+    toggleLike.mutate(media.id, {
+      onSuccess: ({ liked: serverLiked }) => setLikeOverrides((current) => ({ ...current, [media.id]: serverLiked })),
+      onError: () => setLikeOverrides((current) => ({ ...current, [media.id]: previous })),
+    });
+  };
 
   const recordedRef = useRef(new Set<string>());
   useEffect(() => {
@@ -105,6 +125,13 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
 
   const progress = useStoryProgress(IMAGE_DURATION_MS, handleAdvance, paused || viewersMediaId !== null, resetKey);
 
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .maxDelay(280)
+    .onEnd((_e, success) => {
+      if (success && !group.estMoi) scheduleOnRN(handleLike);
+    });
+
   const tapGesture = Gesture.Tap().onEnd((e) => {
     const goLeft = e.x < screenWidth * 0.35;
     scheduleOnRN(goLeft ? goPrevious : handleAdvance);
@@ -121,7 +148,10 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
     }
   });
 
-  const composedGesture = Gesture.Race(panGesture, Gesture.Exclusive(longPressGesture, tapGesture));
+  const composedGesture = Gesture.Race(
+    panGesture,
+    Gesture.Exclusive(longPressGesture, doubleTapGesture, tapGesture),
+  );
 
   return (
     <Modal visible transparent={false} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
@@ -159,12 +189,17 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
             </View>
 
             <View style={styles.header} pointerEvents="box-none">
-              <LinearGradient colors={AccentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-                <Text style={styles.avatarInitial}>{group.username.charAt(0).toUpperCase()}</Text>
-              </LinearGradient>
+              <Pressable
+                disabled={group.estMoi}
+                onPress={() => router.push({ pathname: '/profil/[id]', params: { id: group.idUtilisateur } })}
+              >
+                <LinearGradient colors={AccentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
+                  <Text style={styles.avatarInitial}>{group.username.charAt(0).toUpperCase()}</Text>
+                </LinearGradient>
+              </Pressable>
               <View style={styles.headerText}>
                 <Text style={styles.headerName} numberOfLines={1}>
-                  {group.estMoi ? t('community.yourStory') : group.username}
+                  {group.estMoi ? t('community.yourStory') : formatUsername(group.username)}
                 </Text>
                 <Text style={styles.headerDate}>{formatRelativeDate(media.dateCreation, language)}</Text>
               </View>
@@ -181,6 +216,38 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
                 <Icon name="visibility" size={16} color={chrome.text} />
                 <Text style={styles.viewersLabel}>{t('community.viewedByCount', { count: media.vuesCount })}</Text>
               </Pressable>
+            ) : null}
+            {!group.estMoi ? (
+              <View style={styles.interactions}>
+                <Pressable onPress={handleLike} style={styles.likeButton} hitSlop={8}>
+                  <Icon name={liked ? 'favorite' : 'favorite_border'} size={24} color={liked ? '#ff6b81' : chrome.text} />
+                  <Text style={styles.interactionText}>{likesCount}</Text>
+                </Pressable>
+                <View style={styles.commentsPanel}>
+                  {storyComments.isPending ? <ActivityIndicator color={chrome.text} size="small" /> : storyComments.data?.length ? (
+                    <FlatList
+                      data={storyComments.data}
+                      keyExtractor={(item) => item.id}
+                      showsVerticalScrollIndicator={false}
+                      renderItem={({ item }) => (
+                        <Pressable onPress={() => router.push({ pathname: '/profil/[id]', params: { id: item.userId } })} style={styles.commentRow}>
+                          <Text style={styles.commentAuthor}>{`@${item.username.replace(/^@/, '')}`}</Text>
+                          <Text style={styles.commentBody} numberOfLines={2}>{item.content}</Text>
+                        </Pressable>
+                      )}
+                    />
+                  ) : <Text style={styles.noComments}>{t('community.noComments')}</Text>}
+                </View>
+                <TextInput
+                  value={comment}
+                  onChangeText={setComment}
+                  placeholder={t('community.storyCommentPlaceholder')}
+                  placeholderTextColor="rgba(255,255,255,0.7)"
+                  onSubmitEditing={() => { if (comment.trim()) { addComment.mutate({ mediaId: media.id, content: comment.trim() }); setComment(''); } }}
+                  style={styles.commentInput}
+                  returnKeyType="send"
+                />
+              </View>
             ) : null}
           </SafeAreaView>
         </View>
@@ -323,5 +390,71 @@ const styles = StyleSheet.create({
     color: chrome.text,
     fontFamily: FontFamily.semiBold,
     fontSize: 12.5,
+  },
+  interactions: {
+    position: 'absolute',
+    bottom: Spacing.lg,
+    left: Spacing.md,
+    right: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  commentsPanel: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 54,
+    maxHeight: 180,
+    padding: Spacing.sm,
+    borderRadius: Radius.lg,
+    backgroundColor: 'rgba(0,0,0,0.48)',
+  },
+  commentRow: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    paddingVertical: 4,
+  },
+  commentAuthor: {
+    color: chrome.text,
+    fontFamily: FontFamily.bold,
+    fontSize: 12,
+  },
+  commentBody: {
+    flex: 1,
+    color: chrome.text,
+    fontFamily: FontFamily.regular,
+    fontSize: 12,
+  },
+  noComments: {
+    color: chrome.muted,
+    fontFamily: FontFamily.regular,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  likeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    padding: Spacing.sm,
+    borderRadius: Radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  interactionText: {
+    color: chrome.text,
+    fontFamily: FontFamily.semiBold,
+    fontSize: 12,
+  },
+  commentInput: {
+    flex: 1,
+    minHeight: 40,
+    color: chrome.text,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.md,
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    backgroundColor: 'rgba(0,0,0,0.2)',
   },
 });

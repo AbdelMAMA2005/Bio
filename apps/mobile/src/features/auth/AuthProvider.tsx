@@ -143,18 +143,19 @@ export function AuthProvider({
       updateProfile: async (patch) => {
         // PATCH /users/me existe désormais côté back (API_CONTRACT.md §2), repli mock
         // activable via EXPO_PUBLIC_USE_MOCK_API.
+        let updated: User;
         if (USE_MOCK_API) {
           await mockUpdateProfile(patch);
+          updated = { ...user!, ...patch };
         } else {
-          await apiUpdateProfile(patch);
+          updated = await apiUpdateProfile(patch);
         }
         setUser((prev) => {
           if (!prev) return prev;
-          const next = { ...prev, ...patch };
           readSession().then((session) => {
-            if (session) writeSession({ ...session, user: next });
+            if (session) writeSession({ ...session, user: updated });
           });
-          return next;
+          return updated;
         });
       },
       changePassword: async (current, next) => {

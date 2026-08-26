@@ -80,6 +80,7 @@ export type FeedPost = {
 
 export type FeedComment = {
   id: string;
+  authorId: string;
   authorInitial: string;
   authorName: string;
   createdAt: string;

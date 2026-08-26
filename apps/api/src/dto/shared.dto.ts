@@ -341,6 +341,9 @@ export class StoryMediaDto {
   vuParMoi!: boolean;
   /** Nombre de vues distinctes (tous appelants confondus). */
   vuesCount!: number;
+  likesCount!: number;
+  commentairesCount!: number;
+  estLikedParUtilisateur!: boolean;
 }
 
 /** Une bulle de story = tous les médias actifs d'un même auteur, regroupés à la lecture. */
@@ -400,6 +403,9 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   urlAvatar?: string;
+
+  @IsOptional()
+  publicStories?: boolean;
 }
 
 export class SetUsernameDto {
@@ -430,6 +436,8 @@ export class UserProfileResponseDto {
   insignes!: string[];
   pieces!: number;
   urlAvatar!: string | null;
+  publicStories!: boolean;
+  pendingEmail!: string | null;
 }
 
 // ----- DTOs pour Collection update -----

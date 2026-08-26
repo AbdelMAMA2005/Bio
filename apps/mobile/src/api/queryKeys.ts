@@ -8,6 +8,7 @@ export const queryKeys = {
   plantDetail: (id: string) => ['plantDetail', id] as const,
   comments: (postId: string) => ['comments', postId] as const,
   storyViewers: (mediaId: string) => ['storyViewers', mediaId] as const,
+  storyComments: (mediaId: string) => ['storyComments', mediaId] as const,
   messagesUnread: ['messagesUnread'] as const,
   notificationsUnread: ['notificationsUnread'] as const,
 };

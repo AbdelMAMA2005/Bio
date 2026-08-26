@@ -17,7 +17,7 @@ export class QuestProgress {
   @Column('uuid')
   userId!: string;
 
-  @Column()
+  @Column({ type: 'varchar' })
   questId!: string;
 
   /** Date du jour concerné (YYYY-MM-DD, UTC), pas un timestamp. */

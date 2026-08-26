@@ -105,6 +105,49 @@ export function useRecordStoryView() {
   });
 }
 
+export function useToggleStoryLike() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (mediaId: string) => {
+      const { data } = await apiClient.post<{ liked: boolean }>(`/stories/${mediaId}/like`);
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.stories }),
+  });
+}
+
+export function useAddStoryComment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ mediaId, content }: { mediaId: string; content: string }) => {
+      await apiClient.post(`/stories/${mediaId}/comments`, { content });
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.stories });
+      queryClient.invalidateQueries({ queryKey: queryKeys.storyComments(variables.mediaId) });
+    },
+  });
+}
+
+export type StoryComment = {
+  id: string;
+  userId: string;
+  username: string;
+  content: string;
+  createdAt: string;
+};
+
+export function useStoryComments(mediaId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.storyComments(mediaId ?? ''),
+    queryFn: async () => {
+      const { data } = await apiClient.get<StoryComment[]>(`/stories/${mediaId}/comments`);
+      return data;
+    },
+    enabled: !!mediaId,
+  });
+}
+
 async function fetchStoryViewers(mediaId: string): Promise<StoryViewer[]> {
   const { data } = await apiClient.get<StoryViewer[]>(`/stories/${mediaId}/viewers`);
   return data;

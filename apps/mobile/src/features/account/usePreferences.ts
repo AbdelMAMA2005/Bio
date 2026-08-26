@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 
 const NOTIFICATIONS_KEY = 'planai.pref.notifications';
 const GEO_PRIVACY_KEY = 'planai.pref.geo-ask-every-time';
+const PUBLIC_STORIES_KEY = 'planai.pref.public-stories';
 
 function usePersistedBoolean(key: string, defaultValue: boolean) {
   const [value, setValue] = useState(defaultValue);
@@ -24,6 +25,7 @@ function usePersistedBoolean(key: string, defaultValue: boolean) {
 export function usePreferences() {
   const [notifications, setNotifications] = usePersistedBoolean(NOTIFICATIONS_KEY, true);
   const [geoPrivacy, setGeoPrivacy] = usePersistedBoolean(GEO_PRIVACY_KEY, true);
+  const [publicStories, setPublicStories] = usePersistedBoolean(PUBLIC_STORIES_KEY, true);
 
-  return { notifications, setNotifications, geoPrivacy, setGeoPrivacy };
+  return { notifications, setNotifications, geoPrivacy, setGeoPrivacy, publicStories, setPublicStories };
 }

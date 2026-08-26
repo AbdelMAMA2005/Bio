@@ -45,6 +45,8 @@ export class UserController {
       insignes: user.insignes || [],
       pieces: user.pieces,
       urlAvatar: user.urlAvatar || null,
+      publicStories: user.publicStories,
+      pendingEmail: user.pendingEmail || null,
     };
   }
 
@@ -54,6 +56,11 @@ export class UserController {
       throw new BadRequestException('Query parameter "q" is required');
     }
     return this.userService.checkUsernameAvailability(query);
+  }
+
+  @Get(':id')
+  async getPublicProfile(@Param('id') id: string) {
+    return this.userService.getPublicProfile(id);
   }
 
   @Get('suggestions/:fullName')
@@ -84,6 +91,13 @@ export class UserController {
     @Body() dto: UpdateUserDto,
   ): Promise<UserProfileResponseDto> {
     const user = await this.userService.updateProfile(currentUser.id, dto);
+    return this.mapToProfileDto(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/confirm-email')
+  async confirmEmail(@CurrentUser() currentUser: any, @Body('token') token: string) {
+    const user = await this.userService.confirmEmail(currentUser.id, token);
     return this.mapToProfileDto(user);
   }
 

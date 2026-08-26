@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -26,6 +27,7 @@ type Props = {
 export function CommentsSheet({ postId, onClose }: Props) {
   const { t, i18n } = useTranslation();
   const { colors } = useAppTheme();
+  const router = useRouter();
   const language = (i18n.language as SupportedLanguage) ?? 'fr';
   const comments = useComments(postId ?? undefined);
   const addComment = useAddComment();
@@ -69,7 +71,9 @@ export function CommentsSheet({ postId, onClose }: Props) {
                     </LinearGradient>
                     <View style={styles.commentBody}>
                       <View style={styles.commentHeaderRow}>
-                        <Text style={[styles.authorName, { color: colors.text }]}>{item.authorName}</Text>
+                        <Pressable onPress={() => router.push({ pathname: '/profil/[id]', params: { id: item.authorId } })}>
+                          <Text style={[styles.authorName, { color: colors.text }]}>{`@${item.authorName}`}</Text>
+                        </Pressable>
                         <Text style={[styles.commentDate, { color: colors.muted }]}>
                           {formatRelativeDate(item.createdAt, language)}
                         </Text>

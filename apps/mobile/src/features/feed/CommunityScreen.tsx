@@ -20,6 +20,7 @@ import { PostEditModal } from '@/features/feed/PostEditModal';
 import { sharePost } from '@/features/feed/sharePost';
 import { StoryActionSheet } from '@/features/feed/StoryActionSheet';
 import { StoryBubble } from '@/features/feed/StoryBubble';
+import { formatUsername } from '@/utils/format';
 import { StoryViewer } from '@/features/feed/StoryViewer';
 import { ScanToast } from '@/features/scan/ScanToast';
 import { useAppTheme } from '@/theme';
@@ -225,8 +226,8 @@ export function CommunityScreen() {
                   renderItem={({ item, index }) => (
                     <StoryBubble
                       variant="story"
-                      name={item.username}
-                      initial={item.username.charAt(0).toUpperCase()}
+                        name={formatUsername(item.username)}
+                        initial={item.username.replace(/^@+/, '').charAt(0).toUpperCase()}
                       thumbnailUri={item.medias[item.medias.length - 1]?.urlMedia}
                       seen={item.entierementVue}
                       onPress={() => setViewer({ groups: otherStories, groupIndex: index })}

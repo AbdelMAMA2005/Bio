@@ -9,7 +9,7 @@ export async function mockChangePassword(_current: string, next: string) {
   return wait({ success: true }, 700);
 }
 
-export async function mockUpdateProfile(patch: Partial<Pick<User, 'pseudo'>>) {
+export async function mockUpdateProfile(patch: Partial<Pick<User, 'pseudo' | 'fullName' | 'email'>>) {
   return wait(patch, 500);
 }
 

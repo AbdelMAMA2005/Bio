@@ -8,6 +8,7 @@ import {
   Unique,
 } from 'typeorm';
 import { User } from './user.entity';
+import { ConnectionCircle } from './enums/connection-circle.enum';
 
 @Entity('followers')
 @Unique(['followerId', 'followingId'])
@@ -34,4 +35,7 @@ export class Follower {
 
   @Column({ default: false })
   isApproved!: boolean; // Pour les profils privés
+
+  @Column({ type: 'enum', enum: ConnectionCircle, default: ConnectionCircle.PUBLIC })
+  circle!: ConnectionCircle;
 }

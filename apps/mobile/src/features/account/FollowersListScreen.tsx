@@ -6,28 +6,34 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CircleIconButton } from '@/components/CircleIconButton';
 import { SegmentedControl } from '@/components/SegmentedControl';
+import { useAuth } from '@/features/auth/AuthProvider';
 import { useAppTheme } from '@/theme';
 import { Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
 import { apiClient } from '@/api/client';
 import { USE_MOCK_API } from '@/api/config';
+import { formatUsername } from '@/utils/format';
 
-type Tab = 'followers' | 'following';
+type Tab = 'connections' | 'connected';
 
 type SimpleUser = {
   id: string;
   pseudo?: string;
   fullName?: string;
   email?: string;
+  circle?: 1 | 2 | 3;
 };
+
+const circleOptions: Array<1 | 2 | 3> = [1, 2, 3];
 
 export function FollowersListScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
   const router = useRouter();
+  const { user } = useAuth();
   const params = useLocalSearchParams<{ userId: string; tab?: string }>();
   const userId = params.userId ?? '';
-  const initialTab: Tab = params.tab === 'following' ? 'following' : 'followers';
+  const initialTab: Tab = params.tab === 'connected' ? 'connected' : 'connections';
 
   const [tab, setTab] = useState<Tab>(initialTab);
   const [followers, setFollowers] = useState<SimpleUser[]>([]);
@@ -38,16 +44,16 @@ export function FollowersListScreen() {
     if (USE_MOCK_API || !userId) return;
     setLoading(true);
     try {
-      if (which === 'followers') {
-        const { data } = await apiClient.get<{ count: number; followers: SimpleUser[] }>(
-          `/followers/${userId}/followers`,
+      if (which === 'connections') {
+        const { data } = await apiClient.get<{ count: number; connections: SimpleUser[] }>(
+          `/connections/${userId}/connections`,
         );
-        setFollowers(data.followers);
+        setFollowers(data.connections);
       } else {
-        const { data } = await apiClient.get<{ count: number; following: SimpleUser[] }>(
-          `/followers/${userId}/following`,
+        const { data } = await apiClient.get<{ count: number; connections: SimpleUser[] }>(
+          `/connections/${userId}/connected`,
         );
-        setFollowing(data.following);
+        setFollowing(data.connections);
       }
     } catch {
       // Silently fail — list stays empty
@@ -60,23 +66,48 @@ export function FollowersListScreen() {
     fetchList(tab);
   }, [tab, fetchList]);
 
-  const data = tab === 'followers' ? followers : following;
+  const handleCircleChange = async (targetId: string, currentCircle?: 1 | 2 | 3) => {
+    if (!targetId || !user || user.id !== userId) return;
+    const currentIndex = currentCircle ? circleOptions.indexOf(currentCircle) : 0;
+    const nextCircle = circleOptions[(currentIndex + 1) % circleOptions.length];
 
-  const renderItem = ({ item }: { item: SimpleUser }) => (
-    <View style={[styles.row, { borderBottomColor: colors.hairline }]}>
-      <View style={[styles.avatarCircle, { backgroundColor: colors.chip }]}>
-        <Text style={[styles.avatarInitial, { color: colors.text }]}>
-          {(item.fullName ?? item.pseudo ?? '?').charAt(0).toUpperCase()}
-        </Text>
+    try {
+      const { data } = await apiClient.patch<{ circle: number }>(`/connections/${targetId}/circle`, {
+        circle: nextCircle,
+      });
+      setFollowing((items) => items.map((item) => (item.id === targetId ? { ...item, circle: data.circle as 1 | 2 | 3 } : item)));
+    } catch {
+      // Fail silently; circle is not critical to the list layout.
+    }
+  };
+
+  const data = tab === 'connections' ? followers : following;
+
+  const renderItem = ({ item }: { item: SimpleUser }) => {
+    const isOwnList = !!user && user.id === userId && tab === 'connected';
+    const circleText = item.circle ? t('account.circleLabel', { circle: item.circle }) : null;
+
+    return (
+      <View style={[styles.row, { borderBottomColor: colors.hairline }]}>
+        <View style={[styles.avatarCircle, { backgroundColor: colors.chip }]}>
+          <Text style={[styles.avatarInitial, { color: colors.text }]}>
+            {(item.fullName ?? item.pseudo ?? '?').charAt(0).toUpperCase()}
+          </Text>
+        </View>
+        <View style={styles.rowInfo}>
+          <Text style={[styles.name, { color: colors.text }]}>{item.fullName ?? item.pseudo ?? t('account.unknownUser')}</Text>
+          {item.pseudo ? (
+            <Text style={[styles.username, { color: colors.muted }]}>{formatUsername(item.pseudo)}</Text>
+          ) : null}
+          {circleText ? (
+            <Pressable onPress={isOwnList ? () => handleCircleChange(item.id, item.circle) : undefined}>
+              <Text style={[styles.username, { color: colors.active }]}>{circleText}</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
-      <View style={styles.rowInfo}>
-        <Text style={[styles.name, { color: colors.text }]}>{item.fullName ?? item.pseudo ?? t('account.unknownUser')}</Text>
-        {item.pseudo ? (
-          <Text style={[styles.username, { color: colors.muted }]}>@{item.pseudo}</Text>
-        ) : null}
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.screen }]}>
@@ -84,7 +115,7 @@ export function FollowersListScreen() {
         <View style={styles.header}>
           <CircleIconButton icon="arrow_back" onPress={() => router.back()} />
           <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {tab === 'followers' ? t('account.followersTitle') : t('account.followingTitle')}
+            {tab === 'connections' ? t('account.connectionsTitle') : t('account.connectedTitle')}
           </Text>
           <View style={{ width: 44 }} />
         </View>
@@ -95,8 +126,8 @@ export function FollowersListScreen() {
             value={tab}
             onChange={(v) => setTab(v as Tab)}
             options={[
-              { value: 'followers', label: t('account.followersTab') },
-              { value: 'following', label: t('account.followingTab') },
+              { value: 'connections', label: t('account.connectionsTab') },
+              { value: 'connected', label: t('account.connectedTab') },
             ]}
           />
         </View>
@@ -111,7 +142,7 @@ export function FollowersListScreen() {
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <Text style={[styles.empty, { color: colors.muted }]}>
-                {tab === 'followers' ? t('account.noFollowers') : t('account.noFollowing')}
+                {tab === 'connections' ? t('account.noConnections') : t('account.noConnected')}
               </Text>
             }
           />

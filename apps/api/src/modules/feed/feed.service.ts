@@ -14,6 +14,8 @@ import { Like as LikeEntity } from '../../entities/like.entity';
 import { Comment as CommentEntity } from '../../entities/comment.entity';
 import { User } from '../../entities/user.entity';
 import { Collection } from '../../entities/collection.entity';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../../entities/notification.entity';
 import {
   CreatePostRequestDto,
   CreatePostResponseDto,
@@ -36,6 +38,7 @@ export class FeedService {
     private userRepo: Repository<User>,
     @InjectRepository(Collection)
     private collectionRepo: Repository<Collection>,
+    private notificationsService: NotificationsService,
   ) {}
 
   // ----- Créer une publication -----
@@ -266,6 +269,18 @@ export class FeedService {
       const likesCount = await this.likeRepo.count({
         where: { postId: postId },
       });
+      
+      // Créer une notification si ce n'est pas l'auteur du post
+      if (post.userId !== userId) {
+        const user = await this.userRepo.findOne({ where: { id: userId } });
+        await this.notificationsService.createNotification(
+          post.userId,
+          NotificationType.LIKE,
+          `${user?.username || user?.fullName || 'Quelqu\'un'} a aimé votre publication`,
+          userId,
+        );
+      }
+      
       return { liked: true, likesCount };
     }
   }
@@ -316,6 +331,16 @@ export class FeedService {
     });
 
     const saved = await this.commentRepo.save(comment);
+    
+    // Créer une notification si ce n'est pas l'auteur du post
+    if (post.userId !== userId) {
+      await this.notificationsService.createNotification(
+        post.userId,
+        NotificationType.COMMENT,
+        `${user.username || user.fullName} a commenté votre publication`,
+        userId,
+      );
+    }
 
     return {
       id: saved.id,

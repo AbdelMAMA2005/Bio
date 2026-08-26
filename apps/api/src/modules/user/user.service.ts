@@ -6,14 +6,19 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { User } from '../../entities/user.entity';
+import { Collection } from '../../entities/collection.entity';
+import { Post } from '../../entities/posts.entity';
 import { UpdateUserDto } from '../../dto';
 import * as argon2 from 'argon2';
+import { randomBytes } from 'crypto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private configService: ConfigService,
   ) {}
 
   async create(
@@ -95,7 +100,12 @@ export class UserService {
       if (existing) {
         throw new ConflictException('Email déjà utilisé');
       }
-      user.email = dto.email;
+      const token = randomBytes(32).toString('hex');
+      user.pendingEmail = dto.email;
+      user.pendingEmailToken = await argon2.hash(token);
+      user.pendingEmailExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await this.userRepository.save(user);
+      await this.sendEmailConfirmation(dto.email, token);
     }
 
     if (dto.fullName && dto.fullName !== user.fullName) {
@@ -106,7 +116,40 @@ export class UserService {
       user.urlAvatar = dto.urlAvatar;
     }
 
+    if (dto.publicStories !== undefined) {
+      user.publicStories = dto.publicStories;
+    }
+
     return this.userRepository.save(user);
+  }
+
+  async confirmEmail(userId: string, token: string): Promise<User> {
+    const user = await this.findById(userId);
+    if (!user || !user.pendingEmail || !user.pendingEmailToken || !user.pendingEmailExpires) {
+      throw new ConflictException('Aucune modification d email en attente');
+    }
+    if (user.pendingEmailExpires < new Date() || !(await argon2.verify(user.pendingEmailToken, token))) {
+      throw new ConflictException('Lien de confirmation invalide ou expiré');
+    }
+    user.email = user.pendingEmail;
+    user.pendingEmail = null;
+    user.pendingEmailToken = null;
+    user.pendingEmailExpires = null;
+    return this.userRepository.save(user);
+  }
+
+  private async sendEmailConfirmation(email: string, token: string): Promise<void> {
+    const link = `${this.configService.get('FRONTEND_URL')}/confirm-email?token=${encodeURIComponent(token)}`;
+    const apiKey = this.configService.get('RESEND_API_KEY');
+    if (!apiKey) { console.log(`[DEV] Email confirmation link for ${email}: ${link}`); return; }
+    const { Resend } = await import('resend');
+    const resend = new Resend(apiKey);
+    await resend.emails.send({
+      from: this.configService.get('RESEND_FROM_EMAIL') || 'noreply@bioapp.com',
+      to: email,
+      subject: 'Confirmez votre nouvelle adresse email',
+      html: `<p>Confirmez votre nouvelle adresse email en cliquant ici :</p><a href="${link}">Confirmer mon email</a><p>Ce lien expire dans 24 heures.</p>`,
+    });
   }
 
   async setUsername(id: string, rawUsername: string): Promise<User> {
@@ -171,5 +214,38 @@ export class UserService {
       where: { id },
       withDeleted: true,
     });
+  }
+
+  async getPublicProfile(id: string) {
+    const user = await this.userRepository.findOne({
+      where: { id, dateSuppression: IsNull() },
+      relations: {
+        collectionsUtilisateur: { plante: true },
+        publicationsUtilisateur: true,
+      },
+    });
+
+    if (!user) throw new NotFoundException('Utilisateur non trouvé');
+
+    return {
+      id: user.id,
+      fullName: user.fullName || '',
+      username: user.username || '',
+      urlAvatar: user.urlAvatar || null,
+      garden: user.collectionsUtilisateur.map((collection: Collection) => ({
+        id: collection.id,
+        nomCommun: collection.plante.nomCommun,
+        nomScientifique: collection.plante.nomScientifique,
+        urlImage: collection.plante.urlImage,
+        badgeRarete: collection.plante.badgeRarete,
+        type: collection.typeCollection,
+      })),
+      posts: user.publicationsUtilisateur.map((post: Post) => ({
+        id: post.id,
+        contenuTexte: post.contenuTexte,
+        imageUrl: post.urlImage,
+        dateCreation: post.dateCreation,
+      })),
+    };
   }
 }

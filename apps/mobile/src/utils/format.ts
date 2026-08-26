@@ -25,3 +25,8 @@ export function formatDistance(meters: number, language: SupportedLanguage, t: T
   const km = Math.round((meters / 1000) * 10) / 10;
   return t('distance.kilometers', { value: numberFormat.format(km) });
 }
+
+export function formatUsername(username: string | null | undefined): string {
+  const clean = (username ?? '').replace(/^@+/, '');
+  return clean ? `@${clean}` : '@';
+}

@@ -29,7 +29,7 @@ export class Reminder {
   @JoinColumn({ name: 'collectionId' })
   collection!: Collection;
 
-  @Column()
+  @Column({ type: 'varchar' })
   typeRappel!: string;
 
   @Column({ type: 'timestamp' })
