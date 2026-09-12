@@ -7,7 +7,13 @@ import { Collection } from '../../entities/collection.entity';
 
 describe('RemindersService', () => {
   let service: RemindersService;
-  let reminderRepo: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock; remove: jest.Mock; createQueryBuilder: jest.Mock };
+  let reminderRepo: {
+    create: jest.Mock;
+    save: jest.Mock;
+    findOne: jest.Mock;
+    remove: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
   let collectionRepo: { findOne: jest.Mock };
 
   beforeEach(async () => {
@@ -36,12 +42,19 @@ describe('RemindersService', () => {
       collectionRepo.findOne.mockResolvedValue(null);
 
       await expect(
-        service.create('user-1', { collectionId: 'collection-1', typeRappel: 'arrosage', datePlanification: new Date() }),
+        service.create('user-1', {
+          collectionId: 'collection-1',
+          typeRappel: 'arrosage',
+          datePlanification: new Date(),
+        }),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('crée le rappel avec estNotifie=false par défaut (J+5 par exemple)', async () => {
-      collectionRepo.findOne.mockResolvedValue({ id: 'collection-1', userId: 'user-1' });
+      collectionRepo.findOne.mockResolvedValue({
+        id: 'collection-1',
+        userId: 'user-1',
+      });
       const inCincDays = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
 
       const result = await service.create('user-1', {
@@ -58,11 +71,17 @@ describe('RemindersService', () => {
   describe('notify', () => {
     it("lève NotFoundException si le rappel n'appartient pas à l'utilisateur", async () => {
       reminderRepo.findOne.mockResolvedValue(null);
-      await expect(service.notify('user-1', 'reminder-inconnu')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.notify('user-1', 'reminder-inconnu'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('marque estNotifie=true', async () => {
-      const reminder = { id: 'reminder-1', userId: 'user-1', estNotifie: false };
+      const reminder = {
+        id: 'reminder-1',
+        userId: 'user-1',
+        estNotifie: false,
+      };
       reminderRepo.findOne.mockResolvedValue(reminder);
       reminderRepo.save.mockResolvedValue({ ...reminder, estNotifie: true });
 
@@ -83,9 +102,15 @@ describe('RemindersService', () => {
       };
       reminderRepo.createQueryBuilder.mockReturnValue(qb);
 
-      await service.findAll('user-1', { estNotifie: 'false', page: 1, limit: 20 } as any);
+      await service.findAll('user-1', {
+        estNotifie: 'false',
+        page: 1,
+        limit: 20,
+      });
 
-      expect(qb.andWhere).toHaveBeenCalledWith('r.estNotifie = :estNotifie', { estNotifie: false });
+      expect(qb.andWhere).toHaveBeenCalledWith('r.estNotifie = :estNotifie', {
+        estNotifie: false,
+      });
     });
   });
 });

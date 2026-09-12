@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AvatarBadge } from '@/components/AvatarBadge';
+import { Avatar } from '@/components/Avatar';
 import { CircleIconButton } from '@/components/CircleIconButton';
 import { GradientButton } from '@/components/GradientButton';
 import { Icon } from '@/components/Icon';
@@ -167,7 +167,7 @@ export function ScanScreen() {
       <SafeAreaView style={StyleSheet.absoluteFill} pointerEvents="box-none">
         <View style={styles.topBar}>
           <Pressable style={styles.levelChip} onPress={() => router.push('/compte')}>
-            <AvatarBadge initial={user?.pseudo?.charAt(0) ?? '?'} size={32} />
+            <Avatar uri={user?.urlAvatar} name={user?.pseudo ?? '?'} size={32} />
             <View style={styles.levelTextWrap}>
               <Text style={styles.levelLabel}>{t('common.level', { level: user?.niveau ?? 1 })}</Text>
               <Text style={styles.xpLabel}>{t('common.xp', { count: user?.xp ?? 0 })}</Text>
@@ -227,7 +227,7 @@ export function ScanScreen() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   dimOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(6,12,9,0.45)',
   },
   topBar: {

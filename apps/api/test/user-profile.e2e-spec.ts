@@ -12,7 +12,11 @@ describe('Profil utilisateur (e2e)', () => {
     const email = uniqueEmail('profile');
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `profile${Date.now()}`, motDePasse: 'motdepasse' })
+      .send({
+        email,
+        nomUtilisateur: `profile${Date.now()}`,
+        motDePasse: 'motdepasse',
+      })
       .expect(201);
     const login = await request(app.getHttpServer())
       .post('/auth/login')
@@ -68,11 +72,15 @@ describe('Profil utilisateur (e2e)', () => {
       .expect(401);
   });
 
-  it("DELETE /users/me supprime le compte avec le bon mot de passe, puis le login échoue ensuite", async () => {
+  it('DELETE /users/me supprime le compte avec le bon mot de passe, puis le login échoue ensuite', async () => {
     const email = uniqueEmail('to-delete');
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `todelete${Date.now()}`, motDePasse: 'motdepasse' })
+      .send({
+        email,
+        nomUtilisateur: `todelete${Date.now()}`,
+        motDePasse: 'motdepasse',
+      })
       .expect(201);
     const login = await request(app.getHttpServer())
       .post('/auth/login')

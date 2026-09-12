@@ -24,7 +24,15 @@ WORKDIR /app
 # workspaces, contrairement à pnpm --filter). L'image est donc plus lourde
 # que le strict nécessaire pour l'API seule — acceptable en dev, pas
 # bloquant en prod.
-COPY package.json package-lock.json ./
+#
+# package.json et package-lock.json en 2 COPY séparées (pas `COPY a b ./`) :
+# un COPY combinant les deux dans un seul layer corrompait systématiquement
+# package.json en octets nuls sur le builder distant Railway (constaté en
+# déploiement réel, 10/09/2026 — voir rapport.md §10). Docker Compose en
+# local n'était pas affecté, mais cette forme reste équivalente et plus sûre
+# partout.
+COPY package.json ./
+COPY package-lock.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages/shared/package.json packages/shared/package.json
 RUN npm ci --workspace=api --include-workspace-root
@@ -54,7 +62,8 @@ FROM node:${NODE_VERSION} AS prod
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY package.json package-lock.json ./
+COPY package.json ./
+COPY package-lock.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages/shared/package.json packages/shared/package.json
 RUN npm ci --workspace=api --include-workspace-root --omit=dev \

@@ -36,8 +36,13 @@
 **Base URL** : `http://localhost:3000` (dev). Pas de préfixe `/v1` pour l'instant — à ajouter
 plus tard via `app.setGlobalPrefix('v1')` dans `main.ts` si on veut vraiment le respecter (URL
 de prod `https://api.planai.app` pas encore définie/déployée).
-**Auth** : JWT Bearer dans le header `Authorization: Bearer <token>` (sauf `POST /auth/register`
-et `POST /auth/login`, publics). Un seul token, longue durée — pas de refresh token (🚧 Backlog).
+**Auth** : JWT Bearer dans le header `Authorization: Bearer <token>` (sauf `POST /auth/register`,
+`POST /auth/login`, `POST /auth/refresh`, publics). ⚠️ **Mise à jour du 10/09/2026** :
+`accessToken` (JWT) expire désormais en **30 minutes** (avant : 7 jours) — la sécurité vient du
+`refreshToken` (opaque, 30 jours, rotation à chaque usage, voir §1 `POST /auth/refresh`), pas
+d'un access token longue durée qui resterait valide même volé. Le front renouvelle
+silencieusement l'access token sur un 401 (`apps/mobile/src/api/client.ts`), transparent pour
+l'utilisateur tant que le refresh token reste valide.
 **Format** : JSON, `camelCase`. Dates en ISO 8601 UTC.
 **Erreurs** (toutes routes, format NestJS standard — vérifié) :
 
@@ -87,7 +92,7 @@ Si un jour le back migre vers les enums `packages/shared`, seul ce fichier chang
 | §2 Utilisateur    | `user` (`GET/PATCH/DELETE /users/me`, avatar, badges) | ✅ partiel | Abdel / Djawad                          |
 | §3 Identification | `identification` (proxy Plant.id, mode mock dispo) | ✅ partiel | Abdel / Djawad                             |
 | §4 Collection     | `collection` + `diagnosis` (`POST /collection/:id/diagnosis`) | ✅ partiel | Abdel / Djawad                 |
-| §5 Communauté     | `feed` + `stories`                                 | ✅     | Abdel / Djawad                                 |
+| §5 Communauté     | `feed` + `stories` + `messages`                    | ✅     | Abdel / Djawad                                 |
 | §6 Défis          | `quests` (4 défis quotidiens, progression réelle)  | ✅ partiel | Abdel / Djawad                             |
 | §7 Rappels        | `reminders` (CRUD réel, pas de push serveur)       | ✅ partiel | Abdel / Djawad                             |
 | §8 Plantes        | `plants` (lecture publique, écriture admin)        | ✅     | Abdel                                          |
@@ -118,10 +123,16 @@ l'utilisateur immédiatement (voir `apps/mobile/src/features/auth/authApi.ts`).
 // Body
 { "email": "djawad@planai.app", "motDePasse": "********" }
 // 200
-{ "accessToken": "jwt...", "user": { "id": "uuid", "email": "...", "nomUtilisateur": "...", "experience": 0, "niveau": 1, "insignes": [] } }
+{
+  "accessToken": "jwt...",
+  "refreshToken": "opaque-hex-64-chars...",
+  "user": { "id": "uuid", "email": "...", "nomUtilisateur": "...", "experience": 0, "niveau": 1, "insignes": [] }
+}
 ```
 
-⚠️ Champ `motDePasse`, pas `password`. Pas de `refreshToken` dans la réponse.
+⚠️ Champ `motDePasse`, pas `password`. `refreshToken` (voir §1 intro) présent depuis le
+10/09/2026 — token opaque (pas un JWT), seul son hash SHA-256 est stocké en base
+(`refresh_tokens`, jamais la valeur en clair côté serveur).
 
 ### ✅ POST /auth/google
 
@@ -129,7 +140,11 @@ l'utilisateur immédiatement (voir `apps/mobile/src/features/auth/authApi.ts`).
 // Body
 { "idToken": "google-id-token..." }
 // 200 — même forme que POST /auth/login
-{ "accessToken": "jwt...", "user": { "id": "uuid", "email": "...", "nomUtilisateur": "...", "experience": 0, "niveau": 1, "insignes": [], "pieces": 0 } }
+{
+  "accessToken": "jwt...",
+  "refreshToken": "opaque-hex-64-chars...",
+  "user": { "id": "uuid", "email": "...", "nomUtilisateur": "...", "experience": 0, "niveau": 1, "insignes": [], "pieces": 0 }
+}
 ```
 
 Vérifie le `idToken` avec `google-auth-library` (`OAuth2Client.verifyIdToken`, audience =
@@ -150,18 +165,43 @@ voir `rapport.md`). Le bouton "Continuer avec Google" se désactive proprement d
 StoreClient` et n'appelle jamais le module natif dans ce cas — un `require()` direct y ferait
 planter tout l'écran de connexion, non rattrapable par un `try/catch` classique).
 
-### 🚧 POST /auth/refresh, POST /auth/change-password, DELETE /auth/account
+### ✅ POST /auth/refresh
 
-Aucun de ces 3 endpoints n'existe. Forme prévue si/quand ils sont codés :
+**Ajouté le 10/09/2026.** Échange un refresh token valide contre un nouveau couple
+access/refresh (**rotation** : l'ancien est immédiatement révoqué, jamais réutilisable).
 
 ```json
-// POST /auth/refresh — body: { "refreshToken": "jwt..." } → { "accessToken", "refreshToken" }
+// Body
+{ "refreshToken": "opaque-hex-64-chars..." }
+// 200
+{ "accessToken": "jwt...", "refreshToken": "nouveau-opaque-hex-64-chars..." }
+```
+
+401 si le token est inconnu, expiré, ou déjà révoqué — dans ce dernier cas (rejeu d'un token
+déjà utilisé par la rotation, signe possible de vol), **toutes** les sessions actives de
+l'utilisateur sont révoquées par précaution, pas seulement cette tentative. Rate-limité comme
+les autres routes `/auth/*` (voir intro §1).
+
+### ✅ POST /auth/logout
+
+**Ajouté le 10/09/2026.** Révoque un refresh token précis (déconnexion explicite).
+
+```json
+// Body
+{ "refreshToken": "opaque-hex-64-chars..." }
+// 204
+```
+
+### 🚧 POST /auth/change-password, DELETE /auth/account
+
+```json
 // POST /auth/change-password — body: { "currentPassword", "newPassword" } → 204
 // DELETE /auth/account — body: { "password" } → 204 (soft delete, dateSuppression déjà en base)
 ```
 
 Note : la suppression de compte existe déjà, mais via `DELETE /users/me` (§2 ci-dessous), pas
-`DELETE /auth/account`.
+`DELETE /auth/account` — elle révoque aussi tous les refresh tokens actifs de l'utilisateur
+(purge RGPD, voir §2).
 
 ### Point d'attention : `UserController` (`/user/register`, `/user/email`)
 
@@ -226,6 +266,35 @@ via `GET /users/me`.
 ```
 
 Soft delete (`dateSuppression`) — vérifié : un login après suppression renvoie bien 401.
+
+### ✅ GET /users/:id/public-profile · GET /users/:id/posts
+
+**Ajoutés le 01/09/2026** (l'écran de profil public, ouvert au tap sur l'avatar d'un autre
+utilisateur depuis le feed/les commentaires/les stories, n'avait aucun endpoint dédié — il
+n'existait même pas côté front avant cette date).
+
+```json
+// GET /users/:id/public-profile → 200
+{
+  "id": "uuid", "nomUtilisateur": "Marco_Botanic", "urlAvatar": null,
+  "niveau": 8, "experience": 1920, "insignes": ["botaniste-debutant"],
+  "stats": { "captures": 12, "especes": 34, "rares": 5 }
+}
+```
+
+`stats` recalculées à la volée (jamais stockées) : `captures` = collection `type=owned`
+(Mon Jardin), `especes` = collection `type=discovered` (Herbarium), `rares` = découvertes dont
+`Plant.badgeRarete` vaut `Rare` ou `Épique` — même définition que les statistiques de son
+propre compte (`useAccountStats.ts`), généralisée ici à n'importe quel utilisateur.
+
+```json
+// GET /users/:id/posts?page=&limit= → 200 — même enveloppe/forme qu'un item de GET /feed
+{ "items": [ { "id": "uuid", "auteur": { ... }, "likesCount": 3, ... } ], "total": 12 }
+```
+
+Réutilise `FeedService#getPostsByUser` (même mapping que le fil général), filtré sur
+`p.userId = :id`, trié par date décroissante — alimente la grille façon Instagram du profil
+public.
 
 ---
 
@@ -317,37 +386,48 @@ et une toxicité fixes) :
 { "id": "uuid", "idUtilisateur": "uuid", "idPlante": "uuid", "type": "owned", "etatSante": "green", "dateAjout": "...", "latitude": null, "longitude": null }
 ```
 
-### ✅ GET /collection?type=owned|discovered
+### ✅ GET /collection?type=owned|discovered&page=&limit=
+
+⚠️ **Mise à jour du 10/09/2026** : enveloppe paginée (`{ items, total }`, même forme que
+`GET /feed`) — **avant cette date, ce endpoint renvoyait un tableau nu**. `page` (défaut `1`)
+et `limit` (défaut `20`) optionnels. Mon Jardin/Herbarium ne chargent donc plus toute la
+collection d'un coup (`useInfiniteQuery` côté front, `onEndReached` déclenche la page
+suivante). Chaque item de `items[]` garde exactement la même forme qu'avant (pas de champ
+`plante` imbriqué, infos aplaties) :
 
 ```json
-// 200 — tableau à plat, PAS de champ `plante` imbriqué (les infos plante sont aplaties)
-[
-  {
-    "id": "uuid",
-    "idPlante": "uuid",
-    "nomScientifique": "Lavandula angustifolia",
-    "nomCommun": "Lavande vraie",
-    "famille": "Lamiaceae",
-    "badgeRarete": "Commun",
-    "toxicite": "green",
-    "etatSante": "red",
-    "dateAjout": "2026-07-09T09:00:00.000Z",
-    "urlImage": "https://plant-id.../lavande.jpg",
-    "aPropos": "Description réelle de l'espèce (Plant.id), null si jamais renseignée pour cette plante.",
-    "conseilsEntretien": { "lumiere": "...", "sol": "...", "arrosage": "...", "multiplication": "..." },
-    "latitude": 45.75,
-    "longitude": 4.85,
-    "historiquePhotos": [],
-    "dernierDiagnostic": {
-      "maladieNom": "Septoriose",
-      "scoreGlobal": 91,
-      "traitement": { "biologique": "...", "chimique": "...", "prevention": "..." },
-      "description": "...",
-      "estSain": false,
-      "dateDiagnostic": "2026-07-24T10:42:17.304Z"
+// 200
+{
+  "items": [
+    {
+      "id": "uuid",
+      "idPlante": "uuid",
+      "nomScientifique": "Lavandula angustifolia",
+      "nomCommun": "Lavande vraie",
+      "famille": "Lamiaceae",
+      "badgeRarete": "Commun",
+      "toxicite": "green",
+      "etatSante": "red",
+      "dateAjout": "2026-07-09T09:00:00.000Z",
+      "urlImage": "https://plant-id.../lavande.jpg",
+      "aPropos": "Description réelle de l'espèce (Plant.id), null si jamais renseignée pour cette plante.",
+      "conseilsEntretien": { "lumiere": "...", "sol": "...", "arrosage": "...", "multiplication": "..." },
+      "latitude": 45.75,
+      "longitude": 4.85,
+      "historiquePhotos": [],
+      "dernierDiagnostic": {
+        "maladieNom": "Septoriose",
+        "scoreGlobal": 91,
+        "traitement": { "biologique": "...", "chimique": "...", "prevention": "..." },
+        "description": "...",
+        "estSain": false,
+        "dateDiagnostic": "2026-07-24T10:42:17.304Z"
+      },
+      "prochainArrosage": "2026-07-14T00:00:00.000Z"
     }
-  }
-]
+  ],
+  "total": 1
+}
 ```
 
 ⚠️ **Ajout du 24/07/2026** : `dernierDiagnostic` (`null` si la plante n'a jamais été
@@ -368,9 +448,8 @@ un nouveau champ), mais restent `null` pour toute plante capturée **avant** l'a
 fonctionnalité — voir `rapport.md` pour la limite du backfill paresseux (seulement au prochain
 scan de cette espèce, jamais rétroactif sans nouvel appel Plant.id).
 
-Pas de `lieuLabel` (reverse-geocoding), pas de `distanceMetres`, pas de `prochainArrosage` —
-le front n'a donc rien à afficher pour le lieu nommé ou le prochain arrosage. Pas de
-paramètre `sort`.
+Pas de `lieuLabel` (reverse-geocoding), pas de `distanceMetres` — le front n'a donc rien à
+afficher pour le lieu nommé. Pas de paramètre `sort`.
 
 ⚠️ **Correction du 21/07/2026** : contrairement à ce que disait cette section jusqu'ici,
 `historiquePhotos` **est bien inclus** dans cette réponse (`collection.service.ts`,
@@ -563,7 +642,9 @@ de groupe dédiée.
         "dateCreation": "2026-07-24T12:48:49.263Z",
         "dateExpiration": "2026-07-25T12:48:49.262Z",
         "vuParMoi": false,       // toujours true pour ses propres médias (estMoi)
-        "vuesCount": 0           // nombre de vues distinctes, tous appelants confondus
+        "vuesCount": 0,          // nombre de vues distinctes, tous appelants confondus
+        "likesCount": 0,         // nombre de likes distincts, tous appelants confondus
+        "aimeParMoi": false      // liké par l'appelant courant
       }
     ]
   }
@@ -602,6 +683,22 @@ statut — vérifié : 204 renvoyé, mais l'auteur n'apparaît jamais dans `GET
 Triés vue la plus récente en premier. Comportement WhatsApp : privé, jamais consultable par
 quelqu'un d'autre que l'auteur (vérifié : 403 `Forbidden` pour tout autre appelant).
 
+### ✅ POST /stories/:mediaId/like
+
+**Ajouté le 01/09/2026** (corrige le bug remonté par Djawad : liker une story depuis le
+visualiseur ne se reflétait qu'après avoir quitté et rouvert la story — voir rapport.md pour
+la cause front). Nouvelle entité `StoryLike` (`storyId` + `userId`, unique), même pattern que
+`Like` sur les publications.
+
+```json
+// 200 (toggle) — même forme que POST /feed/posts/:id/like
+{ "liked": true, "likesCount": 1 }
+```
+
+Contrairement à `POST /stories/:mediaId/view`, **l'auteur peut liker son propre média** (pas
+de garde-fou `story.userId === userId`) — comportement WhatsApp/Instagram, où rien n'empêche
+d'aimer son propre statut.
+
 Une story expirée (`dateExpiration <= maintenant`) n'est jamais renvoyée par `GET /stories`,
 même comme média isolé dans une bulle par ailleurs active (vérifié : forcer l'expiration d'un
 média en base le fait disparaître de la bulle au prochain `GET /stories`, sans affecter les
@@ -619,6 +716,61 @@ service (`StoriesService#createStoryMedia`) reste du code mort tant que le contr
 ces fichiers ; elle est conservée pour ne pas devoir retoucher le modèle de données le jour où
 la vidéo sera activée.
 
+### ✅ Messagerie privée — GET /messages/conversations · GET /messages/with/:userId · POST /messages/with/:userId
+
+**Ajoutée le 01/09/2026** (demande de Djawad : les réponses à un statut doivent arriver comme
+un vrai message privé — façon WhatsApp/Instagram — jamais comme un commentaire public visible
+de tous). Module `apps/api/src/modules/messages`, entités `Conversation` (`user1Id`/`user2Id`
+normalisés par ordre lexicographique — une seule ligne par paire d'utilisateurs quel que soit
+qui a engagé la conversation) et `Message` (`conversationId`, `senderId`, `contenu`, `storyId`
+nullable, `lu`, `dateEnvoi`).
+
+```json
+// GET /messages/conversations → 200 — triées par activité la plus récente
+[
+  {
+    "id": "uuid",
+    "autreUtilisateur": { "id": "uuid", "nomUtilisateur": "Marco_Botanic", "urlAvatar": null },
+    "dernierMessage": {
+      "contenu": "Merci pour l'astuce !",
+      "dateEnvoi": "2026-09-01T10:00:00.000Z",
+      "estDeMoi": false,
+      "storyPreview": null
+    },
+    "nonLusCount": 2
+  }
+]
+```
+
+```json
+// GET /messages/with/:userId → 200 — historique complet, du plus ancien au plus récent.
+// Marque au passage tous les messages REÇUS de :userId comme lus (pas d'endpoint séparé à
+// appeler par le front) — [] si aucune conversation n'existe encore (jamais 404).
+[
+  {
+    "id": "uuid",
+    "idConversation": "uuid",
+    "idExpediteur": "uuid",
+    "contenu": "Salut, jolie plante sur ta story !",
+    "dateEnvoi": "2026-09-01T09:58:00.000Z",
+    "lu": true,
+    "storyPreview": { "id": "uuid", "urlMedia": "/uploads/stories/....jpg", "mediaType": "image" }
+  }
+]
+```
+
+```json
+// POST /messages/with/:userId
+// Body { "contenu": "...", "storyId"?: "uuid" } → 201, même forme qu'un item de GET /messages/with/:userId
+```
+
+`storyId` (optionnel) rattache le message au média de story cité — c'est le mécanisme utilisé
+par `StoryViewer.tsx` quand on répond à un statut : le front appelle simplement
+`POST /messages/with/:authorId` avec `storyId` = l'id du média affiché, pas un endpoint
+dédié séparé. Le back vérifie que le média existe **et appartient bien à `:userId`** (400
+sinon — on ne peut pas citer le statut d'un tiers dans un message adressé à quelqu'un
+d'autre). `senderId === recipientId` → 400 (impossible de s'envoyer un message à soi-même).
+
 ---
 
 ## 6. Défis (Quests)
@@ -635,13 +787,14 @@ la vidéo sera activée.
   { "id": "scan-3", "libelle": "Scanner 3 plantes différentes", "type": "quotidien", "progression": 1, "objectif": 3, "complete": false, "recompense": { "xp": 0, "pieces": 0 } },
   { "id": "add-garden", "libelle": "Ajouter une nouvelle plante à son Jardin", "type": "quotidien", "progression": 1, "objectif": 1, "complete": true, "recompense": { "xp": 20, "pieces": 0 } },
   { "id": "publish-tip", "libelle": "Publier une photo avec un conseil d'entretien", "type": "quotidien", "progression": 0, "objectif": 1, "complete": false, "recompense": { "xp": 0, "pieces": 0 } },
-  { "id": "get-5-likes", "libelle": "Recevoir 5 likes sur une publication", "type": "quotidien", "progression": 0, "objectif": 5, "complete": false, "recompense": { "xp": 0, "pieces": 0 } }
+  { "id": "get-5-likes", "libelle": "Recevoir 5 likes sur une publication", "type": "quotidien", "progression": 0, "objectif": 5, "complete": false, "recompense": { "xp": 0, "pieces": 0 } },
+  { "id": "explore-rare", "libelle": "Découvrir une espèce Rare ou Épique à plus de 1 km de chez vous", "type": "exploration", "progression": 0, "objectif": 1, "complete": false, "recompense": { "xp": 0, "pieces": 0 } }
 ]
 ```
 
-Catalogue fixe de 4 défis quotidiens (`apps/api/src/modules/quests/quest-catalog.ts`), mais
-**progression toujours calculée en direct** depuis les vraies tables métier — jamais un
-compteur stocké qui pourrait diverger de la réalité :
+Catalogue fixe de 5 défis (`apps/api/src/modules/quests/quest-catalog.ts`, 4 quotidiens +
+1 Exploration), mais **progression toujours calculée en direct** depuis les vraies tables
+métier — jamais un compteur stocké qui pourrait diverger de la réalité :
 
 | Défi | Progression réelle (aujourd'hui, UTC) |
 | --- | --- |
@@ -649,6 +802,7 @@ compteur stocké qui pourrait diverger de la réalité :
 | `add-garden` | Ajouts au Jardin (`collection.typeCollection = 'owned'`, `dateAjout`) |
 | `publish-tip` | Publications créées (`posts.dateCreation`) |
 | `get-5-likes` | Likes reçus sur n'importe laquelle de ses publications (`likes.dateCreation`, jointure sur `posts.userId`) |
+| `explore-rare` | Captures Herbarium (`typeCollection='discovered'`) du jour dont l'espèce est `Rare`/`Épique` **et** géo-taguées à ≥ 1 km (haversine, `common/geo.ts`) de `User.latitudeReference`/`longitudeReference` |
 
 `recompense.xp`/`recompense.pieces` ne sont non-nuls que si le défi vient d'être complété (ou
 l'était déjà) **et** que la récompense a été créditée — créditée exactement une fois par
@@ -657,9 +811,14 @@ défi/jour/utilisateur (table `quest_progress`, qui ne stocke qu'un drapeau
 ne crédite jamais deux fois. `pieces` créditées sont réellement persistées sur
 `users.pieces` (voir §2) ; XP sur `users.experience` (comme pour une capture, §3/§4).
 
-🚧 Les défis "Exploration" (Geo-Tag, ex. "Trouvez une plante rare à plus de 1 km de chez
-vous") du brief initial ne sont pas implémentés : ils nécessiteraient une position de
-référence ("chez vous") qu'aucune entité ne stocke actuellement — non fait plutôt que simulé.
+⚠️ **Ajouté le 10/09/2026** : le défi "Exploration" (Geo-Tag, ex. "Trouvez une plante rare à
+plus de 1 km de chez vous") du brief initial est désormais implémenté. `User.latitudeReference`/
+`longitudeReference` (nouvelles colonnes, §2) servent de point de référence "chez vous" — figées
+sur les coordonnées de la **toute première capture géo-taguée** de l'utilisateur
+(`POST /collection`, voir `CollectionService#create`), jamais recalculées ensuite même si
+l'utilisateur déménage. Choix pragmatique en l'absence d'un écran de saisie manuelle de
+domicile dans le cahier des charges : reste `null`/`null` (défi bloqué à 0/1) tant qu'aucune
+capture géo-taguée n'a jamais été faite.
 
 ---
 
@@ -745,8 +904,8 @@ notifications. Pas de module `notifications`, aucun enregistrement de token côt
 | `updateProfile()`         | `PATCH /users/me`                              | ✅ |
 | `deleteAccount(password)` | `DELETE /users/me` (re-saisie du mot de passe) | ✅ |
 | `useIdentify()`           | `POST /identification` (confiance réelle, plus de valeur de repli) | ✅ |
-| `useMyGarden()`           | `GET /collection?type=owned`                   | ✅ |
-| `useHerbarium()`          | `GET /collection?type=discovered`              | ✅ |
+| `useMyGarden()`           | `GET /collection?type=owned` (paginé, `useInfiniteQuery`) | ✅ |
+| `useHerbarium()`          | `GET /collection?type=discovered` (paginé, `useInfiniteQuery`) | ✅ |
 | `useAddToCollection()`    | `POST /collection`                             | ✅ |
 | `useAddTrackingPhoto()`   | `POST /collection/:id/photos`                  | ✅ |
 | `useCheckHealth()`        | `POST /collection/:id/diagnosis`               | ✅ |

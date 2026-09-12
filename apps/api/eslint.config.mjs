@@ -32,4 +32,20 @@ export default tseslint.config(
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
+  {
+    // supertest (`request(app.getHttpServer())`, `.body`) n'est pas typé — chaque
+    // assertion sur une réponse HTTP déclenche `no-unsafe-*` sans rapport avec un vrai
+    // risque de sécurité/correctness ici (données de test, pas du code de prod).
+    files: ['test/**/*.ts', '**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      // Mocks Jest déclarés `async () => ...` pour matcher une signature Promise,
+      // sans avoir besoin d'un vrai `await` à l'intérieur — pattern courant, pas un bug.
+      '@typescript-eslint/require-await': 'off',
+    },
+  },
 );

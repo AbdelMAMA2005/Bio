@@ -1,5 +1,6 @@
 {
   "name": "planai",
+  "version": "1.0.0",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -15,11 +16,9 @@
     "docker:seed": "docker compose exec api npm run seed --workspace=api"
   },
   "overrides": {
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "react-test-renderer": "19.1.0"
-  },
-  "dependencies": {
-    "expo-dev-client": "~6.0.21"
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-test-renderer": "19.2.3",
+    "multer": "2.3.0"
   }
 }

@@ -44,6 +44,8 @@ function RootNavigator() {
           <Stack.Screen name="badges" options={{ presentation: 'modal' }} />
           <Stack.Screen name="plante/[id]" />
           <Stack.Screen name="conseil/[type]" />
+          <Stack.Screen name="profil/[id]" />
+          <Stack.Screen name="messages" />
         </Stack.Protected>
         <Stack.Protected guard={onboardingSeen && !isAuthenticated}>
           <Stack.Screen name="(auth)" />

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, In } from 'typeorm';
 import * as fs from 'fs';
@@ -17,6 +21,7 @@ import {
   FeedQueryDto,
   UpdatePostDto,
 } from '../../dto';
+import { haversineMeters } from '../../common/geo';
 
 @Injectable()
 export class FeedService {
@@ -53,7 +58,9 @@ export class FeedService {
         relations: { plante: true },
       });
       if (!collection) {
-        throw new NotFoundException('Collection non trouvée ou ne vous appartient pas');
+        throw new NotFoundException(
+          'Collection non trouvée ou ne vous appartient pas',
+        );
       }
     }
 
@@ -64,7 +71,14 @@ export class FeedService {
     // casser un appel JSON existant, mais un fichier fourni est toujours prioritaire.
     let urlImage: string | null = dto.imageUrl || null;
     if (file) {
-      const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'posts');
+      const uploadDir = path.join(
+        __dirname,
+        '..',
+        '..',
+        '..',
+        'uploads',
+        'posts',
+      );
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
@@ -101,7 +115,10 @@ export class FeedService {
   }
 
   // ----- Récupérer le feed (paginé) -----
-  async getFeed(userId: string, query: FeedQueryDto): Promise<{ items: CreatePostResponseDto[]; total: number }> {
+  async getFeed(
+    userId: string,
+    query: FeedQueryDto,
+  ): Promise<{ items: CreatePostResponseDto[]; total: number }> {
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
@@ -120,9 +137,15 @@ export class FeedService {
     // SQL (acos/cos/sin natifs à Postgres, pas besoin de PostGIS) ; LEAST/GREATEST bornent
     // l'argument d'acos à [-1,1] pour éviter un NaN dû aux arrondis flottants sur une
     // distance quasi nulle.
-    if (query.filter === 'near' && query.latitude !== undefined && query.longitude !== undefined) {
+    if (
+      query.filter === 'near' &&
+      query.latitude !== undefined &&
+      query.longitude !== undefined
+    ) {
       const radius = query.radiusMetres ?? 5000;
-      qb.andWhere('p.latitude IS NOT NULL AND p.longitude IS NOT NULL').andWhere(
+      qb.andWhere(
+        'p.latitude IS NOT NULL AND p.longitude IS NOT NULL',
+      ).andWhere(
         `(6371000 * acos(
             LEAST(1, GREATEST(-1,
               cos(radians(:lat)) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians(:lon))
@@ -157,7 +180,58 @@ export class FeedService {
           this.commentRepo.count({ where: { postId: post.id } }),
         ]);
 
-        const dto = this.mapToResponseDto(post, userId, query.latitude, query.longitude);
+        const dto = this.mapToResponseDto(
+          post,
+          userId,
+          query.latitude,
+          query.longitude,
+        );
+        dto.likesCount = likesCount;
+        dto.commentairesCount = commentairesCount;
+        dto.estLikedParUtilisateur = likedPostIds.has(post.id);
+        return dto;
+      }),
+    );
+
+    return { items, total };
+  }
+
+  // ----- Publications d'un utilisateur donné (grille du profil public) -----
+  async getPostsByUser(
+    targetUserId: string,
+    callerId: string,
+    query: FeedQueryDto,
+  ): Promise<{ items: CreatePostResponseDto[]; total: number }> {
+    const page = query.page || 1;
+    const limit = query.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const [posts, total] = await this.postRepo
+      .createQueryBuilder('p')
+      .leftJoinAndSelect('p.utilisateur', 'u')
+      .leftJoinAndSelect('p.collection', 'c')
+      .leftJoinAndSelect('c.plante', 'pl')
+      .where('u.dateSuppression IS NULL')
+      .andWhere('p.userId = :targetUserId', { targetUserId })
+      .orderBy('p.dateCreation', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    const postIds = posts.map((p) => p.id);
+    const userLikes = await this.likeRepo.find({
+      where: { postId: In(postIds), userId: callerId },
+    });
+    const likedPostIds = new Set(userLikes.map((l) => l.postId));
+
+    const items = await Promise.all(
+      posts.map(async (post) => {
+        const [likesCount, commentairesCount] = await Promise.all([
+          this.likeRepo.count({ where: { postId: post.id } }),
+          this.commentRepo.count({ where: { postId: post.id } }),
+        ]);
+
+        const dto = this.mapToResponseDto(post, callerId);
         dto.likesCount = likesCount;
         dto.commentairesCount = commentairesCount;
         dto.estLikedParUtilisateur = likedPostIds.has(post.id);
@@ -169,13 +243,19 @@ export class FeedService {
   }
 
   // ----- Mettre à jour une publication -----
-  async updatePost(userId: string, postId: string, dto: UpdatePostDto): Promise<CreatePostResponseDto> {
+  async updatePost(
+    userId: string,
+    postId: string,
+    dto: UpdatePostDto,
+  ): Promise<CreatePostResponseDto> {
     const post = await this.postRepo.findOne({
       where: { id: postId, userId },
       relations: { utilisateur: true, collection: { plante: true } },
     });
     if (!post) {
-      throw new NotFoundException('Publication non trouvée ou vous n\'êtes pas l\'auteur');
+      throw new NotFoundException(
+        "Publication non trouvée ou vous n'êtes pas l'auteur",
+      );
     }
 
     if (dto.contenuTexte !== undefined) {
@@ -192,7 +272,9 @@ export class FeedService {
       this.commentRepo.count({ where: { postId: saved.id } }),
     ]);
 
-    const isLiked = await this.likeRepo.count({ where: { postId: saved.id, userId } });
+    const isLiked = await this.likeRepo.count({
+      where: { postId: saved.id, userId },
+    });
 
     const response = this.mapToResponseDto(saved, userId);
     response.likesCount = likesCount;
@@ -202,7 +284,10 @@ export class FeedService {
   }
 
   // ----- Liker ou unliker une publication (toggle) -----
-  async toggleLike(userId: string, postId: string): Promise<{ liked: boolean; likesCount: number }> {
+  async toggleLike(
+    userId: string,
+    postId: string,
+  ): Promise<{ liked: boolean; likesCount: number }> {
     const post = await this.postRepo.findOne({ where: { id: postId } });
     if (!post) {
       throw new NotFoundException('Publication non trouvée');
@@ -214,7 +299,9 @@ export class FeedService {
 
     if (existingLike) {
       await this.likeRepo.remove(existingLike);
-      const likesCount = await this.likeRepo.count({ where: { postId: postId } });
+      const likesCount = await this.likeRepo.count({
+        where: { postId: postId },
+      });
       return { liked: false, likesCount };
     } else {
       const like = this.likeRepo.create({
@@ -222,13 +309,18 @@ export class FeedService {
         userId: userId,
       });
       await this.likeRepo.save(like);
-      const likesCount = await this.likeRepo.count({ where: { postId: postId } });
+      const likesCount = await this.likeRepo.count({
+        where: { postId: postId },
+      });
       return { liked: true, likesCount };
     }
   }
 
   // ----- Retirer un like explicitement -----
-  async unlikePost(userId: string, postId: string): Promise<{ liked: boolean; likesCount: number }> {
+  async unlikePost(
+    userId: string,
+    postId: string,
+  ): Promise<{ liked: boolean; likesCount: number }> {
     const post = await this.postRepo.findOne({ where: { id: postId } });
     if (!post) {
       throw new NotFoundException('Publication non trouvée');
@@ -309,7 +401,11 @@ export class FeedService {
   }
 
   // ----- Supprimer un commentaire -----
-  async deleteComment(userId: string, postId: string, commentId: string): Promise<void> {
+  async deleteComment(
+    userId: string,
+    postId: string,
+    commentId: string,
+  ): Promise<void> {
     const comment = await this.commentRepo.findOne({
       where: { id: commentId, postId },
       relations: { publication: true },
@@ -319,7 +415,9 @@ export class FeedService {
     }
 
     if (comment.userId !== userId && comment.publication.userId !== userId) {
-      throw new ForbiddenException("Vous n'êtes pas autorisé à supprimer ce commentaire");
+      throw new ForbiddenException(
+        "Vous n'êtes pas autorisé à supprimer ce commentaire",
+      );
     }
 
     await this.commentRepo.remove(comment);
@@ -331,25 +429,13 @@ export class FeedService {
       where: { id: postId, userId: userId },
     });
     if (!post) {
-      throw new NotFoundException('Publication non trouvée ou vous n\'êtes pas l\'auteur');
+      throw new NotFoundException(
+        "Publication non trouvée ou vous n'êtes pas l'auteur",
+      );
     }
 
     // Supprimer les likes et commentaires en cascade via TypeORM
     await this.postRepo.remove(post);
-  }
-
-  // ----- Distance à vol d'oiseau (formule de haversine), en mètres -----
-  private static readonly EARTH_RADIUS_METERS = 6_371_000;
-
-  private haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const toRad = (deg: number) => (deg * Math.PI) / 180;
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return FeedService.EARTH_RADIUS_METERS * c;
   }
 
   // ----- Méthode utilitaire de mapping -----
@@ -364,7 +450,14 @@ export class FeedService {
       callerLongitude !== undefined &&
       post.latitude !== null &&
       post.longitude !== null
-        ? Math.round(this.haversineMeters(callerLatitude, callerLongitude, post.latitude, post.longitude))
+        ? Math.round(
+            haversineMeters(
+              callerLatitude,
+              callerLongitude,
+              post.latitude,
+              post.longitude,
+            ),
+          )
         : null;
 
     return {

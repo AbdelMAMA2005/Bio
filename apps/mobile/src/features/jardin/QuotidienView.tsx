@@ -1,8 +1,8 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { useCheckHealth, useMarkWatered, useMyGarden, useAddTrackingPhoto } from '@/api/hooks/useMyGarden';
 import { useQuests } from '@/api/hooks/useQuests';
@@ -44,42 +44,51 @@ export function QuotidienView() {
   const [schedulingReminder, setSchedulingReminder] = useState(false);
   const [toast, setToast] = useState<{ title: string; subtitle: string } | null>(null);
 
-  const showToast = (title: string, subtitle: string) => {
+  const showToast = useCallback((title: string, subtitle: string) => {
     setToast({ title, subtitle });
     setTimeout(() => setToast(null), 2200);
-  };
+  }, []);
 
-  const handlePhotoDeSuivi = async (collectionId: string) => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.6 });
-    if (result.canceled || !result.assets[0]) return;
-    addTrackingPhoto.mutate({ collectionId, uri: result.assets[0].uri });
-  };
+  // Callbacks stabilisés (useCallback) : passés tels quels à chaque <CloneCard>, ils
+  // permettent à son React.memo de sauter le re-rendu des cartes non concernées quand le
+  // parent re-rend (toast, mutation en cours sur une autre carte...) — voir CloneCard.tsx.
+  const handlePhotoDeSuivi = useCallback(
+    async (collectionId: string) => {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) return;
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.6 });
+      if (result.canceled || !result.assets[0]) return;
+      addTrackingPhoto.mutate({ collectionId, uri: result.assets[0].uri });
+    },
+    [addTrackingPhoto],
+  );
 
-  const handleCheckHealth = async (collectionId: string, idPlante: string, plantName: string) => {
-    // Cahier des charges : "L'utilisateur prend une photo d'une feuille malade" — sans
-    // cette étape, le back n'a aucune image à analyser pour une plante qui n'a pas encore
-    // de photo de suivi (cas le plus courant juste après l'ajout au Jardin), et échoue.
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) return;
-    const photo = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.6 });
-    if (photo.canceled || !photo.assets[0]) return;
+  const handleCheckHealth = useCallback(
+    async (collectionId: string, idPlante: string, plantName: string) => {
+      // Cahier des charges : "L'utilisateur prend une photo d'une feuille malade" — sans
+      // cette étape, le back n'a aucune image à analyser pour une plante qui n'a pas encore
+      // de photo de suivi (cas le plus courant juste après l'ajout au Jardin), et échoue.
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) return;
+      const photo = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.6 });
+      if (photo.canceled || !photo.assets[0]) return;
 
-    checkHealth.mutate(
-      { collectionId, idPlante, photoUri: photo.assets[0].uri },
-      {
-        onSuccess: (result) =>
-          setDiagnosis({ collectionId, plantName, result, diagnosedAt: new Date().toISOString() }),
-        onError: () => showToast(t('jardin.diagnosisErrorTitle'), t('jardin.diagnosisErrorSub')),
-      },
-    );
-  };
+      checkHealth.mutate(
+        { collectionId, idPlante, photoUri: photo.assets[0].uri },
+        {
+          onSuccess: (result) =>
+            setDiagnosis({ collectionId, plantName, result, diagnosedAt: new Date().toISOString() }),
+          onError: () => showToast(t('jardin.diagnosisErrorTitle'), t('jardin.diagnosisErrorSub')),
+        },
+      );
+    },
+    [checkHealth, showToast, t],
+  );
 
   // Rouvre le diagnostic déjà sauvegardé (POST /collection/:id/diagnosis, réécrit à chaque
   // analyse) sans relancer d'appel réseau ni de nouvelle photo — bouton "Voir le
   // diagnostic", visible uniquement sur une plante actuellement malade (voir CloneCard.tsx).
-  const handleViewDiagnosis = (clone: GardenClone) => {
+  const handleViewDiagnosis = useCallback((clone: GardenClone) => {
     if (!clone.savedDiagnosis) return;
     setDiagnosis({
       collectionId: clone.item.id ?? clone.item.idPlante,
@@ -87,13 +96,16 @@ export function QuotidienView() {
       result: clone.savedDiagnosis.result,
       diagnosedAt: clone.savedDiagnosis.date,
     });
-  };
+  }, []);
 
-  const handleMarkWatered = (collectionId: string) => {
-    markWatered.mutate(collectionId, {
-      onSuccess: () => showToast(t('jardin.wateredToastTitle'), t('jardin.wateredToastSub')),
-    });
-  };
+  const handleMarkWatered = useCallback(
+    (collectionId: string) => {
+      markWatered.mutate(collectionId, {
+        onSuccess: () => showToast(t('jardin.wateredToastTitle'), t('jardin.wateredToastSub')),
+      });
+    },
+    [markWatered, showToast, t],
+  );
 
   const handleScheduleReminder = async () => {
     if (!diagnosis) return;
@@ -116,60 +128,69 @@ export function QuotidienView() {
 
   const cloneNeedingWaterToday = (garden.data ?? []).filter((c) => c.nextWatering.key === 'jardin.today');
 
+  const renderClone = useCallback(
+    ({ item: clone }: { item: GardenClone }) => {
+      const collectionId = clone.item.id ?? clone.item.idPlante;
+      return (
+        <CloneCard
+          clone={clone}
+          onPhotoDeSuivi={handlePhotoDeSuivi}
+          onCheckHealth={handleCheckHealth}
+          onViewDiagnosis={handleViewDiagnosis}
+          onMarkWatered={handleMarkWatered}
+          checkingHealth={checkHealth.isPending && checkHealth.variables?.collectionId === collectionId}
+          markingWatered={markWatered.isPending && markWatered.variables === collectionId}
+        />
+      );
+    },
+    [handlePhotoDeSuivi, handleCheckHealth, handleViewDiagnosis, handleMarkWatered, checkHealth, markWatered],
+  );
+
   return (
     <View style={styles.fill}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {garden.isPending || quests.isPending ? (
-          <ActivityIndicator color={colors.active} style={styles.loader} />
-        ) : garden.isError || quests.isError ? (
-          <ErrorState
-            onRetry={() => {
-              garden.refetch();
-              quests.refetch();
-            }}
-          />
-        ) : (
-          <>
-            <ReminderBanner
-              count={cloneNeedingWaterToday.length}
-              plantNames={cloneNeedingWaterToday.map((c) => c.plant.nomCommun)}
-              onPress={
-                cloneNeedingWaterToday.length > 0
-                  ? () => router.push(`/plante/${cloneNeedingWaterToday[0].plant.id}`)
-                  : undefined
-              }
-            />
-
-            {quests.data ? <QuestsCard quests={quests.data.quests} coins={quests.data.coins} /> : null}
-
-            {(garden.data ?? []).length === 0 ? (
-              <Text style={[styles.empty, { color: colors.muted }]}>{t('jardin.emptyGarden')}</Text>
-            ) : (
-              (garden.data ?? []).map((clone) => (
-                <CloneCard
-                  // item.id (l'entrée de collection, unique) — pas idPlante (l'espèce,
-                  // partagée par toutes les captures de la même plante) : capturer deux
-                  // fois la même espèce dans le Jardin produisait des clés React dupliquées.
-                  key={clone.item.id ?? clone.item.idPlante}
-                  clone={clone}
-                  onPhotoDeSuivi={() => handlePhotoDeSuivi(clone.item.id ?? clone.item.idPlante)}
-                  onCheckHealth={() =>
-                    handleCheckHealth(clone.item.id ?? clone.item.idPlante, clone.item.idPlante, clone.plant.nomCommun)
-                  }
-                  onViewDiagnosis={() => handleViewDiagnosis(clone)}
-                  onMarkWatered={() => handleMarkWatered(clone.item.id ?? clone.item.idPlante)}
-                  checkingHealth={
-                    checkHealth.isPending && checkHealth.variables?.collectionId === (clone.item.id ?? clone.item.idPlante)
-                  }
-                  markingWatered={
-                    markWatered.isPending && markWatered.variables === (clone.item.id ?? clone.item.idPlante)
-                  }
-                />
-              ))
-            )}
-          </>
-        )}
-      </ScrollView>
+      {garden.isPending || quests.isPending ? (
+        <ActivityIndicator color={colors.active} style={styles.loader} />
+      ) : garden.isError || quests.isError ? (
+        <ErrorState
+          onRetry={() => {
+            garden.refetch();
+            quests.refetch();
+          }}
+        />
+      ) : (
+        <FlatList
+          data={garden.data ?? []}
+          // item.id (l'entrée de collection, unique) — pas idPlante (l'espèce, partagée par
+          // toutes les captures de la même plante) : capturer deux fois la même espèce dans
+          // le Jardin produisait des clés React dupliquées.
+          keyExtractor={(clone) => clone.item.id ?? clone.item.idPlante}
+          renderItem={renderClone}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          onEndReached={() => {
+            if (garden.hasNextPage && !garden.isFetchingNextPage) garden.fetchNextPage();
+          }}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            garden.isFetchingNextPage ? <ActivityIndicator color={colors.active} style={styles.footerLoader} /> : null
+          }
+          ListHeaderComponent={
+            <>
+              <ReminderBanner
+                count={cloneNeedingWaterToday.length}
+                plantNames={cloneNeedingWaterToday.map((c) => c.plant.nomCommun)}
+                onPress={
+                  cloneNeedingWaterToday.length > 0
+                    ? () => router.push(`/plante/${cloneNeedingWaterToday[0].plant.id}`)
+                    : undefined
+                }
+              />
+              {quests.data ? <QuestsCard quests={quests.data.quests} coins={quests.data.coins} /> : null}
+            </>
+          }
+          ListEmptyComponent={<Text style={[styles.empty, { color: colors.muted }]}>{t('jardin.emptyGarden')}</Text>}
+        />
+      )}
 
       <DiagnosisSheet
         visible={diagnosis !== null}
@@ -196,6 +217,9 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginTop: Spacing.xxl,
+  },
+  footerLoader: {
+    paddingVertical: Spacing.lg,
   },
   empty: {
     fontFamily: FontFamily.regular,

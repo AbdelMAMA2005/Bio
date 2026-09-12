@@ -24,6 +24,7 @@ import {
 } from '../../dto';
 import { JwtAuthGuard } from '../../common/guards';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 
 @Controller('feed')
 @UseGuards(JwtAuthGuard)
@@ -37,7 +38,7 @@ export class FeedController {
   @Post('posts')
   @UseInterceptors(FileInterceptor('image'))
   async createPost(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreatePostRequestDto,
     @UploadedFile(
       new ParseFilePipe({
@@ -56,7 +57,7 @@ export class FeedController {
   // ----- Modifier une publication -----
   @Patch('posts/:id')
   async updatePost(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') postId: string,
     @Body() dto: UpdatePostDto,
   ) {
@@ -66,7 +67,7 @@ export class FeedController {
   // ----- Récupérer le feed -----
   @Get()
   async getFeed(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Query() query: FeedQueryDto,
   ) {
     return this.feedService.getFeed(user.id, query);
@@ -75,7 +76,7 @@ export class FeedController {
   // ----- Liker/Unliker une publication (toggle) -----
   @Post('posts/:id/like')
   async toggleLike(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') postId: string,
   ) {
     return this.feedService.toggleLike(user.id, postId);
@@ -84,7 +85,7 @@ export class FeedController {
   // ----- Retirer un like (déliker) -----
   @Delete('posts/:id/like')
   async unlikePost(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') postId: string,
   ) {
     return this.feedService.unlikePost(user.id, postId);
@@ -93,7 +94,7 @@ export class FeedController {
   // ----- Ajouter un commentaire -----
   @Post('posts/:id/comments')
   async addComment(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') postId: string,
     @Body() dto: CreateCommentRequestDto,
   ) {
@@ -109,7 +110,7 @@ export class FeedController {
   // ----- Supprimer un commentaire -----
   @Delete('posts/:id/comments/:commentId')
   async deleteComment(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') postId: string,
     @Param('commentId') commentId: string,
   ) {
@@ -120,7 +121,7 @@ export class FeedController {
   // ----- Supprimer une publication -----
   @Delete('posts/:id')
   async deletePost(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') postId: string,
   ) {
     return this.feedService.deletePost(user.id, postId);

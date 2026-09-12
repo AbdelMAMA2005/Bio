@@ -1,13 +1,12 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Avatar } from '@/components/Avatar';
 import { useStoryViewers } from '@/api/hooks/useFeed';
 import type { SupportedLanguage } from '@/i18n';
 import { formatRelativeDate } from '@/utils/format';
 import { useAppTheme } from '@/theme';
-import { AccentGradient, AccentOnColor } from '@/theme/colors';
 import { Radius, Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
 
@@ -48,9 +47,7 @@ export function StoryViewersSheet({ mediaId, onClose }: Props) {
               ListEmptyComponent={<Text style={[styles.empty, { color: colors.muted }]}>{t('community.noViewsYet')}</Text>}
               renderItem={({ item }) => (
                 <View style={styles.viewerRow}>
-                  <LinearGradient colors={AccentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-                    <Text style={styles.avatarInitial}>{item.nomUtilisateur.charAt(0).toUpperCase()}</Text>
-                  </LinearGradient>
+                  <Avatar uri={item.urlAvatar} name={item.nomUtilisateur} size={34} />
                   <Text style={[styles.viewerName, { color: colors.text }]} numberOfLines={1}>
                     {item.nomUtilisateur}
                   </Text>
@@ -113,18 +110,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-  },
-  avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: {
-    color: AccentOnColor,
-    fontFamily: FontFamily.extraBold,
-    fontSize: 13,
   },
   viewerName: {
     flex: 1,

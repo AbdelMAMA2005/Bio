@@ -86,7 +86,6 @@ export function useWateringNotifications(clones: GardenClone[] | undefined, enab
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clones, enabled, t]);
 }
 

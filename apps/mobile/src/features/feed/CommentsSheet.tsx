@@ -1,16 +1,17 @@
-import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/Icon';
 import { useAddComment, useComments } from '@/api/hooks/useFeed';
 import type { SupportedLanguage } from '@/i18n';
 import { formatRelativeDate } from '@/utils/format';
 import { useAppTheme } from '@/theme';
-import { AccentGradient, AccentOnColor } from '@/theme/colors';
+import { AccentOnColor } from '@/theme/colors';
 import { HitTarget, Radius, Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
 
@@ -26,6 +27,7 @@ type Props = {
 export function CommentsSheet({ postId, onClose }: Props) {
   const { t, i18n } = useTranslation();
   const { colors } = useAppTheme();
+  const router = useRouter();
   const language = (i18n.language as SupportedLanguage) ?? 'fr';
   const comments = useComments(postId ?? undefined);
   const addComment = useAddComment();
@@ -64,12 +66,14 @@ export function CommentsSheet({ postId, onClose }: Props) {
                 }
                 renderItem={({ item }) => (
                   <View style={styles.commentRow}>
-                    <LinearGradient colors={AccentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-                      <Text style={styles.avatarInitial}>{item.authorInitial}</Text>
-                    </LinearGradient>
+                    <Pressable onPress={() => router.push(`/profil/${item.authorId}`)} hitSlop={4}>
+                      <Avatar uri={item.authorAvatarUrl} name={item.authorName} size={30} />
+                    </Pressable>
                     <View style={styles.commentBody}>
                       <View style={styles.commentHeaderRow}>
-                        <Text style={[styles.authorName, { color: colors.text }]}>{item.authorName}</Text>
+                        <Pressable onPress={() => router.push(`/profil/${item.authorId}`)} hitSlop={4}>
+                          <Text style={[styles.authorName, { color: colors.text }]}>{item.authorName}</Text>
+                        </Pressable>
                         <Text style={[styles.commentDate, { color: colors.muted }]}>
                           {formatRelativeDate(item.createdAt, language)}
                         </Text>
@@ -159,18 +163,6 @@ const styles = StyleSheet.create({
   commentRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
-  },
-  avatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: {
-    color: AccentOnColor,
-    fontFamily: FontFamily.extraBold,
-    fontSize: 12,
   },
   commentBody: {
     flex: 1,

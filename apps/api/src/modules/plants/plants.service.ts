@@ -1,9 +1,18 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Plant } from '../../entities/plant.entity';
 import { Collection } from '../../entities/collection.entity';
-import { CreatePlantDto, UpdatePlantDto, PlantListQueryDto, PlantResponseDto } from '../../dto';
+import {
+  CreatePlantDto,
+  UpdatePlantDto,
+  PlantListQueryDto,
+  PlantResponseDto,
+} from '../../dto';
 
 @Injectable()
 export class PlantsService {
@@ -28,7 +37,9 @@ export class PlantsService {
     };
   }
 
-  async findAll(query: PlantListQueryDto): Promise<{ items: PlantResponseDto[]; total: number }> {
+  async findAll(
+    query: PlantListQueryDto,
+  ): Promise<{ items: PlantResponseDto[]; total: number }> {
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
@@ -38,12 +49,14 @@ export class PlantsService {
     if (query.nom) {
       qb.andWhere(
         '(LOWER(p.nomScientifique) LIKE :nom OR LOWER(p.nomCommun) LIKE :nom)',
-        { nom: `%${query.nom.toLowerCase()}%` }
+        { nom: `%${query.nom.toLowerCase()}%` },
       );
     }
 
     if (query.famille) {
-      qb.andWhere('LOWER(p.famille) = :famille', { famille: query.famille.toLowerCase() });
+      qb.andWhere('LOWER(p.famille) = :famille', {
+        famille: query.famille.toLowerCase(),
+      });
     }
 
     if (query.toxicite) {
@@ -56,7 +69,7 @@ export class PlantsService {
 
     const [plants, total] = await qb.getManyAndCount();
     return {
-      items: plants.map(p => this.mapToDto(p)),
+      items: plants.map((p) => this.mapToDto(p)),
       total,
     };
   }
@@ -90,14 +103,16 @@ export class PlantsService {
       throw new NotFoundException('Plante non trouvée');
     }
 
-    if (dto.nomScientifique !== undefined) plant.nomScientifique = dto.nomScientifique;
+    if (dto.nomScientifique !== undefined)
+      plant.nomScientifique = dto.nomScientifique;
     if (dto.nomCommun !== undefined) plant.nomCommun = dto.nomCommun;
     if (dto.famille !== undefined) plant.famille = dto.famille;
     if (dto.toxicite !== undefined) plant.toxicite = dto.toxicite;
     if (dto.urlImage !== undefined) plant.urlImage = dto.urlImage;
     if (dto.badgeRarete !== undefined) plant.badgeRarete = dto.badgeRarete;
     if (dto.aPropos !== undefined) plant.aPropos = dto.aPropos;
-    if (dto.conseilsEntretien !== undefined) plant.conseilsEntretien = dto.conseilsEntretien;
+    if (dto.conseilsEntretien !== undefined)
+      plant.conseilsEntretien = dto.conseilsEntretien;
 
     const saved = await this.plantRepo.save(plant);
     return this.mapToDto(saved);
@@ -113,7 +128,7 @@ export class PlantsService {
     const count = await this.collectionRepo.count({ where: { plantId: id } });
     if (count > 0) {
       throw new BadRequestException(
-        "Impossible de supprimer cette plante car elle est présente dans la collection de certains utilisateurs."
+        'Impossible de supprimer cette plante car elle est présente dans la collection de certains utilisateurs.',
       );
     }
 

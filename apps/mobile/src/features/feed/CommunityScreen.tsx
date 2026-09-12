@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -10,6 +11,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { Icon } from '@/components/Icon';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { useFeed, usePublishPost, usePublishStoryMedia, useStories, useToggleLike } from '@/api/hooks/useFeed';
+import { useConversations } from '@/api/hooks/useMessages';
 import { CommentsSheet } from '@/features/feed/CommentsSheet';
 import { PostCard } from '@/features/feed/PostCard';
 import { PostComposerModal } from '@/features/feed/PostComposerModal';
@@ -29,10 +31,12 @@ type FeedFilter = 'all' | 'near';
 export function CommunityScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
+  const router = useRouter();
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | undefined>();
   const [filter, setFilter] = useState<FeedFilter>('all');
   const feed = useFeed(coords, filter === 'near' ? 'near' : undefined);
   const stories = useStories();
+  const conversations = useConversations();
   const toggleLike = useToggleLike();
   const publishStoryMedia = usePublishStoryMedia();
   const publishPost = usePublishPost();
@@ -73,6 +77,8 @@ export function CommunityScreen() {
   // `enabled: filter !== 'near' || !!coords`) : sans ce garde-fou, la requête resterait
   // indéfiniment "en attente" (React Query) et l'écran afficherait un spinner permanent au
   // lieu d'un vide honnête (permission refusée, position indisponible...).
+  const unreadConversations = (conversations.data ?? []).reduce((sum, c) => sum + c.nonLusCount, 0);
+
   const nearWithoutCoords = filter === 'near' && !coords;
   const posts = nearWithoutCoords ? [] : (feed.data ?? []);
   const showLoading = feed.isPending && !nearWithoutCoords;
@@ -128,8 +134,18 @@ export function CommunityScreen() {
     <View style={[styles.fill, { backgroundColor: colors.screen }]}>
       <SafeAreaView style={styles.fill} edges={['top']}>
         <View style={styles.header}>
-          <Text style={[styles.subtitle, { color: colors.muted }]}>{t('community.subtitle')}</Text>
-          <Text style={[styles.title, { color: colors.text }]}>{t('community.title')}</Text>
+          <View style={styles.headerTexts}>
+            <Text style={[styles.subtitle, { color: colors.muted }]}>{t('community.subtitle')}</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{t('community.title')}</Text>
+          </View>
+          <Pressable onPress={() => router.push('/messages')} hitSlop={8} style={styles.messagesButton}>
+            <Icon name="mail" size={24} color={colors.text} />
+            {unreadConversations > 0 ? (
+              <View style={[styles.messagesBadge, { backgroundColor: colors.active, borderColor: colors.screen }]}>
+                <Text style={styles.messagesBadgeLabel}>{unreadConversations}</Text>
+              </View>
+            ) : null}
+          </Pressable>
         </View>
 
         {showLoading ? (
@@ -142,6 +158,17 @@ export function CommunityScreen() {
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
+            onEndReached={() => {
+              if (feed.hasNextPage && !feed.isFetchingNextPage) feed.fetchNextPage();
+            }}
+            onEndReachedThreshold={0.4}
+            ListFooterComponent={
+              feed.isFetchingNextPage ? <ActivityIndicator color={colors.active} style={styles.footerLoader} /> : null
+            }
+            removeClippedSubviews
+            maxToRenderPerBatch={8}
+            windowSize={7}
+            initialNumToRender={6}
             ListHeaderComponent={
               <View style={styles.listHeader}>
                 <FlatList
@@ -202,6 +229,7 @@ export function CommunityScreen() {
                 onToggleLike={() => toggleLike.mutate(item.id)}
                 onOpenComments={() => setCommentsPostId(item.id)}
                 onShare={() => handleShare(item)}
+                onPressAuthor={(authorId) => router.push(`/profil/${authorId}`)}
                 sharing={sharingPostId === item.id}
               />
             )}
@@ -246,9 +274,38 @@ export function CommunityScreen() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xs,
     paddingBottom: Spacing.sm,
+  },
+  headerTexts: {
+    flex: 1,
+  },
+  messagesButton: {
+    width: HitTarget,
+    height: HitTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  messagesBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    minWidth: 17,
+    height: 17,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  messagesBadgeLabel: {
+    color: '#ffffff',
+    fontFamily: FontFamily.numericBold,
+    fontSize: 9.5,
   },
   subtitle: {
     fontFamily: FontFamily.semiBold,
@@ -273,6 +330,9 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginTop: Spacing.xxl,
+  },
+  footerLoader: {
+    paddingVertical: Spacing.lg,
   },
   listContent: {
     paddingBottom: Spacing.xxl,

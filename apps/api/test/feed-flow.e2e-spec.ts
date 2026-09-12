@@ -16,14 +16,20 @@ describe('Flux Communauté (e2e)', () => {
   beforeAll(async () => {
     app = await createE2eApp();
 
-    const dataUri = fs.readFileSync(path.join(__dirname, 'test-image.txt'), 'utf-8').trim();
+    const dataUri = fs
+      .readFileSync(path.join(__dirname, 'test-image.txt'), 'utf-8')
+      .trim();
     const base64 = dataUri.split(',')[1];
     const testImageBuffer = Buffer.from(base64, 'base64');
 
     const email = uniqueEmail('feed-flow');
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `feed${Date.now()}`, motDePasse: 'motdepasse' })
+      .send({
+        email,
+        nomUtilisateur: `feed${Date.now()}`,
+        motDePasse: 'motdepasse',
+      })
       .expect(201);
     const login = await request(app.getHttpServer())
       .post('/auth/login')
@@ -55,11 +61,16 @@ describe('Flux Communauté (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/feed/posts')
       .set('Authorization', `Bearer ${token}`)
-      .send({ contenuTexte: 'Trouvée en pleine floraison ce matin !', collectionId })
+      .send({
+        contenuTexte: 'Trouvée en pleine floraison ce matin !',
+        collectionId,
+      })
       .expect(201);
 
     postId = res.body.id;
-    expect(res.body.contenuTexte).toBe('Trouvée en pleine floraison ce matin !');
+    expect(res.body.contenuTexte).toBe(
+      'Trouvée en pleine floraison ce matin !',
+    );
     expect(res.body.plante).toBeDefined();
     expect(res.body.likesCount).toBe(0);
   });
@@ -106,7 +117,9 @@ describe('Flux Communauté (e2e)', () => {
 
   it('hérite du Geo-Tag de la plante taguée et calcule distanceMetres pour le filtre "Près de moi"', async () => {
     // Paris (48.8566, 2.3522) — la plante est capturée ici avec Geo-Tag accepté.
-    const dataUri = fs.readFileSync(path.join(__dirname, 'test-image.txt'), 'utf-8').trim();
+    const dataUri = fs
+      .readFileSync(path.join(__dirname, 'test-image.txt'), 'utf-8')
+      .trim();
     const testImageBuffer = Buffer.from(dataUri.split(',')[1], 'base64');
 
     const identifyRes = await request(app.getHttpServer())
@@ -118,13 +131,21 @@ describe('Flux Communauté (e2e)', () => {
     const geoCollection = await request(app.getHttpServer())
       .post('/collection')
       .set('Authorization', `Bearer ${token}`)
-      .send({ plantId: identifyRes.body.plantId, type: 'discovered', latitude: 48.8566, longitude: 2.3522 })
+      .send({
+        plantId: identifyRes.body.plantId,
+        type: 'discovered',
+        latitude: 48.8566,
+        longitude: 2.3522,
+      })
       .expect(201);
 
     const geoPost = await request(app.getHttpServer())
       .post('/feed/posts')
       .set('Authorization', `Bearer ${token}`)
-      .send({ contenuTexte: 'Trouvée à Paris !', collectionId: geoCollection.body.id })
+      .send({
+        contenuTexte: 'Trouvée à Paris !',
+        collectionId: geoCollection.body.id,
+      })
       .expect(201);
 
     // Appel à ~8.9 km de Paris (Saint-Denis, 48.9362, 2.3574) : la position du
@@ -136,7 +157,9 @@ describe('Flux Communauté (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    const item = nearbyFeed.body.items.find((p: any) => p.id === geoPost.body.id);
+    const item = nearbyFeed.body.items.find(
+      (p: any) => p.id === geoPost.body.id,
+    );
     expect(item).toBeDefined();
     expect(item.distanceMetres).toEqual(expect.any(Number));
     expect(item.distanceMetres).toBeGreaterThan(8_000);
@@ -151,7 +174,9 @@ describe('Flux Communauté (e2e)', () => {
       .get('/feed')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
-    const itemWithoutPosition = feedWithoutPosition.body.items.find((p: any) => p.id === geoPost.body.id);
+    const itemWithoutPosition = feedWithoutPosition.body.items.find(
+      (p: any) => p.id === geoPost.body.id,
+    );
     expect(itemWithoutPosition.distanceMetres).toBeNull();
 
     await request(app.getHttpServer())

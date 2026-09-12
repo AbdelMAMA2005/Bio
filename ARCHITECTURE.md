@@ -45,18 +45,23 @@ apps/mobile/
 │   │   │   ├── scan.tsx        # Onglet Scan (caméra plein écran)
 │   │   │   └── communaute.tsx  # Onglet Communauté (feed + stories)
 │   │   ├── plante/[id].tsx     # Fiche plante (toxicité, entretien)
+│   │   ├── profil/[id].tsx     # Profil public d'un autre utilisateur
+│   │   ├── messages/           # Messagerie privée (index = liste, [userId] = conversation)
 │   │   └── _layout.tsx         # Tab bar (3 onglets, bouton Scan central)
 │   ├── components/             # UI réutilisable
 │   │   ├── PlantCard.tsx
 │   │   ├── RarityBadge.tsx     # Commun / Rare / Épique
 │   │   ├── HealthDot.tsx       # vert / orange / rouge
 │   │   ├── XPToast.tsx         # animation "+45 XP"
+│   │   ├── Avatar.tsx          # Composant Avatar unique (vraie photo ou initiales, jamais "@") — toute l'app l'utilise
 │   │   └── SegmentedControl.tsx
 │   ├── features/               # Logique métier par domaine
 │   │   ├── scan/               # identification, toxicité, ajout contextuel
 │   │   ├── jardin/             # clones, rappels, diagnostic maladie
 │   │   ├── herbarium/          # découvertes, geo-tag
-│   │   ├── feed/               # posts, likes, filtre "près de moi"
+│   │   ├── feed/               # posts, likes, commentaires, stories, filtre "près de moi"
+│   │   ├── profile/            # Profil public (en-tête + grille des publications)
+│   │   ├── messages/           # Liste des conversations + écran de conversation
 │   │   └── quests/             # défis quotidiens, XP, pièces
 │   ├── api/                    # Client HTTP (axios + react-query)
 │   │   ├── client.ts
@@ -96,7 +101,8 @@ apps/api/
 │   │   ├── diagnosis/          # détection maladies (CNN PlantVillage)
 │   │   ├── feed/               # publications, likes, commentaires
 │   │   │                       #   + filtre "près de moi" (rayon réel en SQL, radiusMetres)
-│   │   ├── stories/             # stories éphémères 24h (entité Story dédiée)
+│   │   ├── stories/             # stories éphémères 24h (entité Story dédiée) + likes (StoryLike)
+│   │   ├── messages/            # messagerie privée (réponses aux stories + messages directs)
 │   │   ├── quests/             # défis quotidiens + exploration, récompenses
 │   │   └── notifications/      # rappels push (arrosage, traitements)
 │   ├── common/                 # guards, pipes, interceptors, filters
@@ -116,6 +122,9 @@ apps/api/
 │   ├── comment.entity.ts
 │   ├── story.entity.ts        # un média = une ligne, regroupées en bulles à la lecture
 │   ├── story-view.entity.ts   # vues "vu par" (storyId + viewerId, unique)
+│   ├── story-like.entity.ts   # likes sur un média de story (storyId + userId, unique)
+│   ├── conversation.entity.ts # paire d'utilisateurs (user1Id/user2Id normalisés), 1 ligne/paire
+│   ├── message.entity.ts      # message privé, storyId optionnel (réponse à un statut)
 │   └── reminder.entity.ts
 ├── test/
 └── package.json
@@ -148,6 +157,7 @@ Les noms de tables PostgreSQL sont en anglais (`users`, `plants`, `collection`, 
 | `urlAvatar` | `string \| null` | URL de l'avatar |
 | `insignes` | `string[]` (JSONB) | Liste des badges débloqués |
 | `dateSuppression` | `Date \| null` | Date de suppression logique (soft delete) |
+| `latitudeReference` / `longitudeReference` | `number \| null` | Point "chez vous" pour le défi Exploration (ajouté 10/09/2026) — figé sur la 1ère capture géo-taguée, voir API_CONTRACT.md §6 |
 
 ---
 
@@ -239,6 +249,54 @@ Contrainte unique `(storyId, viewerId)` : une seule vue par personne et par méd
 sur son propre contenu. `GET /stories/:mediaId/viewers` (réservé à l'auteur, 403 sinon) lit
 cette table pour la liste "vu par" ; `vuesCount`/`vuParMoi` dans `GET /stories` en dérivent
 aussi (compte réel, jamais un chiffre affiché sans ligne correspondante en base).
+
+### Table `story_likes` (likes sur un statut, comportement Instagram)
+
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` (UUID) | Identifiant unique |
+| `storyId` | `string` (UUID) | Clé étrangère → `stories.id` (le média liké) |
+| `userId` | `string` (UUID) | Clé étrangère → `users.id` |
+| `dateCreation` | `Date` | Horodatage |
+
+Contrainte unique `(storyId, userId)`, même pattern que `likes` sur les publications.
+`POST /stories/:mediaId/like` (toggle) lit/écrit cette table ; `likesCount`/`aimeParMoi` dans
+`GET /stories` en dérivent. Contrairement à `story_views`, l'auteur peut liker son propre
+média (pas de garde-fou côté service).
+
+---
+
+### Table `conversations` (messagerie privée)
+
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` (UUID) | Identifiant unique |
+| `user1Id` | `string` (UUID) | Clé étrangère → `users.id`, le plus petit des deux ids (ordre lexicographique) |
+| `user2Id` | `string` (UUID) | Clé étrangère → `users.id`, le plus grand des deux ids |
+| `dateCreation` | `Date` | Horodatage |
+| `dateDernierMessage` | `Date` | Mis à jour à chaque nouveau message — sert au tri de la liste des conversations |
+
+Contrainte unique `(user1Id, user2Id)` : **une seule ligne possible par paire d'utilisateurs**,
+quel que soit qui a engagé la conversation en premier — `MessagesService#getOrCreateConversation`
+normalise systématiquement l'ordre avant toute lecture/écriture.
+
+### Table `messages`
+
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` (UUID) | Identifiant unique |
+| `conversationId` | `string` (UUID) | Clé étrangère → `conversations.id` |
+| `senderId` | `string` (UUID) | Clé étrangère → `users.id` (auteur du message) |
+| `contenu` | `string` | Texte du message |
+| `storyId` | `string \| null` (UUID) | Clé étrangère → `stories.id`, renseigné quand le message est une réponse à un statut (`onDelete: 'SET NULL'` — un média disparu ne fait jamais disparaître le message, seulement son aperçu cité) |
+| `lu` | `boolean` | Marqué `true` quand le destinataire ouvre la conversation (`GET /messages/with/:userId`) |
+| `dateEnvoi` | `Date` | Horodatage |
+
+**Jamais de commentaire public pour une réponse à un statut/story** : `StoryViewer.tsx` envoie
+sa réponse via `POST /messages/with/:authorId` (avec `storyId`), pas via
+`POST /feed/posts/:id/comments` — les deux mécanismes (commentaires publics sur un post,
+messages privés en réponse à un statut) restent strictement séparés, comme sur
+WhatsApp/Instagram.
 
 ---
 

@@ -1,7 +1,19 @@
 import { ToxicityLevel } from '../entities/enums/toxicity-level.enum';
 import { PlantType } from '../entities/enums/plant-type.enum';
 import { HealthStatus } from '../entities/enums/health-status.enum';
-import { IsEmail, IsNotEmpty, MinLength, IsEnum, IsIn, IsOptional, IsNumber, IsString, IsUUID, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsEmail,
+  IsNotEmpty,
+  MinLength,
+  IsEnum,
+  IsIn,
+  IsOptional,
+  IsNumber,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 
 // ----- DTOs pour l'identification -----
 export class IdentifyPlantRequestDto {
@@ -19,14 +31,12 @@ export class IdentifyPlantResponseDto {
   badgeRarete!: string | null;
   /** Description réelle de l'espèce (Plant.id `description.value`), null si non fournie. */
   aPropos!: string | null;
-  conseilsEntretien!:
-    | {
-        lumiere?: string;
-        sol?: string;
-        arrosage?: string;
-        multiplication?: string;
-      }
-    | null;
+  conseilsEntretien!: {
+    lumiere?: string;
+    sol?: string;
+    arrosage?: string;
+    multiplication?: string;
+  } | null;
   urlImage!: string | null;
   xpGagne!: number;
   /** Score de confiance réel de Plant.id (0-100), voir identification.service.ts. */
@@ -74,14 +84,12 @@ export class GetCollectionResponseDto {
   urlImage!: string | null;
   /** Description réelle de l'espèce (Plant.id `description.value`), null si non fournie. */
   aPropos!: string | null;
-  conseilsEntretien!:
-    | {
-        lumiere?: string;
-        sol?: string;
-        arrosage?: string;
-        multiplication?: string;
-      }
-    | null;
+  conseilsEntretien!: {
+    lumiere?: string;
+    sol?: string;
+    arrosage?: string;
+    multiplication?: string;
+  } | null;
   latitude!: number | null;
   longitude!: number | null;
   historiquePhotos!: string[];
@@ -94,7 +102,11 @@ export class GetCollectionResponseDto {
   dernierDiagnostic!: {
     maladieNom: string | null;
     scoreGlobal: number;
-    traitement: { biologique?: string; chimique?: string; prevention?: string } | null;
+    traitement: {
+      biologique?: string;
+      chimique?: string;
+      prevention?: string;
+    } | null;
     description: string | null;
     estSain: boolean;
     dateDiagnostic: string;
@@ -109,6 +121,30 @@ export class GetCollectionResponseDto {
    * lecture, jamais stockée telle quelle).
    */
   prochainArrosage!: Date;
+}
+
+export class CollectionQueryDto {
+  @IsOptional()
+  @IsEnum(PlantType)
+  type?: PlantType;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  limit?: number = 20;
+}
+
+/** Enveloppe paginée de `GET /collection` (voir API_CONTRACT.md §4) — même forme que `GET /feed`. */
+export class PaginatedCollectionResponseDto {
+  items!: GetCollectionResponseDto[];
+  total!: number;
 }
 
 // ----- DTOs pour Auth -----
@@ -143,6 +179,7 @@ export class LoginRequestDto {
 
 export class LoginResponseDto {
   accessToken!: string;
+  refreshToken!: string;
   user!: RegisterResponseDto;
 }
 
@@ -151,9 +188,18 @@ export class GoogleLoginRequestDto {
   idToken!: string;
 }
 
-// ----- DTOs pour le Feed -----
+export class RefreshTokenRequestDto {
+  @IsNotEmpty()
+  @IsString()
+  refreshToken!: string;
+}
 
-import { Type } from 'class-transformer';
+export class RefreshTokenResponseDto {
+  accessToken!: string;
+  refreshToken!: string;
+}
+
+// ----- DTOs pour le Feed -----
 
 export class CreatePostRequestDto {
   @IsOptional()
@@ -284,6 +330,10 @@ export class StoryMediaDto {
   vuParMoi!: boolean;
   /** Nombre de vues distinctes (tous appelants confondus). */
   vuesCount!: number;
+  /** Nombre de likes distincts (tous appelants confondus). */
+  likesCount!: number;
+  /** Liké par l'appelant courant. */
+  aimeParMoi!: boolean;
 }
 
 /** Une bulle de story = tous les médias actifs d'un même auteur, regroupés à la lecture. */
@@ -549,11 +599,81 @@ export class ReminderFilterDto extends FeedQueryDto {
 export class QuestResponseDto {
   id!: string;
   libelle!: string;
-  type!: 'quotidien';
+  type!: 'quotidien' | 'exploration';
   progression!: number;
   objectif!: number;
   complete!: boolean;
   recompense!: { xp: number; pieces: number };
+}
+
+// ----- DTOs pour la Messagerie privée (réponses aux statuts + messages directs) -----
+
+export class SendMessageRequestDto {
+  @IsNotEmpty()
+  @IsString()
+  contenu!: string;
+
+  /**
+   * Renseigné quand le message vient d'une réponse à un statut/story (StoryViewer.tsx) —
+   * doit être l'id d'un média dont l'auteur est le destinataire du message (voir
+   * MessagesService#sendMessage), sinon 400.
+   */
+  @IsOptional()
+  @IsUUID()
+  storyId?: string;
+}
+
+export class MessageStoryPreviewDto {
+  id!: string;
+  urlMedia!: string;
+  mediaType!: 'image' | 'video';
+}
+
+export class MessageResponseDto {
+  id!: string;
+  idConversation!: string;
+  idExpediteur!: string;
+  contenu!: string;
+  dateEnvoi!: Date;
+  lu!: boolean;
+  /** Aperçu du statut cité si ce message est une réponse à une story, sinon `null`. */
+  storyPreview!: MessageStoryPreviewDto | null;
+}
+
+export class ConversationResponseDto {
+  id!: string;
+  autreUtilisateur!: {
+    id: string;
+    nomUtilisateur: string;
+    urlAvatar: string | null;
+  };
+  dernierMessage!: {
+    contenu: string;
+    dateEnvoi: Date;
+    estDeMoi: boolean;
+    storyPreview: MessageStoryPreviewDto | null;
+  } | null;
+  /** Nombre de messages non lus envoyés par l'autre utilisateur. */
+  nonLusCount!: number;
+}
+
+// ----- DTOs pour le profil public -----
+
+export class PublicProfileResponseDto {
+  id!: string;
+  nomUtilisateur!: string;
+  urlAvatar!: string | null;
+  niveau!: number;
+  experience!: number;
+  insignes!: string[];
+  stats!: {
+    /** Plantes de son Jardin (collection type=owned). */
+    captures: number;
+    /** Espèces distinctes découvertes (collection type=discovered). */
+    especes: number;
+    /** Découvertes de badgeRarete Rare ou Épique. */
+    rares: number;
+  };
 }
 
 // ----- DTOs pour Notifications (enregistrement de token push) -----

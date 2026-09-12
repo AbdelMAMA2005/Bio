@@ -61,8 +61,11 @@ export type StoryGroup = Omit<SharedStoryGroup, 'medias'> & { medias: StoryMedia
 
 export type FeedPost = {
   id: string;
+  authorId: string;
   authorInitial: string;
   authorName: string;
+  /** Vraie photo de profil de l'auteur, `null` si jamais définie (repli initiales). */
+  authorAvatarUrl: string | null;
   createdAt: string;
   /** Présent uniquement si l'auteur a taggé une plante de sa collection. */
   plant?: PlantWithIcon;
@@ -79,8 +82,10 @@ export type FeedPost = {
 
 export type FeedComment = {
   id: string;
+  authorId: string;
   authorInitial: string;
   authorName: string;
+  authorAvatarUrl: string | null;
   createdAt: string;
   text: string;
 };
@@ -105,6 +110,8 @@ export type Quest = {
   done: boolean;
   rewardXp?: number;
   rewardCoins?: number;
+  /** 'exploration' : défi géolocalisé (voir API_CONTRACT.md §6), affiché avec une icône dédiée. */
+  type: 'quotidien' | 'exploration';
 };
 
 export type IdentificationResult = {

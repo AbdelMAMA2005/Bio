@@ -18,13 +18,19 @@ describe('Flux Défis quotidiens / pièces (e2e)', () => {
   beforeAll(async () => {
     app = await createE2eApp();
 
-    const dataUri = fs.readFileSync(path.join(__dirname, 'test-image.txt'), 'utf-8').trim();
+    const dataUri = fs
+      .readFileSync(path.join(__dirname, 'test-image.txt'), 'utf-8')
+      .trim();
     testImageBuffer = Buffer.from(dataUri.split(',')[1], 'base64');
 
     const email = uniqueEmail('quests-flow');
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `quests${Date.now()}`, motDePasse: 'motdepasse' })
+      .send({
+        email,
+        nomUtilisateur: `quests${Date.now()}`,
+        motDePasse: 'motdepasse',
+      })
       .expect(201);
     const login = await request(app.getHttpServer())
       .post('/auth/login')
@@ -37,15 +43,21 @@ describe('Flux Défis quotidiens / pièces (e2e)', () => {
     await app.close();
   });
 
-  it('renvoie les 4 défis du catalogue, tous à 0/objectif pour un utilisateur neuf', async () => {
+  it('renvoie les 5 défis du catalogue, tous à 0/objectif pour un utilisateur neuf', async () => {
     const res = await request(app.getHttpServer())
       .get('/quests/daily')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(res.body).toHaveLength(4);
+    expect(res.body).toHaveLength(5);
     expect(res.body.map((q: any) => q.id).sort()).toEqual(
-      ['add-garden', 'get-5-likes', 'publish-tip', 'scan-3'].sort(),
+      [
+        'add-garden',
+        'explore-rare',
+        'get-5-likes',
+        'publish-tip',
+        'scan-3',
+      ].sort(),
     );
     for (const quest of res.body) {
       expect(quest.progression).toBe(0);
@@ -109,10 +121,12 @@ describe('Flux Défis quotidiens / pièces (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
     // +XP de la capture elle-même (identification/collection) + les 20 XP du défi.
-    expect(after.body.experience).toBeGreaterThanOrEqual(before.body.experience + 20);
+    expect(after.body.experience).toBeGreaterThanOrEqual(
+      before.body.experience + 20,
+    );
   });
 
-  it("re-consulter /quests/daily après complétion ne crédite pas une seconde fois la récompense", async () => {
+  it('re-consulter /quests/daily après complétion ne crédite pas une seconde fois la récompense', async () => {
     const before = await request(app.getHttpServer())
       .get('/users/me')
       .set('Authorization', `Bearer ${token}`)
@@ -174,7 +188,11 @@ describe('Flux Défis quotidiens / pièces (e2e)', () => {
       const likerEmail = uniqueEmail(`quests-liker-${i}`);
       await request(app.getHttpServer())
         .post('/auth/register')
-        .send({ email: likerEmail, nomUtilisateur: `liker${i}${Date.now()}`, motDePasse: 'motdepasse' })
+        .send({
+          email: likerEmail,
+          nomUtilisateur: `liker${i}${Date.now()}`,
+          motDePasse: 'motdepasse',
+        })
         .expect(201);
       const likerLogin = await request(app.getHttpServer())
         .post('/auth/login')

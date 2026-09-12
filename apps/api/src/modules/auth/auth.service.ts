@@ -1,13 +1,26 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, IsNull, LessThan } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { OAuth2Client } from 'google-auth-library';
 import * as argon2 from 'argon2';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomBytes, createHash } from 'crypto';
 import { User } from '../../entities/user.entity';
-import { RegisterRequestDto, LoginRequestDto, RegisterResponseDto, LoginResponseDto } from '../../dto';
+import { RefreshToken } from '../../entities/refresh-token.entity';
+import {
+  RegisterRequestDto,
+  LoginRequestDto,
+  RegisterResponseDto,
+  LoginResponseDto,
+  RefreshTokenResponseDto,
+} from '../../dto';
+
+const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours
 
 @Injectable()
 export class AuthService {
@@ -16,10 +29,103 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @InjectRepository(RefreshToken)
+    private refreshTokenRepo: Repository<RefreshToken>,
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {
-    this.googleClient = new OAuth2Client(this.configService.get<string>('GOOGLE_CLIENT_ID'));
+    this.googleClient = new OAuth2Client(
+      this.configService.get<string>('GOOGLE_CLIENT_ID'),
+    );
+  }
+
+  private hashToken(rawToken: string): string {
+    return createHash('sha256').update(rawToken).digest('hex');
+  }
+
+  /** Génère un refresh token opaque, stocke son hash, renvoie la valeur en clair (une seule fois). */
+  private async issueRefreshToken(userId: string): Promise<string> {
+    const rawToken = randomBytes(32).toString('hex');
+    await this.refreshTokenRepo.save(
+      this.refreshTokenRepo.create({
+        userId,
+        tokenHash: this.hashToken(rawToken),
+        dateExpiration: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+        dateRevocation: null,
+      }),
+    );
+    return rawToken;
+  }
+
+  private async issueTokenPair(
+    user: User,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const payload = { sub: user.id, email: user.email };
+    const [accessToken, refreshToken] = await Promise.all([
+      Promise.resolve(this.jwtService.sign(payload)),
+      this.issueRefreshToken(user.id),
+    ]);
+    return { accessToken, refreshToken };
+  }
+
+  /**
+   * Échange un refresh token valide contre un nouveau couple access/refresh (rotation :
+   * l'ancien est révoqué immédiatement, jamais réutilisable — voir `dateRevocation`). Si le
+   * token présenté est déjà révoqué (rejeu d'un token volé après rotation), on révoque
+   * TOUTES les sessions actives de l'utilisateur par précaution, plutôt que de se contenter
+   * de rejeter cette seule tentative.
+   */
+  async refresh(rawToken: string): Promise<RefreshTokenResponseDto> {
+    const tokenHash = this.hashToken(rawToken);
+    const stored = await this.refreshTokenRepo.findOne({
+      where: { tokenHash },
+    });
+
+    if (!stored) {
+      throw new UnauthorizedException(
+        'Session invalide, veuillez vous reconnecter.',
+      );
+    }
+
+    if (stored.dateRevocation || stored.dateExpiration < new Date()) {
+      // Token déjà utilisé/expiré présenté à nouveau : signe possible de vol — on coupe
+      // toutes les sessions de cet utilisateur, pas seulement celle-ci.
+      await this.refreshTokenRepo.update(
+        { userId: stored.userId, dateRevocation: IsNull() },
+        { dateRevocation: new Date() },
+      );
+      throw new UnauthorizedException(
+        'Session expirée, veuillez vous reconnecter.',
+      );
+    }
+
+    const user = await this.userRepo.findOne({
+      where: { id: stored.userId, dateSuppression: IsNull() },
+    });
+    if (!user) {
+      throw new UnauthorizedException('Utilisateur introuvable.');
+    }
+
+    stored.dateRevocation = new Date();
+    await this.refreshTokenRepo.save(stored);
+
+    return this.issueTokenPair(user);
+  }
+
+  /** Révoque un refresh token précis (déconnexion explicite, voir POST /auth/logout). */
+  async revokeRefreshToken(rawToken: string): Promise<void> {
+    const tokenHash = this.hashToken(rawToken);
+    await this.refreshTokenRepo.update(
+      { tokenHash, dateRevocation: IsNull() },
+      { dateRevocation: new Date() },
+    );
+  }
+
+  /** Purge les tokens expirés depuis longtemps (hygiène de table, pas de logique métier). */
+  async pruneExpiredRefreshTokens(): Promise<void> {
+    await this.refreshTokenRepo.delete({
+      dateExpiration: LessThan(new Date()),
+    });
   }
 
   async register(dto: RegisterRequestDto): Promise<RegisterResponseDto> {
@@ -36,7 +142,7 @@ export class AuthService {
       where: { nomUtilisateur: dto.nomUtilisateur, dateSuppression: IsNull() },
     });
     if (existingUsername) {
-      throw new ConflictException('Ce nom d\'utilisateur est déjà pris.');
+      throw new ConflictException("Ce nom d'utilisateur est déjà pris.");
     }
 
     const motDePasseHache = await argon2.hash(dto.motDePasse);
@@ -74,16 +180,22 @@ export class AuthService {
     }
 
     // Vérifier le mot de passe
-    const isPasswordValid = await argon2.verify(user.motDePasseHache, dto.motDePasse);
+    const isPasswordValid = await argon2.verify(
+      user.motDePasseHache,
+      dto.motDePasse,
+    );
     if (!isPasswordValid) {
       throw new UnauthorizedException('Email ou mot de passe incorrect.');
     }
 
-    const payload = { sub: user.id, email: user.email };
-    const accessToken = this.jwtService.sign(payload);
+    const { accessToken, refreshToken } = await this.issueTokenPair(user);
+    // Hygiène de table best-effort (pas bloquant pour la connexion si ça échoue) : purge
+    // les refresh tokens expirés depuis longtemps plutôt que de les laisser s'accumuler.
+    this.pruneExpiredRefreshTokens().catch(() => undefined);
 
     return {
       accessToken,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -101,12 +213,22 @@ export class AuthService {
     if (!audience) {
       // Sans Client ID configuré, on ne peut pas vérifier l'audience du token — refuser
       // plutôt que de faire confiance à un token dont on ne peut pas garantir la provenance.
-      throw new UnauthorizedException('Connexion Google non configurée côté serveur.');
+      throw new UnauthorizedException(
+        'Connexion Google non configurée côté serveur.',
+      );
     }
 
-    let payload: { email?: string; email_verified?: boolean; name?: string; given_name?: string };
+    let payload: {
+      email?: string;
+      email_verified?: boolean;
+      name?: string;
+      given_name?: string;
+    };
     try {
-      const ticket = await this.googleClient.verifyIdToken({ idToken, audience });
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken,
+        audience,
+      });
       payload = ticket.getPayload() ?? {};
     } catch {
       throw new UnauthorizedException('Jeton Google invalide ou expiré.');
@@ -121,7 +243,9 @@ export class AuthService {
     });
 
     if (!user) {
-      const nomUtilisateur = await this.uniqueUsernameFrom(payload.given_name || payload.name || payload.email);
+      const nomUtilisateur = await this.uniqueUsernameFrom(
+        payload.given_name || payload.name || payload.email,
+      );
       // Compte créé via Google : pas de mot de passe utilisable — hash aléatoire, jamais
       // communiqué ni vérifiable (aucun flux de connexion par mot de passe pour ce compte
       // tant qu'il n'en définit pas un explicitement via un futur flux "changer le mot de
@@ -139,11 +263,11 @@ export class AuthService {
       user = await this.userRepo.save(user);
     }
 
-    const jwtPayload = { sub: user.id, email: user.email };
-    const accessToken = this.jwtService.sign(jwtPayload);
+    const { accessToken, refreshToken } = await this.issueTokenPair(user);
 
     return {
       accessToken,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -160,7 +284,9 @@ export class AuthService {
     const base = seed.trim().replace(/\s+/g, '_').slice(0, 24) || 'utilisateur';
     let candidate = base;
     let suffix = 0;
-    while (await this.userRepo.findOne({ where: { nomUtilisateur: candidate } })) {
+    while (
+      await this.userRepo.findOne({ where: { nomUtilisateur: candidate } })
+    ) {
       suffix += 1;
       candidate = `${base}_${suffix}`;
     }

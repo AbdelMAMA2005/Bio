@@ -47,6 +47,13 @@ export function HerbariumView() {
       columnWrapperStyle={styles.row}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      onEndReached={() => {
+        if (herbarium.hasNextPage && !herbarium.isFetchingNextPage) herbarium.fetchNextPage();
+      }}
+      onEndReachedThreshold={0.4}
+      ListFooterComponent={
+        herbarium.isFetchingNextPage ? <ActivityIndicator color={colors.active} style={styles.footerLoader} /> : null
+      }
       ListHeaderComponent={
         <View style={styles.header}>
           <Text style={[styles.headerCount, { color: colors.text }]}>
@@ -68,6 +75,9 @@ export function HerbariumView() {
 const styles = StyleSheet.create({
   loader: {
     marginTop: Spacing.xxl,
+  },
+  footerLoader: {
+    paddingVertical: Spacing.lg,
   },
   emptyWrap: {
     flex: 1,

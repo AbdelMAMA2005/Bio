@@ -5,6 +5,7 @@ const SESSION_KEY = 'planai.session';
 
 export type StoredSession = {
   token: string;
+  refreshToken: string;
   user: User;
 };
 

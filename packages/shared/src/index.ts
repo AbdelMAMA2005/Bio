@@ -13,6 +13,8 @@ export interface User {
   niveau: number;
   xp: number;
   pieces: number;
+  /** Vraie photo de profil (POST /users/me/avatar), `null` si jamais définie. */
+  urlAvatar: string | null;
 }
 
 export interface Plante {
@@ -55,6 +57,10 @@ export interface StoryMedia {
   /** Vu par l'utilisateur courant — toujours `true` pour ses propres médias. */
   vuParMoi: boolean;
   vuesCount: number;
+  /** Nombre de likes distincts (tous appelants confondus). */
+  likesCount: number;
+  /** Liké par l'utilisateur courant. */
+  aimeParMoi: boolean;
 }
 
 /**
@@ -95,4 +101,42 @@ export interface CollectionItem {
   dernierDiagnostic?: DernierDiagnostic | null;
   /** Prochaine échéance d'arrosage calculée côté back (ISO 8601), absent des données mock. */
   prochainArrosage?: string;
+}
+
+// ----- Messagerie privée (réponses aux statuts + messages directs) -----
+
+/** Aperçu du statut cité au-dessus d'un message, quand il vient d'une réponse à une story. */
+export interface StoryPreview {
+  id: string;
+  urlMedia: string;
+  mediaType: StoryMediaType;
+}
+
+export interface ChatMessage {
+  id: string;
+  idConversation: string;
+  idExpediteur: string;
+  contenu: string;
+  dateEnvoi: string;
+  lu: boolean;
+  storyPreview: StoryPreview | null;
+}
+
+export interface Conversation {
+  id: string;
+  autreUtilisateur: { id: string; nomUtilisateur: string; urlAvatar: string | null };
+  dernierMessage: { contenu: string; dateEnvoi: string; estDeMoi: boolean; storyPreview: StoryPreview | null } | null;
+  nonLusCount: number;
+}
+
+// ----- Profil public -----
+
+export interface PublicProfile {
+  id: string;
+  nomUtilisateur: string;
+  urlAvatar: string | null;
+  niveau: number;
+  experience: number;
+  insignes: string[];
+  stats: { captures: number; especes: number; rares: number };
 }

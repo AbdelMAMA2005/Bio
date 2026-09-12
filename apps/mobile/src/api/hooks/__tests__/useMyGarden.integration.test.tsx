@@ -10,6 +10,7 @@ import { AuthProvider } from '@/features/auth/AuthProvider';
 jest.mock('@/api/client', () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
   setUnauthorizedHandler: jest.fn(),
+  setRefreshHandler: jest.fn(),
 }));
 
 const mockedGet = apiClient.get as jest.Mock;
@@ -52,7 +53,7 @@ const backendGarden: BackendCollectionItem[] = [
   },
 ];
 
-const testUser = { id: 'user-1', pseudo: 'Testeur', email: 'test@planai.app', niveau: 1, xp: 0, pieces: 0 };
+const testUser = { id: 'user-1', pseudo: 'Testeur', email: 'test@planai.app', niveau: 1, xp: 0, pieces: 0, urlAvatar: null };
 
 let queryClient: QueryClient;
 let wrapper: (props: { children: ReactNode }) => ReactElement;
@@ -75,8 +76,8 @@ afterEach(() => {
 });
 
 describe('useMyGarden (integration: hook + real API client, HTTP layer mocked)', () => {
-  it('requests GET /collection?type=owned and adapts the backend response into GardenClone[]', async () => {
-    mockedGet.mockResolvedValueOnce({ data: backendGarden });
+  it('requests GET /collection?type=owned&page=1&limit=20 and adapts the backend response into GardenClone[]', async () => {
+    mockedGet.mockResolvedValueOnce({ data: { items: backendGarden, total: backendGarden.length } });
 
     const { result, unmount } = await renderHook(() => useMyGarden(), { wrapper });
 
@@ -84,8 +85,9 @@ describe('useMyGarden (integration: hook + real API client, HTTP layer mocked)',
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(mockedGet).toHaveBeenCalledWith('/collection', { params: { type: 'owned' } });
+    expect(mockedGet).toHaveBeenCalledWith('/collection', { params: { type: 'owned', page: 1, limit: 20 } });
     expect(result.current.data).toHaveLength(2);
+    expect(result.current.hasNextPage).toBe(false);
     expect(result.current.data?.[0]).toMatchObject({
       item: { id: 'col-monstera', idUtilisateur: 'user-1', etatSante: 'sain' },
       plant: { nomCommun: 'Monstera Deliciosa', toxicite: 'non_toxique' },
@@ -109,7 +111,7 @@ describe('useMyGarden (integration: hook + real API client, HTTP layer mocked)',
 
 describe('useCheckHealth (integration: mutation + garden query invalidation)', () => {
   it('calls POST /collection/:id/diagnosis, adapts the response, and refreshes the garden query', async () => {
-    mockedGet.mockResolvedValue({ data: backendGarden });
+    mockedGet.mockResolvedValue({ data: { items: backendGarden, total: backendGarden.length } });
     mockedPost.mockResolvedValueOnce({
       data: {
         estSain: false,

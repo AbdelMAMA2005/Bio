@@ -8,14 +8,19 @@ import { Like } from '../../entities/like.entity';
 import { User } from '../../entities/user.entity';
 import { QuestProgress } from '../../entities/quest-progress.entity';
 
-function qbMock(finalMethod: 'getRawMany' | 'getCount', result: any) {
+function qbMock(
+  finalMethods: Partial<Record<'getRawMany' | 'getCount' | 'getMany', any>>,
+) {
   const qb: any = {
     select: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     innerJoin: jest.fn().mockReturnThis(),
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
   };
-  qb[finalMethod] = jest.fn().mockResolvedValue(result);
+  for (const [method, result] of Object.entries(finalMethods)) {
+    qb[method] = jest.fn().mockResolvedValue(result);
+  }
   return qb;
 }
 
@@ -25,17 +30,39 @@ describe('QuestsService', () => {
   let collectionRepo: { createQueryBuilder: jest.Mock };
   let postRepo: { createQueryBuilder: jest.Mock };
   let likeRepo: { createQueryBuilder: jest.Mock };
-  let userRepo: { increment: jest.Mock };
-  let questProgressRepo: { findOne: jest.Mock; save: jest.Mock; create: jest.Mock };
+  let userRepo: { increment: jest.Mock; findOne: jest.Mock };
+  let questProgressRepo: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+    create: jest.Mock;
+  };
 
   /** Par défaut, aucune progression sur aucun défi. */
-  function setProgress({ scans = 0, gardenAdds = 0, posts = 0, likes = 0 } = {}) {
+  function setProgress({
+    scans = 0,
+    gardenAdds = 0,
+    posts = 0,
+    likes = 0,
+    exploreDiscoveries = [] as {
+      latitude: number;
+      longitude: number;
+      plante: { badgeRarete: string };
+    }[],
+  } = {}) {
     identificationLogRepo.createQueryBuilder.mockReturnValue(
-      qbMock('getRawMany', Array.from({ length: scans }, (_, i) => ({ plantId: `plant-${i}` }))),
+      qbMock({
+        getRawMany: Array.from({ length: scans }, (_, i) => ({
+          plantId: `plant-${i}`,
+        })),
+      }),
     );
-    collectionRepo.createQueryBuilder.mockReturnValue(qbMock('getCount', gardenAdds));
-    postRepo.createQueryBuilder.mockReturnValue(qbMock('getCount', posts));
-    likeRepo.createQueryBuilder.mockReturnValue(qbMock('getCount', likes));
+    // `collectionRepo.createQueryBuilder` sert deux requêtes différentes (add-garden via
+    // getCount, explore-rare via getMany) : le même mock doit répondre aux deux.
+    collectionRepo.createQueryBuilder.mockReturnValue(
+      qbMock({ getCount: gardenAdds, getMany: exploreDiscoveries }),
+    );
+    postRepo.createQueryBuilder.mockReturnValue(qbMock({ getCount: posts }));
+    likeRepo.createQueryBuilder.mockReturnValue(qbMock({ getCount: likes }));
   }
 
   beforeEach(async () => {
@@ -43,7 +70,10 @@ describe('QuestsService', () => {
     collectionRepo = { createQueryBuilder: jest.fn() };
     postRepo = { createQueryBuilder: jest.fn() };
     likeRepo = { createQueryBuilder: jest.fn() };
-    userRepo = { increment: jest.fn() };
+    userRepo = {
+      increment: jest.fn(),
+      findOne: jest.fn().mockResolvedValue(null),
+    };
     questProgressRepo = {
       findOne: jest.fn().mockResolvedValue(null),
       save: jest.fn(async (e) => ({ id: 'progress-1', ...e })),
@@ -54,25 +84,41 @@ describe('QuestsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QuestsService,
-        { provide: getRepositoryToken(IdentificationLog), useValue: identificationLogRepo },
+        {
+          provide: getRepositoryToken(IdentificationLog),
+          useValue: identificationLogRepo,
+        },
         { provide: getRepositoryToken(Collection), useValue: collectionRepo },
         { provide: getRepositoryToken(Post), useValue: postRepo },
         { provide: getRepositoryToken(Like), useValue: likeRepo },
         { provide: getRepositoryToken(User), useValue: userRepo },
-        { provide: getRepositoryToken(QuestProgress), useValue: questProgressRepo },
+        {
+          provide: getRepositoryToken(QuestProgress),
+          useValue: questProgressRepo,
+        },
       ],
     }).compile();
 
     service = module.get<QuestsService>(QuestsService);
   });
 
-  it('renvoie les 4 défis du catalogue avec une progression à 0 par défaut', async () => {
+  it('renvoie les 5 défis du catalogue avec une progression à 0 par défaut', async () => {
     const quests = await service.getDailyQuests('user-1');
 
-    expect(quests).toHaveLength(4);
-    expect(quests.map((q) => q.id)).toEqual(['scan-3', 'add-garden', 'publish-tip', 'get-5-likes']);
+    expect(quests).toHaveLength(5);
+    expect(quests.map((q) => q.id)).toEqual([
+      'scan-3',
+      'add-garden',
+      'publish-tip',
+      'get-5-likes',
+      'explore-rare',
+    ]);
     expect(quests.every((q) => q.progression === 0 && !q.complete)).toBe(true);
     expect(userRepo.increment).not.toHaveBeenCalled();
+    expect(quests.find((q) => q.id === 'explore-rare')!.type).toBe(
+      'exploration',
+    );
+    expect(quests.find((q) => q.id === 'scan-3')!.type).toBe('quotidien');
   });
 
   it('calcule une progression partielle réelle sans la marquer complète', async () => {
@@ -87,7 +133,7 @@ describe('QuestsService', () => {
     expect(userRepo.increment).not.toHaveBeenCalled();
   });
 
-  it('plafonne la progression à l\'objectif même si la vraie donnée le dépasse', async () => {
+  it("plafonne la progression à l'objectif même si la vraie donnée le dépasse", async () => {
     setProgress({ scans: 7 });
 
     const quests = await service.getDailyQuests('user-1');
@@ -104,10 +150,22 @@ describe('QuestsService', () => {
 
     expect(tipQuest.complete).toBe(true);
     expect(tipQuest.recompense).toEqual({ xp: 25, pieces: 10 });
-    expect(userRepo.increment).toHaveBeenCalledWith({ id: 'user-1' }, 'experience', 25);
-    expect(userRepo.increment).toHaveBeenCalledWith({ id: 'user-1' }, 'pieces', 10);
+    expect(userRepo.increment).toHaveBeenCalledWith(
+      { id: 'user-1' },
+      'experience',
+      25,
+    );
+    expect(userRepo.increment).toHaveBeenCalledWith(
+      { id: 'user-1' },
+      'pieces',
+      10,
+    );
     expect(questProgressRepo.save).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'user-1', questId: 'publish-tip', recompenseCreditee: true }),
+      expect.objectContaining({
+        userId: 'user-1',
+        questId: 'publish-tip',
+        recompenseCreditee: true,
+      }),
     );
   });
 
@@ -126,7 +184,7 @@ describe('QuestsService', () => {
     expect(userRepo.increment).not.toHaveBeenCalled();
   });
 
-  it('un défi sans récompense pièces (scan-3) ne crédite que l\'XP', async () => {
+  it("un défi sans récompense pièces (scan-3) ne crédite que l'XP", async () => {
     setProgress({ scans: 3 });
 
     const quests = await service.getDailyQuests('user-1');
@@ -134,7 +192,89 @@ describe('QuestsService', () => {
 
     expect(scanQuest.complete).toBe(true);
     expect(scanQuest.recompense).toEqual({ xp: 30, pieces: 0 });
-    expect(userRepo.increment).toHaveBeenCalledWith({ id: 'user-1' }, 'experience', 30);
-    expect(userRepo.increment).not.toHaveBeenCalledWith({ id: 'user-1' }, 'pieces', expect.anything());
+    expect(userRepo.increment).toHaveBeenCalledWith(
+      { id: 'user-1' },
+      'experience',
+      30,
+    );
+    expect(userRepo.increment).not.toHaveBeenCalledWith(
+      { id: 'user-1' },
+      'pieces',
+      expect.anything(),
+    );
+  });
+
+  describe('explore-rare (défi Exploration, géolocalisé)', () => {
+    it('reste à 0 sans point de référence connu (User.latitudeReference), même avec une découverte rare géo-taguée', async () => {
+      userRepo.findOne.mockResolvedValue({
+        id: 'user-1',
+        latitudeReference: null,
+        longitudeReference: null,
+      });
+      setProgress({
+        exploreDiscoveries: [
+          { latitude: 45.76, longitude: 4.86, plante: { badgeRarete: 'Rare' } },
+        ],
+      });
+
+      const quests = await service.getDailyQuests('user-1');
+      expect(quests.find((q) => q.id === 'explore-rare')!.progression).toBe(0);
+    });
+
+    it('ne compte pas une découverte à moins de 1 km du point de référence', async () => {
+      userRepo.findOne.mockResolvedValue({
+        id: 'user-1',
+        latitudeReference: 45.75,
+        longitudeReference: 4.85,
+      });
+      // ~100m du point de référence.
+      setProgress({
+        exploreDiscoveries: [
+          {
+            latitude: 45.7509,
+            longitude: 4.85,
+            plante: { badgeRarete: 'Épique' },
+          },
+        ],
+      });
+
+      const quests = await service.getDailyQuests('user-1');
+      expect(quests.find((q) => q.id === 'explore-rare')!.progression).toBe(0);
+    });
+
+    it('complète et crédite le défi pour une découverte Rare/Épique à plus de 1 km du point de référence', async () => {
+      userRepo.findOne.mockResolvedValue({
+        id: 'user-1',
+        latitudeReference: 45.75,
+        longitudeReference: 4.85,
+      });
+      // ~1.4 km au nord du point de référence.
+      setProgress({
+        exploreDiscoveries: [
+          {
+            latitude: 45.763,
+            longitude: 4.85,
+            plante: { badgeRarete: 'Épique' },
+          },
+        ],
+      });
+
+      const quests = await service.getDailyQuests('user-1');
+      const exploreQuest = quests.find((q) => q.id === 'explore-rare')!;
+
+      expect(exploreQuest.progression).toBe(1);
+      expect(exploreQuest.complete).toBe(true);
+      expect(exploreQuest.recompense).toEqual({ xp: 50, pieces: 30 });
+      expect(userRepo.increment).toHaveBeenCalledWith(
+        { id: 'user-1' },
+        'experience',
+        50,
+      );
+      expect(userRepo.increment).toHaveBeenCalledWith(
+        { id: 'user-1' },
+        'pieces',
+        30,
+      );
+    });
   });
 });

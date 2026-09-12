@@ -1,23 +1,25 @@
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dimensions, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/Icon';
-import { useRecordStoryView } from '@/api/hooks/useFeed';
+import { useRecordStoryView, useStories, useToggleStoryLike } from '@/api/hooks/useFeed';
+import { useSendMessage } from '@/api/hooks/useMessages';
 import { StoryViewersSheet } from '@/features/feed/StoryViewersSheet';
 import type { SupportedLanguage } from '@/i18n';
 import { formatRelativeDate } from '@/utils/format';
-import { Palette, AccentGradient, AccentOnColor } from '@/theme/colors';
+import { Palette, AccentOnColor, ToxicityColors } from '@/theme/colors';
 import { HitTarget, Radius, Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
-import type { StoryGroup } from '@/api/types';
+import type { StoryGroup, StoryMedia } from '@/api/types';
 
 const IMAGE_DURATION_MS = 5000;
 const SWIPE_DOWN_THRESHOLD = 90;
@@ -38,25 +40,43 @@ function firstUnseenIndex(group: StoryGroup): number {
  * Visualiseur plein écran façon "statuts WhatsApp" : barres de progression segmentées,
  * enchaînement automatique (média puis bulle suivante), tap droite/gauche, appui long =
  * pause, swipe bas = fermer. Reçoit un instantané figé de `groups` à l'ouverture (voir
- * CommunityScreen.tsx) — les rafraîchissements de la requête stories() pendant la lecture
- * (ex: après l'enregistrement d'une vue) ne réordonnent jamais la liste sous les pieds de
- * l'utilisateur en cours de lecture.
+ * CommunityScreen.tsx) pour la NAVIGATION (ordre des bulles/médias, jamais réordonnée sous
+ * les pieds de l'utilisateur en cours de lecture) — mais l'état affiché de chaque média
+ * (like, vues) est relu en direct depuis le cache react-query `stories` (voir `liveMedia`
+ * ci-dessous) : sans ça, un like posé depuis le visualiseur ne s'affichait qu'après avoir
+ * quitté et rouvert la story (voir rapport.md).
  */
 export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
   const { t, i18n } = useTranslation();
   const language = (i18n.language as SupportedLanguage) ?? 'fr';
   const recordView = useRecordStoryView();
+  const toggleLike = useToggleStoryLike();
+  const sendMessage = useSendMessage();
+  const liveStories = useStories();
   const [position, setPosition] = useState(() => ({
     groupIndex: initialGroupIndex,
     mediaIndex: firstUnseenIndex(groups[initialGroupIndex]),
   }));
   const [paused, setPaused] = useState(false);
   const [viewersMediaId, setViewersMediaId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [replySent, setReplySent] = useState(false);
   const screenWidth = useMemo(() => Dimensions.get('window').width, []);
 
   const group = groups[position.groupIndex];
-  const media = group.medias[position.mediaIndex];
+  const snapshotMedia = group.medias[position.mediaIndex];
   const resetKey = `${position.groupIndex}-${position.mediaIndex}`;
+
+  const liveMediaById = useMemo(() => {
+    const map = new Map<string, StoryMedia>();
+    for (const g of liveStories.data ?? []) {
+      for (const m of g.medias) map.set(m.id, m);
+    }
+    return map;
+  }, [liveStories.data]);
+
+  // Vues/like à jour immédiatement (cache react-query), position/ordre stables (snapshot).
+  const media = { ...snapshotMedia, ...(liveMediaById.get(snapshotMedia.id) ?? {}) };
 
   const recordedRef = useRef(new Set<string>());
   useEffect(() => {
@@ -65,6 +85,26 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
     recordView.mutate(media.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [media.id, group.estMoi]);
+
+  useEffect(() => {
+    setReplyText('');
+    setReplySent(false);
+  }, [media.id]);
+
+  const handleSendReply = () => {
+    const trimmed = replyText.trim();
+    if (!trimmed || group.estMoi) return;
+    sendMessage.mutate(
+      { peerId: group.idUtilisateur, contenu: trimmed, storyId: media.id },
+      {
+        onSuccess: () => {
+          setReplyText('');
+          setReplySent(true);
+          setTimeout(() => setReplySent(false), 1800);
+        },
+      },
+    );
+  };
 
   const goNext = () => {
     setPosition((pos) => {
@@ -103,7 +143,13 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
     });
   };
 
-  const progress = useStoryProgress(IMAGE_DURATION_MS, handleAdvance, paused || viewersMediaId !== null, resetKey);
+  const [replyFocused, setReplyFocused] = useState(false);
+  const progress = useStoryProgress(
+    IMAGE_DURATION_MS,
+    handleAdvance,
+    paused || viewersMediaId !== null || replyFocused,
+    resetKey,
+  );
 
   const tapGesture = Gesture.Tap().onEnd((e) => {
     const goLeft = e.x < screenWidth * 0.35;
@@ -159,15 +205,24 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
             </View>
 
             <View style={styles.header} pointerEvents="box-none">
-              <LinearGradient colors={AccentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-                <Text style={styles.avatarInitial}>{group.nomUtilisateur.charAt(0).toUpperCase()}</Text>
-              </LinearGradient>
+              <Avatar uri={group.urlAvatar} name={group.nomUtilisateur} size={34} />
               <View style={styles.headerText}>
                 <Text style={styles.headerName} numberOfLines={1}>
                   {group.estMoi ? t('community.yourStory') : group.nomUtilisateur}
                 </Text>
                 <Text style={styles.headerDate}>{formatRelativeDate(media.dateCreation, language)}</Text>
               </View>
+              <Pressable
+                onPress={() => toggleLike.mutate(media.id)}
+                hitSlop={10}
+                style={styles.likeButton}>
+                <Icon
+                  name="favorite"
+                  size={22}
+                  color={media.aimeParMoi ? ToxicityColors.toxic.text : chrome.text}
+                />
+                {media.likesCount > 0 ? <Text style={styles.likeCount}>{media.likesCount}</Text> : null}
+              </Pressable>
               <Pressable onPress={onClose} hitSlop={10} style={styles.closeButton}>
                 <Icon name="close" size={22} color={chrome.text} />
               </Pressable>
@@ -181,7 +236,33 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
                 <Icon name="visibility" size={16} color={chrome.text} />
                 <Text style={styles.viewersLabel}>{t('community.viewedByCount', { count: media.vuesCount })}</Text>
               </Pressable>
-            ) : null}
+            ) : (
+              <KeyboardAvoidingView behavior="padding" style={styles.replyBarWrap} pointerEvents="box-none">
+                <View style={styles.replyBar}>
+                  <TextInput
+                    value={replyText}
+                    onChangeText={setReplyText}
+                    onFocus={() => setReplyFocused(true)}
+                    onBlur={() => setReplyFocused(false)}
+                    placeholder={t('community.storyReplyPlaceholder', { name: group.nomUtilisateur })}
+                    placeholderTextColor="rgba(255,255,255,0.6)"
+                    style={styles.replyInput}
+                  />
+                  <Pressable
+                    onPress={handleSendReply}
+                    disabled={!replyText.trim() || sendMessage.isPending}
+                    style={[styles.replySendButton, { opacity: !replyText.trim() || sendMessage.isPending ? 0.5 : 1 }]}
+                    hitSlop={8}>
+                    {sendMessage.isPending ? (
+                      <ActivityIndicator color={AccentOnColor} size="small" />
+                    ) : (
+                      <Icon name="send" size={18} color={AccentOnColor} />
+                    )}
+                  </Pressable>
+                </View>
+                {replySent ? <Text style={styles.replySentLabel}>{t('community.storyReplySent')}</Text> : null}
+              </KeyboardAvoidingView>
+            )}
           </SafeAreaView>
         </View>
       </GestureHandlerRootView>
@@ -249,7 +330,7 @@ const styles = StyleSheet.create({
     backgroundColor: chrome.screen,
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   progressRow: {
     flexDirection: 'row',
@@ -275,18 +356,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingTop: Spacing.sm,
   },
-  avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: {
-    color: AccentOnColor,
-    fontFamily: FontFamily.extraBold,
-    fontSize: 13,
-  },
   headerText: {
     flex: 1,
   },
@@ -299,6 +368,19 @@ const styles = StyleSheet.create({
     color: chrome.muted,
     fontFamily: FontFamily.regular,
     fontSize: 11,
+  },
+  likeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    height: HitTarget - 8,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+  },
+  likeCount: {
+    color: chrome.text,
+    fontFamily: FontFamily.numericBold,
+    fontSize: 12.5,
   },
   closeButton: {
     width: HitTarget - 8,
@@ -323,5 +405,43 @@ const styles = StyleSheet.create({
     color: chrome.text,
     fontFamily: FontFamily.semiBold,
     fontSize: 12.5,
+  },
+  replyBarWrap: {
+    position: 'absolute',
+    bottom: Spacing.lg,
+    left: Spacing.md,
+    right: Spacing.md,
+  },
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  replyInput: {
+    flex: 1,
+    minHeight: HitTarget,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.md,
+    color: chrome.text,
+    fontFamily: FontFamily.regular,
+    fontSize: 13.5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  replySendButton: {
+    width: HitTarget,
+    height: HitTarget,
+    borderRadius: HitTarget / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: chrome.text,
+  },
+  replySentLabel: {
+    marginTop: Spacing.xs,
+    textAlign: 'center',
+    color: chrome.text,
+    fontFamily: FontFamily.semiBold,
+    fontSize: 11.5,
   },
 });

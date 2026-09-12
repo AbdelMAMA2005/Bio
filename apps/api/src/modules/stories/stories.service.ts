@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
 import * as fs from 'fs';
@@ -6,9 +10,15 @@ import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { Story } from '../../entities/story.entity';
 import { StoryView } from '../../entities/story-view.entity';
+import { StoryLike } from '../../entities/story-like.entity';
 import { User } from '../../entities/user.entity';
 import { StoryMediaType } from '../../entities/enums/story-media-type.enum';
-import { CreateStoryResponseDto, StoryGroupDto, StoryMediaDto, StoryViewerDto } from '../../dto';
+import {
+  CreateStoryResponseDto,
+  StoryGroupDto,
+  StoryMediaDto,
+  StoryViewerDto,
+} from '../../dto';
 
 const STORY_LIFETIME_MS = 24 * 60 * 60 * 1000;
 
@@ -19,6 +29,8 @@ export class StoriesService {
     private storyRepo: Repository<Story>,
     @InjectRepository(StoryView)
     private storyViewRepo: Repository<StoryView>,
+    @InjectRepository(StoryLike)
+    private storyLikeRepo: Repository<StoryLike>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
   ) {}
@@ -44,7 +56,9 @@ export class StoriesService {
 
     const storyIds = stories.map((s) => s.id);
 
-    const myViews = await this.storyViewRepo.find({ where: { storyId: In(storyIds), viewerId: callerId } });
+    const myViews = await this.storyViewRepo.find({
+      where: { storyId: In(storyIds), viewerId: callerId },
+    });
     const viewedByMeIds = new Set(myViews.map((v) => v.storyId));
 
     const viewCountRows = await this.storyViewRepo
@@ -54,7 +68,25 @@ export class StoriesService {
       .where('v.storyId IN (:...storyIds)', { storyIds })
       .groupBy('v.storyId')
       .getRawMany<{ storyId: string; count: string }>();
-    const viewCountByStoryId = new Map(viewCountRows.map((row) => [row.storyId, parseInt(row.count, 10)]));
+    const viewCountByStoryId = new Map(
+      viewCountRows.map((row) => [row.storyId, parseInt(row.count, 10)]),
+    );
+
+    const myLikes = await this.storyLikeRepo.find({
+      where: { storyId: In(storyIds), userId: callerId },
+    });
+    const likedByMeIds = new Set(myLikes.map((l) => l.storyId));
+
+    const likeCountRows = await this.storyLikeRepo
+      .createQueryBuilder('l')
+      .select('l.storyId', 'storyId')
+      .addSelect('COUNT(*)', 'count')
+      .where('l.storyId IN (:...storyIds)', { storyIds })
+      .groupBy('l.storyId')
+      .getRawMany<{ storyId: string; count: string }>();
+    const likeCountByStoryId = new Map(
+      likeCountRows.map((row) => [row.storyId, parseInt(row.count, 10)]),
+    );
 
     const mediasByUserId = new Map<string, Story[]>();
     for (const story of stories) {
@@ -78,6 +110,8 @@ export class StoriesService {
         // propre bulle.
         vuParMoi: estMoi || viewedByMeIds.has(media.id),
         vuesCount: viewCountByStoryId.get(media.id) ?? 0,
+        likesCount: likeCountByStoryId.get(media.id) ?? 0,
+        aimeParMoi: likedByMeIds.has(media.id),
       }));
 
       groups.push({
@@ -94,7 +128,8 @@ export class StoriesService {
       Math.max(...group.medias.map((m) => new Date(m.dateCreation).getTime()));
 
     groups.sort((a, b) => {
-      if (a.entierementVue !== b.entierementVue) return a.entierementVue ? 1 : -1;
+      if (a.entierementVue !== b.entierementVue)
+        return a.entierementVue ? 1 : -1;
       return latestActivity(b) - latestActivity(a);
     });
 
@@ -102,8 +137,13 @@ export class StoriesService {
   }
 
   /** Ajoute un média à la story du jour de l'utilisateur (s'empile dans sa bulle). */
-  async createStoryMedia(userId: string, file: Express.Multer.File): Promise<CreateStoryResponseDto> {
-    const user = await this.userRepo.findOne({ where: { id: userId, dateSuppression: IsNull() } });
+  async createStoryMedia(
+    userId: string,
+    file: Express.Multer.File,
+  ): Promise<CreateStoryResponseDto> {
+    const user = await this.userRepo.findOne({
+      where: { id: userId, dateSuppression: IsNull() },
+    });
     if (!user) {
       throw new NotFoundException('Utilisateur non trouvé ou supprimé');
     }
@@ -112,7 +152,14 @@ export class StoriesService {
     // compilée, ou src/modules/stories en ts-node) — voir collection.service.ts#addPhoto
     // pour le détail du bug corrigé le 24/07/2026 (2 x '..' écrivait dans dist/uploads/,
     // jamais servi par main.ts).
-    const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'stories');
+    const uploadDir = path.join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      'uploads',
+      'stories',
+    );
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -120,7 +167,9 @@ export class StoriesService {
     const filename = `${uuidv4()}${extension}`;
     fs.writeFileSync(path.join(uploadDir, filename), file.buffer);
     const urlMedia = `/uploads/stories/${filename}`;
-    const mediaType = file.mimetype.startsWith('video/') ? StoryMediaType.VIDEO : StoryMediaType.IMAGE;
+    const mediaType = file.mimetype.startsWith('video/')
+      ? StoryMediaType.VIDEO
+      : StoryMediaType.IMAGE;
 
     const story = this.storyRepo.create({
       userId,
@@ -155,7 +204,9 @@ export class StoriesService {
       return;
     }
 
-    const existing = await this.storyViewRepo.findOne({ where: { storyId: mediaId, viewerId } });
+    const existing = await this.storyViewRepo.findOne({
+      where: { storyId: mediaId, viewerId },
+    });
     if (existing) {
       return;
     }
@@ -164,14 +215,51 @@ export class StoriesService {
     await this.storyViewRepo.save(view);
   }
 
+  /**
+   * Like/unlike (toggle) d'un média de story. Contrairement aux vues, l'auteur PEUT liker
+   * son propre média (comportement WhatsApp/Instagram : rien n'empêche d'aimer son propre
+   * statut) — pas de garde-fou `story.userId === userId` ici, à la différence de
+   * `recordView`.
+   */
+  async toggleLike(
+    mediaId: string,
+    userId: string,
+  ): Promise<{ liked: boolean; likesCount: number }> {
+    const story = await this.storyRepo.findOne({ where: { id: mediaId } });
+    if (!story) {
+      throw new NotFoundException('Média de story non trouvé');
+    }
+
+    const existing = await this.storyLikeRepo.findOne({
+      where: { storyId: mediaId, userId },
+    });
+    if (existing) {
+      await this.storyLikeRepo.remove(existing);
+    } else {
+      await this.storyLikeRepo.save(
+        this.storyLikeRepo.create({ storyId: mediaId, userId }),
+      );
+    }
+
+    const likesCount = await this.storyLikeRepo.count({
+      where: { storyId: mediaId },
+    });
+    return { liked: !existing, likesCount };
+  }
+
   /** Liste des vues d'un média — réservée à l'auteur (comportement WhatsApp : privé). */
-  async getViewers(mediaId: string, callerId: string): Promise<StoryViewerDto[]> {
+  async getViewers(
+    mediaId: string,
+    callerId: string,
+  ): Promise<StoryViewerDto[]> {
     const story = await this.storyRepo.findOne({ where: { id: mediaId } });
     if (!story) {
       throw new NotFoundException('Média de story non trouvé');
     }
     if (story.userId !== callerId) {
-      throw new ForbiddenException("Seul l'auteur d'une story peut voir qui l'a consultée");
+      throw new ForbiddenException(
+        "Seul l'auteur d'une story peut voir qui l'a consultée",
+      );
     }
 
     const views = await this.storyViewRepo

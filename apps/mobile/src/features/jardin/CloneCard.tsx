@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -15,15 +15,21 @@ import { FontFamily } from '@/theme/typography';
 
 type Props = {
   clone: GardenClone;
-  onPhotoDeSuivi: () => void;
-  onCheckHealth: () => void;
-  onViewDiagnosis: () => void;
-  onMarkWatered: () => void;
+  /**
+   * Reçoivent l'id de la collection (`clone.item.id ?? clone.item.idPlante`) plutôt qu'une
+   * closure déjà liée : garder des callbacks stables (`useCallback` côté QuotidienView.tsx)
+   * permet à `React.memo` ci-dessous d'éviter de re-rendre les cartes non concernées par un
+   * changement d'état du parent (toast, mutation en cours sur une autre carte...).
+   */
+  onPhotoDeSuivi: (collectionId: string) => void;
+  onCheckHealth: (collectionId: string, idPlante: string, plantName: string) => void;
+  onViewDiagnosis: (clone: GardenClone) => void;
+  onMarkWatered: (collectionId: string) => void;
   checkingHealth?: boolean;
   markingWatered?: boolean;
 };
 
-export function CloneCard({
+export const CloneCard = memo(function CloneCard({
   clone,
   onPhotoDeSuivi,
   onCheckHealth,
@@ -35,6 +41,7 @@ export function CloneCard({
   const { t } = useTranslation();
   const { colors, isDark } = useAppTheme();
   const { plant, item, nextWatering, lightHint } = clone;
+  const collectionId = item.id ?? item.idPlante;
   const photoUrl = ownPhotoUrl(item);
   const heroImageUri = photoUrl ?? plant.urlImage ?? undefined;
   const [heroViewerOpen, setHeroViewerOpen] = useState(false);
@@ -96,7 +103,7 @@ export function CloneCard({
           label={t('jardin.viewDiagnosis')}
           icon="visibility"
           destructive
-          onPress={onViewDiagnosis}
+          onPress={() => onViewDiagnosis(clone)}
           style={styles.viewDiagnosisButton}
         />
       ) : null}
@@ -106,7 +113,7 @@ export function CloneCard({
           label={t('jardin.markWatered')}
           icon="water_drop"
           loading={markingWatered}
-          onPress={onMarkWatered}
+          onPress={() => onMarkWatered(collectionId)}
           style={styles.viewDiagnosisButton}
         />
       ) : null}
@@ -117,7 +124,7 @@ export function CloneCard({
         <SecondaryButton
           label={t('jardin.photoDeSuivi')}
           icon="add_a_photo"
-          onPress={onPhotoDeSuivi}
+          onPress={() => onPhotoDeSuivi(collectionId)}
           style={styles.actionButton}
         />
         <SecondaryButton
@@ -125,7 +132,7 @@ export function CloneCard({
           icon="health_and_safety"
           destructive={isSick}
           loading={checkingHealth}
-          onPress={onCheckHealth}
+          onPress={() => onCheckHealth(collectionId, item.idPlante, plant.nomCommun)}
           style={styles.actionButton}
         />
       </View>
@@ -135,7 +142,7 @@ export function CloneCard({
       ) : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

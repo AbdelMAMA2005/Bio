@@ -27,6 +27,7 @@ export const currentUser: User = {
   niveau: 12,
   xp: 2480,
   pieces: 340,
+  urlAvatar: null,
 };
 
 export const gardenClones: GardenClone[] = [
@@ -141,8 +142,10 @@ export const herbariumDiscoveries: HerbariumDiscovery[] = [
 export const feedPosts: FeedPost[] = [
   {
     id: 'post-1',
+    authorId: 'user-marco',
     authorInitial: 'M',
     authorName: 'Marco_Botanic',
+    authorAvatarUrl: null,
     createdAt: daysAgoIso(1 / 12),
     plant: mockPlants.orchideeSauvage,
     tagType: 'discovered',
@@ -155,8 +158,10 @@ export const feedPosts: FeedPost[] = [
   },
   {
     id: 'post-2',
+    authorId: 'user-sophie',
     authorInitial: 'S',
     authorName: 'Sophie.Verde',
+    authorAvatarUrl: null,
     createdAt: daysAgoIso(5 / 24),
     plant: mockPlants.calathea,
     tagType: 'owned',
@@ -169,8 +174,10 @@ export const feedPosts: FeedPost[] = [
   },
   {
     id: 'post-3',
+    authorId: 'user-theo',
     authorInitial: 'T',
     authorName: 'Theo_Green',
+    authorAvatarUrl: null,
     createdAt: daysAgoIso(1),
     plant: mockPlants.digitale,
     tagType: 'discovered',
@@ -183,8 +190,10 @@ export const feedPosts: FeedPost[] = [
   },
   {
     id: 'post-4',
+    authorId: 'user-aida',
     authorInitial: 'A',
     authorName: 'Aida.Plants',
+    authorAvatarUrl: null,
     createdAt: daysAgoIso(1),
     plant: mockPlants.monstera,
     tagType: 'owned',
@@ -197,9 +206,9 @@ export const feedPosts: FeedPost[] = [
 ];
 
 export const dailyQuests: Quest[] = [
-  { id: 'quest-scan-3', label: 'quests.scan3', done: true, rewardXp: 30 },
-  { id: 'quest-post-tip', label: 'quests.postTip', done: false, rewardXp: 40 },
-  { id: 'quest-rare-1km', label: 'quests.rare1km', done: false, rewardCoins: 50 },
+  { id: 'quest-scan-3', label: 'quests.scan3', done: true, rewardXp: 30, type: 'quotidien' },
+  { id: 'quest-post-tip', label: 'quests.postTip', done: false, rewardXp: 40, type: 'quotidien' },
+  { id: 'quest-rare-1km', label: 'quests.rare1km', done: false, rewardCoins: 50, type: 'exploration' },
 ];
 
 export const dailyCoinsBalance = 340;
@@ -296,8 +305,10 @@ export function addPost(input: { imageUri: string; texte: string; collectionItem
 
   const post: FeedPost = {
     id: `post-${Date.now()}`,
+    authorId: currentUser.id,
     authorInitial: currentUser.pseudo.charAt(0),
     authorName: currentUser.pseudo,
+    authorAvatarUrl: currentUser.urlAvatar,
     createdAt: new Date().toISOString(),
     plant: tagged?.plant,
     tagType: tagged?.type,

@@ -9,17 +9,19 @@ import { AuthProvider } from '@/features/auth/AuthProvider';
 jest.mock('@/api/client', () => ({
   apiClient: { get: jest.fn(), post: jest.fn() },
   setUnauthorizedHandler: jest.fn(),
+  setRefreshHandler: jest.fn(),
 }));
 
 const mockedGet = apiClient.get as jest.Mock;
 
-const testUser = { id: 'user-1', pseudo: 'Testeur', email: 'test@planai.app', niveau: 1, xp: 0, pieces: 15 };
+const testUser = { id: 'user-1', pseudo: 'Testeur', email: 'test@planai.app', niveau: 1, xp: 0, pieces: 15, urlAvatar: null };
 
 const backendQuests = [
   { id: 'scan-3', libelle: 'Scanner 3 plantes différentes', type: 'quotidien' as const, progression: 1, objectif: 3, complete: false, recompense: { xp: 0, pieces: 0 } },
   { id: 'add-garden', libelle: 'Ajouter une nouvelle plante à son Jardin', type: 'quotidien' as const, progression: 1, objectif: 1, complete: true, recompense: { xp: 20, pieces: 0 } },
   { id: 'publish-tip', libelle: "Publier une photo avec un conseil d'entretien", type: 'quotidien' as const, progression: 0, objectif: 1, complete: false, recompense: { xp: 0, pieces: 0 } },
   { id: 'get-5-likes', libelle: 'Recevoir 5 likes sur une publication', type: 'quotidien' as const, progression: 0, objectif: 5, complete: false, recompense: { xp: 0, pieces: 0 } },
+  { id: 'explore-rare', libelle: 'Découvrir une espèce Rare ou Épique à plus de 1 km de chez vous', type: 'exploration' as const, progression: 0, objectif: 1, complete: false, recompense: { xp: 0, pieces: 0 } },
 ];
 
 let queryClient: QueryClient;
@@ -51,13 +53,16 @@ describe('useQuests (integration: GET /quests/daily réel, plus de données dém
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(mockedGet).toHaveBeenCalledWith('/quests/daily');
-    expect(result.current.data?.quests).toHaveLength(4);
+    expect(result.current.data?.quests).toHaveLength(5);
 
     const addGarden = result.current.data?.quests.find((q) => q.id === 'add-garden');
     expect(addGarden).toMatchObject({ done: true, rewardXp: 20, rewardCoins: undefined, label: 'quests.addGarden' });
 
     const scan3 = result.current.data?.quests.find((q) => q.id === 'scan-3');
     expect(scan3).toMatchObject({ done: false, label: 'quests.scan3' });
+
+    const exploreRare = result.current.data?.quests.find((q) => q.id === 'explore-rare');
+    expect(exploreRare).toMatchObject({ done: false, label: 'quests.rare1km', type: 'exploration' });
   });
 
   it('uses the real i18n key for each known quest id instead of the raw French backend libelle', async () => {
@@ -74,6 +79,7 @@ describe('useQuests (integration: GET /quests/daily réel, plus de données dém
       'quests.addGarden',
       'quests.postTip',
       'quests.get5Likes',
+      'quests.rare1km',
     ]);
   });
 

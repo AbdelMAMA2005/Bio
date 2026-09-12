@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import type { BackendCollectionItem, BackendDiagnosisResponse } from '@/api/adapters';
 import { diagnosisFromBackend, toGardenClone } from '@/api/adapters';
@@ -7,21 +7,43 @@ import { API_BASE_URL, USE_MOCK_API } from '@/api/config';
 import { diagnosePlant, type DiagnosisResult } from '@/api/mock/diagnosis';
 import { setCloneHealth } from '@/api/mock/store';
 import { queryKeys } from '@/api/queryKeys';
-import type { GardenClone } from '@/api/types';
 import { useAuth } from '@/features/auth/AuthProvider';
 
-async function fetchGarden(userId: string): Promise<GardenClone[]> {
-  const { data } = await apiClient.get<BackendCollectionItem[]>('/collection', { params: { type: 'owned' } });
-  return data.map((item) => toGardenClone(item, userId, API_BASE_URL));
+const GARDEN_PAGE_SIZE = 20;
+
+type BackendCollectionPage = { items: BackendCollectionItem[]; total: number };
+
+async function fetchGardenPage(page: number): Promise<BackendCollectionPage> {
+  const { data } = await apiClient.get<BackendCollectionPage>('/collection', {
+    params: { type: 'owned', page, limit: GARDEN_PAGE_SIZE },
+  });
+  return data;
 }
 
+/**
+ * Pagination réelle (`page`/`limit`, voir API_CONTRACT.md §4) via `useInfiniteQuery` : Mon
+ * Jardin ne charge plus toute la collection d'un coup. `fetchNextPage()` est déclenché par
+ * `onEndReached` dans QuotidienView.tsx — `.data` reste un tableau à plat (comme avant) pour
+ * ne pas casser les autres consommateurs (usePlantDetail, useAccountStats, ScanScreen...),
+ * qui n'ont pas besoin de connaître la pagination.
+ */
 export function useMyGarden() {
   const { user } = useAuth();
-  return useQuery({
+  const query = useInfiniteQuery({
     queryKey: queryKeys.garden,
-    queryFn: () => fetchGarden(user!.id),
+    queryFn: ({ pageParam }) => fetchGardenPage(pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0);
+      return loaded < lastPage.total ? allPages.length + 1 : undefined;
+    },
     enabled: !!user,
   });
+
+  return {
+    ...query,
+    data: query.data?.pages.flatMap((p) => p.items.map((item) => toGardenClone(item, user!.id, API_BASE_URL))),
+  };
 }
 
 /**

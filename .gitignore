@@ -3,6 +3,9 @@ node_modules
 dist
 *.local
 
+# Docs de cadrage (PDF/maquette) : conservées hors dépôt, jamais nécessaires à l'exécution
+Cahier de charge/
+
 # compiled output
 /build
 

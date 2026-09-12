@@ -17,10 +17,14 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CollectionService } from './collection.service';
-import { CreateCollectionRequestDto, UpdateCollectionDto } from '../../dto';
-import { PlantType } from '../../entities/enums/plant-type.enum';
+import {
+  CollectionQueryDto,
+  CreateCollectionRequestDto,
+  UpdateCollectionDto,
+} from '../../dto';
 import { JwtAuthGuard } from '../../common/guards';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 
 @Controller('collection')
 @UseGuards(JwtAuthGuard)
@@ -29,7 +33,7 @@ export class CollectionController {
 
   @Post()
   async create(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateCollectionRequestDto,
   ) {
     return this.collectionService.create(user.id, dto);
@@ -37,15 +41,20 @@ export class CollectionController {
 
   @Get()
   async findAllByUser(
-    @CurrentUser() user: any,
-    @Query('type') type?: PlantType,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: CollectionQueryDto,
   ) {
-    return this.collectionService.findByUserAndType(user.id, type);
+    return this.collectionService.findByUserAndType(
+      user.id,
+      query.type,
+      query.page,
+      query.limit,
+    );
   }
 
   @Get(':id')
   async findOne(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
   ) {
     return this.collectionService.findOneByUser(id, user.id);
@@ -53,7 +62,7 @@ export class CollectionController {
 
   @Patch(':id')
   async update(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() dto: UpdateCollectionDto,
   ) {
@@ -62,7 +71,7 @@ export class CollectionController {
 
   @Delete(':id')
   async delete(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
   ) {
     await this.collectionService.delete(user.id, id);
@@ -73,7 +82,7 @@ export class CollectionController {
   @Post(':id/photos')
   @UseInterceptors(FileInterceptor('image'))
   async addPhoto(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') collectionId: string,
     @UploadedFile(
       new ParseFilePipe({
@@ -93,10 +102,7 @@ export class CollectionController {
 
   // Marquer la plante comme arrosée maintenant (recalcule prochainArrosage)
   @Post(':id/water')
-  async water(
-    @CurrentUser() user: any,
-    @Param('id') id: string,
-  ) {
+  async water(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.collectionService.waterNow(user.id, id);
   }
 }

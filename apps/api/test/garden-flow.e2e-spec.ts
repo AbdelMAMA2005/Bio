@@ -18,14 +18,20 @@ describe('Flux Jardin (e2e)', () => {
   beforeAll(async () => {
     app = await createE2eApp();
 
-    const dataUri = fs.readFileSync(path.join(__dirname, 'test-image.txt'), 'utf-8').trim();
+    const dataUri = fs
+      .readFileSync(path.join(__dirname, 'test-image.txt'), 'utf-8')
+      .trim();
     const base64 = dataUri.split(',')[1];
     testImageBuffer = Buffer.from(base64, 'base64');
 
     const email = uniqueEmail('garden-flow');
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `garden${Date.now()}`, motDePasse: 'motdepasse' })
+      .send({
+        email,
+        nomUtilisateur: `garden${Date.now()}`,
+        motDePasse: 'motdepasse',
+      })
       .expect(201);
 
     const login = await request(app.getHttpServer())
@@ -52,7 +58,9 @@ describe('Flux Jardin (e2e)', () => {
     // Fiche détail (23/07/2026) : description, conseils d'entretien réels et
     // photo de référence, tirés des champs structurés Plant.id (mock inclus).
     expect(res.body.aPropos).toEqual(expect.any(String));
-    expect(res.body.conseilsEntretien).toMatchObject({ lumiere: expect.any(String) });
+    expect(res.body.conseilsEntretien).toMatchObject({
+      lumiere: expect.any(String),
+    });
     expect(res.body.urlImage).toEqual(expect.any(String));
   });
 
@@ -102,7 +110,9 @@ describe('Flux Jardin (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(after.body.experience).toBe(before.body.experience + identify.body.xpGagne);
+    expect(after.body.experience).toBe(
+      before.body.experience + identify.body.xpGagne,
+    );
   });
 
   it('GET /collection?type=owned liste la plante ajoutée avec ses infos aplaties', async () => {
@@ -112,9 +122,21 @@ describe('Flux Jardin (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    const item = res.body.find((c: any) => c.id === collectionId);
+    expect(res.body.total).toEqual(expect.any(Number));
+    const item = res.body.items.find((c: any) => c.id === collectionId);
     expect(item).toBeDefined();
     expect(item.idPlante).toBe(plantId);
+  });
+
+  it('GET /collection?type=owned&limit=1 pagine correctement', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/collection')
+      .query({ type: 'owned', page: 1, limit: 1 })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(res.body.items.length).toBeLessThanOrEqual(1);
+    expect(res.body.total).toEqual(expect.any(Number));
   });
 
   it('POST /collection/:id/photos stocke la photo de suivi', async () => {
@@ -125,7 +147,9 @@ describe('Flux Jardin (e2e)', () => {
       .expect(201);
 
     expect(res.body.historiquePhotos).toHaveLength(1);
-    expect(res.body.historiquePhotos[0]).toContain(`/uploads/collections/${collectionId}/`);
+    expect(res.body.historiquePhotos[0]).toContain(
+      `/uploads/collections/${collectionId}/`,
+    );
   });
 
   it("POST /collection/:id/diagnosis renvoie un diagnostic et met à jour l'état de santé", async () => {
@@ -151,7 +175,11 @@ describe('Flux Jardin (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/reminders')
       .set('Authorization', `Bearer ${token}`)
-      .send({ collectionId, typeRappel: 'traitement', datePlanification: dansCinqJours.toISOString() })
+      .send({
+        collectionId,
+        typeRappel: 'traitement',
+        datePlanification: dansCinqJours.toISOString(),
+      })
       .expect(201);
 
     expect(res.body.estNotifie).toBe(false);
@@ -168,7 +196,11 @@ describe('Flux Jardin (e2e)', () => {
     const otherEmail = uniqueEmail('garden-flow-other');
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email: otherEmail, nomUtilisateur: `other${Date.now()}`, motDePasse: 'motdepasse' })
+      .send({
+        email: otherEmail,
+        nomUtilisateur: `other${Date.now()}`,
+        motDePasse: 'motdepasse',
+      })
       .expect(201);
     const otherLogin = await request(app.getHttpServer())
       .post('/auth/login')

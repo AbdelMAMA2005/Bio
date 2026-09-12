@@ -10,9 +10,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { RemindersService } from './reminders.service';
-import { CreateReminderDto, UpdateReminderDto, ReminderFilterDto, ReminderResponseDto } from '../../dto';
+import {
+  CreateReminderDto,
+  UpdateReminderDto,
+  ReminderFilterDto,
+  ReminderResponseDto,
+} from '../../dto';
 import { JwtAuthGuard } from '../../common/guards';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 
 @Controller('reminders')
 @UseGuards(JwtAuthGuard)
@@ -21,7 +27,7 @@ export class RemindersController {
 
   @Post()
   async create(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateReminderDto,
   ): Promise<ReminderResponseDto> {
     return this.remindersService.create(user.id, dto);
@@ -29,7 +35,7 @@ export class RemindersController {
 
   @Get()
   async findAll(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Query() filter: ReminderFilterDto,
   ) {
     return this.remindersService.findAll(user.id, filter);
@@ -37,7 +43,7 @@ export class RemindersController {
 
   @Patch(':id')
   async update(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() dto: UpdateReminderDto,
   ): Promise<ReminderResponseDto> {
@@ -46,7 +52,7 @@ export class RemindersController {
 
   @Delete(':id')
   async delete(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
   ) {
     await this.remindersService.delete(user.id, id);
@@ -55,7 +61,7 @@ export class RemindersController {
 
   @Post(':id/notify')
   async notify(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
   ): Promise<ReminderResponseDto> {
     return this.remindersService.notify(user.id, id);

@@ -17,7 +17,9 @@ export class NotificationsService {
    * simplement la ligne au userId courant plutôt que de dupliquer.
    */
   async registerDevice(userId: string, dto: RegisterDeviceDto): Promise<void> {
-    const existing = await this.deviceTokenRepo.findOne({ where: { expoPushToken: dto.expoPushToken } });
+    const existing = await this.deviceTokenRepo.findOne({
+      where: { expoPushToken: dto.expoPushToken },
+    });
     if (existing) {
       existing.userId = userId;
       existing.plateforme = dto.plateforme;
@@ -26,7 +28,11 @@ export class NotificationsService {
     }
 
     await this.deviceTokenRepo.save(
-      this.deviceTokenRepo.create({ userId, expoPushToken: dto.expoPushToken, plateforme: dto.plateforme }),
+      this.deviceTokenRepo.create({
+        userId,
+        expoPushToken: dto.expoPushToken,
+        plateforme: dto.plateforme,
+      }),
     );
   }
 
@@ -34,7 +40,10 @@ export class NotificationsService {
    * Sans expoPushToken précisé, retire tous les tokens de l'utilisateur (déconnexion
    * globale des notifications) ; avec, ne retire que cet appareil précis.
    */
-  async unregisterDevice(userId: string, expoPushToken?: string): Promise<void> {
+  async unregisterDevice(
+    userId: string,
+    expoPushToken?: string,
+  ): Promise<void> {
     if (expoPushToken) {
       await this.deviceTokenRepo.delete({ userId, expoPushToken });
       return;

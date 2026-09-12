@@ -10,6 +10,10 @@ import { QuestProgress } from '../../entities/quest-progress.entity';
 import { PlantType } from '../../entities/enums/plant-type.enum';
 import { QuestResponseDto } from '../../dto';
 import { QUEST_CATALOG } from './quest-catalog';
+import { haversineMeters } from '../../common/geo';
+
+/** Distance minimale (mètres) du point de référence pour compter comme "exploration". */
+const EXPLORE_MIN_DISTANCE_METERS = 1000;
 
 function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
@@ -44,7 +48,11 @@ export class QuestsService {
     const startOfDay = new Date(`${date}T00:00:00.000Z`);
     const endOfDay = new Date(`${date}T23:59:59.999Z`);
 
-    const progressions = await this.computeRealProgressions(userId, startOfDay, endOfDay);
+    const progressions = await this.computeRealProgressions(
+      userId,
+      startOfDay,
+      endOfDay,
+    );
 
     const results: QuestResponseDto[] = [];
     for (const quest of QUEST_CATALOG) {
@@ -55,13 +63,19 @@ export class QuestsService {
       // désormais) créditée — évite une relecture séparée qui pourrait ne pas
       // refléter l'écriture qu'on vient de faire selon le niveau d'isolation.
       const recompenseCreditee = complete
-        ? await this.creditRewardOnce(userId, quest.id, date, quest.recompenseXp, quest.recompensePieces)
+        ? await this.creditRewardOnce(
+            userId,
+            quest.id,
+            date,
+            quest.recompenseXp,
+            quest.recompensePieces,
+          )
         : false;
 
       results.push({
         id: quest.id,
         libelle: quest.libelle,
-        type: 'quotidien',
+        type: quest.type ?? 'quotidien',
         progression,
         objectif: quest.objectif,
         complete,
@@ -79,41 +93,88 @@ export class QuestsService {
     startOfDay: Date,
     endOfDay: Date,
   ): Promise<Record<string, number>> {
-    const [scanRows, gardenAdds, postsToday, likesToday] = await Promise.all([
-      // Espèces distinctes identifiées aujourd'hui.
-      this.identificationLogRepo
-        .createQueryBuilder('log')
-        .select('DISTINCT log.plantId', 'plantId')
-        .where('log.userId = :userId', { userId })
-        .andWhere('log.dateCreation BETWEEN :start AND :end', { start: startOfDay, end: endOfDay })
-        .getRawMany(),
-      // Ajouts au Jardin (owned) aujourd'hui.
-      this.collectionRepo
-        .createQueryBuilder('c')
-        .where('c.userId = :userId', { userId })
-        .andWhere('c.typeCollection = :type', { type: PlantType.OWNED })
-        .andWhere('c.dateAjout BETWEEN :start AND :end', { start: startOfDay, end: endOfDay })
-        .getCount(),
-      // Publications créées aujourd'hui.
-      this.postRepo
-        .createQueryBuilder('p')
-        .where('p.userId = :userId', { userId })
-        .andWhere('p.dateCreation BETWEEN :start AND :end', { start: startOfDay, end: endOfDay })
-        .getCount(),
-      // Likes reçus aujourd'hui sur n'importe laquelle de ses publications.
-      this.likeRepo
-        .createQueryBuilder('l')
-        .innerJoin('l.publication', 'p')
-        .where('p.userId = :userId', { userId })
-        .andWhere('l.dateCreation BETWEEN :start AND :end', { start: startOfDay, end: endOfDay })
-        .getCount(),
-    ]);
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+
+    const [scanRows, gardenAdds, postsToday, likesToday, exploreCount] =
+      await Promise.all([
+        // Espèces distinctes identifiées aujourd'hui.
+        this.identificationLogRepo
+          .createQueryBuilder('log')
+          .select('DISTINCT log.plantId', 'plantId')
+          .where('log.userId = :userId', { userId })
+          .andWhere('log.dateCreation BETWEEN :start AND :end', {
+            start: startOfDay,
+            end: endOfDay,
+          })
+          .getRawMany(),
+        // Ajouts au Jardin (owned) aujourd'hui.
+        this.collectionRepo
+          .createQueryBuilder('c')
+          .where('c.userId = :userId', { userId })
+          .andWhere('c.typeCollection = :type', { type: PlantType.OWNED })
+          .andWhere('c.dateAjout BETWEEN :start AND :end', {
+            start: startOfDay,
+            end: endOfDay,
+          })
+          .getCount(),
+        // Publications créées aujourd'hui.
+        this.postRepo
+          .createQueryBuilder('p')
+          .where('p.userId = :userId', { userId })
+          .andWhere('p.dateCreation BETWEEN :start AND :end', {
+            start: startOfDay,
+            end: endOfDay,
+          })
+          .getCount(),
+        // Likes reçus aujourd'hui sur n'importe laquelle de ses publications.
+        this.likeRepo
+          .createQueryBuilder('l')
+          .innerJoin('l.publication', 'p')
+          .where('p.userId = :userId', { userId })
+          .andWhere('l.dateCreation BETWEEN :start AND :end', {
+            start: startOfDay,
+            end: endOfDay,
+          })
+          .getCount(),
+        // Découvertes Rare/Épique géo-taguées aujourd'hui, filtrées par distance réelle au
+        // point de référence en JS ci-dessous (peu de lignes : uniquement les découvertes
+        // du jour déjà rares/épiques — pas besoin de SQL géo pour ce volume).
+        this.collectionRepo
+          .createQueryBuilder('c')
+          .leftJoinAndSelect('c.plante', 'p')
+          .where('c.userId = :userId', { userId })
+          .andWhere('c.typeCollection = :type', { type: PlantType.DISCOVERED })
+          .andWhere('c.dateAjout BETWEEN :start AND :end', {
+            start: startOfDay,
+            end: endOfDay,
+          })
+          .andWhere('c.latitude IS NOT NULL')
+          .andWhere('c.longitude IS NOT NULL')
+          .andWhere('p.badgeRarete IN (:...raretes)', {
+            raretes: ['Rare', 'Épique'],
+          })
+          .getMany(),
+      ]);
+
+    const exploreProgression =
+      user?.latitudeReference != null && user?.longitudeReference != null
+        ? exploreCount.filter(
+            (c) =>
+              haversineMeters(
+                user.latitudeReference!,
+                user.longitudeReference!,
+                c.latitude!,
+                c.longitude!,
+              ) >= EXPLORE_MIN_DISTANCE_METERS,
+          ).length
+        : 0;
 
     return {
       'scan-3': scanRows.length,
       'add-garden': gardenAdds,
       'publish-tip': postsToday,
       'get-5-likes': likesToday,
+      'explore-rare': exploreProgression,
     };
   }
 
@@ -124,7 +185,9 @@ export class QuestsService {
     xp: number,
     pieces: number,
   ): Promise<boolean> {
-    const existing = await this.questProgressRepo.findOne({ where: { userId, questId, date } });
+    const existing = await this.questProgressRepo.findOne({
+      where: { userId, questId, date },
+    });
     if (existing?.recompenseCreditee) return true;
 
     if (xp > 0) {
@@ -139,7 +202,12 @@ export class QuestsService {
       await this.questProgressRepo.save(existing);
     } else {
       await this.questProgressRepo.save(
-        this.questProgressRepo.create({ userId, questId, date, recompenseCreditee: true }),
+        this.questProgressRepo.create({
+          userId,
+          questId,
+          date,
+          recompenseCreditee: true,
+        }),
       );
     }
     return true;

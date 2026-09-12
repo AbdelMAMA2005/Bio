@@ -2,9 +2,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
 
 export class CreateUserDto {
-  
   @ApiProperty({
-    description: 'Email de l\'utilisateur pour se connecter',
+    description: "Email de l'utilisateur pour se connecter",
     example: 'abdel@planai.com',
     required: true,
   })
@@ -12,7 +11,7 @@ export class CreateUserDto {
   email!: string;
 
   @ApiProperty({
-    description: 'Nom d\'utilisateur unique sur la plateforme',
+    description: "Nom d'utilisateur unique sur la plateforme",
     example: 'Abdel_Pro',
     required: true,
   })

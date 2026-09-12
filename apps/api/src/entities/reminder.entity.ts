@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 import { Collection } from './collection.entity';
 
@@ -13,7 +19,9 @@ export class Reminder {
   @Column('uuid')
   collectionId!: string;
 
-  @ManyToOne(() => User, (utilisateur) => utilisateur.rappelsUtilisateur, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => User, (utilisateur) => utilisateur.rappelsUtilisateur, {
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'userId' })
   utilisateur!: User;
 

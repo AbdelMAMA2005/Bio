@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -17,7 +18,7 @@ type Props = {
   onPress: () => void;
 };
 
-export function DiscoveryCard({ discovery, onPress }: Props) {
+export const DiscoveryCard = memo(function DiscoveryCard({ discovery, onPress }: Props) {
   const { i18n } = useTranslation();
   const { colors, isDark } = useAppTheme();
   const { plant, item, placeLabel } = discovery;
@@ -57,7 +58,7 @@ export function DiscoveryCard({ discovery, onPress }: Props) {
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

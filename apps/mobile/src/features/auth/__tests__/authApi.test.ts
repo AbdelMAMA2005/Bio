@@ -1,5 +1,5 @@
 import { apiClient } from '@/api/client';
-import { login, register, loginWithGoogle, updateProfile, deleteAccount } from '../authApi';
+import { login, register, loginWithGoogle, updateProfile, deleteAccount, refreshAccessToken, logout } from '../authApi';
 
 jest.mock('@/api/client', () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
@@ -20,6 +20,7 @@ describe('login', () => {
     mockedPost.mockResolvedValueOnce({
       data: {
         accessToken: 'jwt-abc',
+        refreshToken: 'refresh-abc',
         user: { id: 'u1', email: 'a@b.com', nomUtilisateur: 'Djawad', experience: 120, niveau: 2, pieces: 15 },
       },
     });
@@ -27,7 +28,11 @@ describe('login', () => {
     const result = await login('a@b.com', 'secret123');
 
     expect(mockedPost).toHaveBeenCalledWith('/auth/login', { email: 'a@b.com', motDePasse: 'secret123' });
-    expect(result).toEqual({ token: 'jwt-abc', user: { id: 'u1', pseudo: 'Djawad', email: 'a@b.com', niveau: 2, xp: 120, pieces: 15 } });
+    expect(result).toEqual({
+      token: 'jwt-abc',
+      refreshToken: 'refresh-abc',
+      user: { id: 'u1', pseudo: 'Djawad', email: 'a@b.com', niveau: 2, xp: 120, pieces: 15, urlAvatar: null },
+    });
   });
 });
 
@@ -38,6 +43,7 @@ describe('register', () => {
       .mockResolvedValueOnce({
         data: {
           accessToken: 'jwt-xyz',
+          refreshToken: 'refresh-xyz',
           user: { id: 'u2', email: 'new@b.com', nomUtilisateur: 'NewUser', experience: 0, niveau: 1 },
         },
       });
@@ -60,6 +66,7 @@ describe('loginWithGoogle', () => {
     mockedPost.mockResolvedValueOnce({
       data: {
         accessToken: 'jwt-google',
+        refreshToken: 'refresh-google',
         user: { id: 'u3', email: 'leo@gmail.com', nomUtilisateur: 'Leo', experience: 0, niveau: 1, pieces: 0 },
       },
     });
@@ -67,7 +74,34 @@ describe('loginWithGoogle', () => {
     const result = await loginWithGoogle('google-id-token');
 
     expect(mockedPost).toHaveBeenCalledWith('/auth/google', { idToken: 'google-id-token' });
-    expect(result).toEqual({ token: 'jwt-google', user: { id: 'u3', pseudo: 'Leo', email: 'leo@gmail.com', niveau: 1, xp: 0, pieces: 0 } });
+    expect(result).toEqual({
+      token: 'jwt-google',
+      refreshToken: 'refresh-google',
+      user: { id: 'u3', pseudo: 'Leo', email: 'leo@gmail.com', niveau: 1, xp: 0, pieces: 0, urlAvatar: null },
+    });
+  });
+});
+
+describe('refreshAccessToken', () => {
+  it('posts the current refresh token to /auth/refresh and returns the new pair', async () => {
+    mockedPost.mockResolvedValueOnce({
+      data: { accessToken: 'jwt-new', refreshToken: 'refresh-new' },
+    });
+
+    const result = await refreshAccessToken('refresh-old');
+
+    expect(mockedPost).toHaveBeenCalledWith('/auth/refresh', { refreshToken: 'refresh-old' });
+    expect(result).toEqual({ accessToken: 'jwt-new', refreshToken: 'refresh-new' });
+  });
+});
+
+describe('logout', () => {
+  it('posts the refresh token to /auth/logout to revoke it server-side', async () => {
+    mockedPost.mockResolvedValueOnce({ data: undefined });
+
+    await logout('refresh-to-revoke');
+
+    expect(mockedPost).toHaveBeenCalledWith('/auth/logout', { refreshToken: 'refresh-to-revoke' });
   });
 });
 

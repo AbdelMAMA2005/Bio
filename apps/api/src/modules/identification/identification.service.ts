@@ -6,6 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
+import { isAxiosError } from 'axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -18,6 +19,7 @@ import { calculateXpForRarity } from '../../common/xp';
 import { computeRarityFromPriorCaptures } from '../../common/rarity';
 import { classifyToxicity } from '../../common/toxicity-classifier';
 import { describeWatering, wateringIntervalDays } from '../../common/watering';
+import type { PlantIdResponse } from '../../common/types/plant-id-response';
 
 /**
  * En dessous de ce seuil, Plant.id lui-même indique qu'il n'est pas confiant que
@@ -60,13 +62,19 @@ const MOCK_PLANT_ID_RESPONSE = {
               phylum: 'Tracheophyta',
               kingdom: 'Plantae',
             },
-            toxicity: 'Non toxique pour les humains et les animaux domestiques.',
-            description: { value: "Le rosier de France est un arbuste épineux à fleurs roses très parfumées, cultivé depuis l'Antiquité pour ses usages ornementaux et médicinaux." },
+            toxicity:
+              'Non toxique pour les humains et les animaux domestiques.',
+            description: {
+              value:
+                "Le rosier de France est un arbuste épineux à fleurs roses très parfumées, cultivé depuis l'Antiquité pour ses usages ornementaux et médicinaux.",
+            },
             watering: { min: 2, max: 2 },
             best_light_condition: 'Plein soleil à mi-ombre',
             best_soil_type: 'Sol bien drainé, riche en matière organique',
             propagation_methods: ['Bouturage', 'Greffage'],
-            image: { value: 'https://bs.plantnet.org/image/o/mock-rosa-gallica.jpg' },
+            image: {
+              value: 'https://bs.plantnet.org/image/o/mock-rosa-gallica.jpg',
+            },
           },
         },
         {
@@ -103,10 +111,13 @@ export class IdentificationService {
   ) {
     this.plantIdApiUrl = this.configService.get<string>('PLANT_ID_API_URL')!;
     this.apiKey = this.configService.get<string>('PLANT_ID_API_KEY')!;
-    this.useMock = this.configService.get<string>('MOCK_PLANTID', 'false') === 'true';
+    this.useMock =
+      this.configService.get<string>('MOCK_PLANTID', 'false') === 'true';
 
     if (!this.useMock && !this.apiKey) {
-      throw new Error('PLANT_ID_API_KEY is not defined in environment variables');
+      throw new Error(
+        'PLANT_ID_API_KEY is not defined in environment variables',
+      );
     }
 
     if (this.useMock) {
@@ -125,7 +136,10 @@ export class IdentificationService {
    * Headers: Api-Key, Content-Type: application/json
    * Body: { "images": ["data:image/jpeg;base64,..."], "similar_images": true }
    */
-  async identifyPlantFromBuffer(userId: string, buffer: Buffer): Promise<IdentifyPlantResponseDto> {
+  async identifyPlantFromBuffer(
+    userId: string,
+    buffer: Buffer,
+  ): Promise<IdentifyPlantResponseDto> {
     if (!buffer || buffer.length === 0) {
       throw new BadRequestException('Image invalide ou vide.');
     }
@@ -150,7 +164,7 @@ export class IdentificationService {
   //  Plant.id v3 API call — JSON body with base64 images
   // ─────────────────────────────────────────────────────────
 
-  private async callPlantIdApi(buffer: Buffer): Promise<any> {
+  private async callPlantIdApi(buffer: Buffer): Promise<PlantIdResponse> {
     // Plant.id v3 accepts base64 with or without data URI prefix
     const base64Image = buffer.toString('base64');
 
@@ -177,11 +191,13 @@ export class IdentificationService {
     };
 
     this.logger.log(`📡 Appel Plant.id v3 : POST ${url}`);
-    this.logger.debug(`   Taille image : ${(buffer.length / 1024).toFixed(1)} Ko`);
+    this.logger.debug(
+      `   Taille image : ${(buffer.length / 1024).toFixed(1)} Ko`,
+    );
 
     try {
       const { data } = await firstValueFrom(
-        this.httpService.post(url, payload, {
+        this.httpService.post<PlantIdResponse>(url, payload, {
           headers: {
             'Content-Type': 'application/json',
             'Api-Key': this.apiKey,
@@ -189,13 +205,18 @@ export class IdentificationService {
         }),
       );
 
-      this.logger.log(`✅ Plant.id a répondu — is_plant: ${data?.result?.is_plant?.probability}`);
+      this.logger.log(
+        `✅ Plant.id a répondu — is_plant: ${data?.result?.is_plant?.probability}`,
+      );
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Extract detailed error information from the Axios response
-      const status = error?.response?.status;
-      const errorBody = error?.response?.data;
-      const message = error?.message || 'Erreur inconnue';
+      const status = isAxiosError(error) ? error.response?.status : undefined;
+      const errorBody = isAxiosError<{ error?: { message?: string } }>(error)
+        ? error.response?.data
+        : undefined;
+      const message =
+        error instanceof Error ? error.message : 'Erreur inconnue';
 
       this.logger.error(
         `❌ Erreur Plant.id (HTTP ${status ?? '?'}): ${message}`,
@@ -228,24 +249,27 @@ export class IdentificationService {
   //  Mock response for development
   // ─────────────────────────────────────────────────────────
 
-  private async getMockResponse(): Promise<any> {
+  private async getMockResponse(): Promise<PlantIdResponse> {
     this.logger.log('🧪 Utilisation de la réponse mock Plant.id');
     // Simulate network latency
     await new Promise((resolve) => setTimeout(resolve, 300));
     return structuredClone(MOCK_PLANT_ID_RESPONSE);
   }
-// ─────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────
   //  Parse Plant.id v3 response → IdentifyPlantResponseDto
   // ─────────────────────────────────────────────────────────
 
-  private async processPlantIdResponse(plantIdResponse: any): Promise<IdentifyPlantResponseDto> {
+  private async processPlantIdResponse(
+    plantIdResponse: PlantIdResponse,
+  ): Promise<IdentifyPlantResponseDto> {
     // La probabilité que l'image contienne une plante (indépendante de l'espèce) :
     // trop basse, la photo n'est probablement pas une plante du tout (objet,
     // animal, photo floue...).
-    const isPlantProbability: number = plantIdResponse?.result?.is_plant?.probability ?? 1;
+    const isPlantProbability: number =
+      plantIdResponse?.result?.is_plant?.probability ?? 1;
     if (isPlantProbability < MIN_IS_PLANT_PROBABILITY) {
       throw new NotFoundException(
-        "Aucune plante détectée sur cette image. Réessayez avec une photo plus nette de la plante.",
+        'Aucune plante détectée sur cette image. Réessayez avec une photo plus nette de la plante.',
       );
     }
 
@@ -269,8 +293,7 @@ export class IdentificationService {
     const nomScientifique: string = best.name || 'Plante inconnue';
     const nomCommun: string =
       best.details?.common_names?.[0] || nomScientifique;
-    const famille: string | null =
-      best.details?.taxonomy?.family || null;
+    const famille: string | null = best.details?.taxonomy?.family || null;
 
     // ── Toxicity mapping ── voir common/toxicity-classifier.ts : ancré sur
     // `edible_parts` (donnée structurée Plant.id), pas seulement une recherche de
@@ -286,15 +309,24 @@ export class IdentificationService {
     // manque : la case correspondante reste simplement absente de l'objet, le
     // front affiche alors "—" plutôt qu'une fausse valeur — voir rapport.md).
     const aPropos: string | null = best.details?.description?.value || null;
-    const lumiere: string | undefined = best.details?.best_light_condition || undefined;
+    const lumiere: string | undefined =
+      best.details?.best_light_condition || undefined;
     const sol: string | undefined = best.details?.best_soil_type || undefined;
-    const arrosage: string | undefined = describeWatering(best.details?.watering);
-    const frequenceArrosageJours: number | undefined = wateringIntervalDays(best.details?.watering);
-    const multiplication: string | undefined = Array.isArray(best.details?.propagation_methods) && best.details.propagation_methods.length > 0
-      ? best.details.propagation_methods.join(', ')
-      : undefined;
+    const arrosage: string | undefined = describeWatering(
+      best.details?.watering,
+    );
+    const frequenceArrosageJours: number | undefined = wateringIntervalDays(
+      best.details?.watering,
+    );
+    const multiplication: string | undefined =
+      Array.isArray(best.details?.propagation_methods) &&
+      best.details.propagation_methods.length > 0
+        ? best.details.propagation_methods.join(', ')
+        : undefined;
     const hasCareData = lumiere || sol || arrosage || multiplication;
-    const conseilsEntretien = hasCareData ? { lumiere, sol, arrosage, multiplication } : null;
+    const conseilsEntretien = hasCareData
+      ? { lumiere, sol, arrosage, multiplication }
+      : null;
     const urlImage: string | null = best.details?.image?.value || null;
 
     // ── Find or create the plant entity ──
@@ -315,15 +347,22 @@ export class IdentificationService {
         frequenceArrosageJours: frequenceArrosageJours ?? null,
       });
       await this.plantRepo.save(existingPlant);
-    } else if (!existingPlant.aPropos || !existingPlant.conseilsEntretien || !existingPlant.urlImage || !existingPlant.frequenceArrosageJours) {
+    } else if (
+      !existingPlant.aPropos ||
+      !existingPlant.conseilsEntretien ||
+      !existingPlant.urlImage ||
+      !existingPlant.frequenceArrosageJours
+    ) {
       // Une espèce déjà en base (créée avant l'ajout de la fiche détail, ou lors
       // d'un premier scan où Plant.id manquait ces champs) ne se voit jamais mise
       // à jour spontanément : on complète ici les seules cases encore vides,
       // sans écraser une donnée déjà présente — voir rapport.md.
       existingPlant.aPropos = existingPlant.aPropos ?? aPropos;
-      existingPlant.conseilsEntretien = existingPlant.conseilsEntretien ?? conseilsEntretien;
+      existingPlant.conseilsEntretien =
+        existingPlant.conseilsEntretien ?? conseilsEntretien;
       existingPlant.urlImage = existingPlant.urlImage ?? urlImage;
-      existingPlant.frequenceArrosageJours = existingPlant.frequenceArrosageJours ?? frequenceArrosageJours ?? null;
+      existingPlant.frequenceArrosageJours =
+        existingPlant.frequenceArrosageJours ?? frequenceArrosageJours ?? null;
       await this.plantRepo.save(existingPlant);
     }
 
@@ -334,7 +373,9 @@ export class IdentificationService {
     // correspondent à ce qui sera vraiment crédité à la capture, plutôt que de
     // montrer un chiffre qui changerait ensuite (cahier des charges : l'animation
     // "+45 XP" doit annoncer un gain réel, pas une estimation trompeuse).
-    const priorCaptures = await this.collectionRepo.count({ where: { plantId: existingPlant.id } });
+    const priorCaptures = await this.collectionRepo.count({
+      where: { plantId: existingPlant.id },
+    });
     const raretePrevisionnelle = computeRarityFromPriorCaptures(priorCaptures);
     const xpGagne = calculateXpForRarity(raretePrevisionnelle);
 

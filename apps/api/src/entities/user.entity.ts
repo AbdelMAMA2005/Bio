@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, DeleteDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  DeleteDateColumn,
+} from 'typeorm';
 import { Collection } from './collection.entity';
 import { Post } from './posts.entity';
 import { Comment } from './comment.entity';
@@ -32,11 +38,23 @@ export class User {
   @Column({ default: 1 })
   niveau!: number;
 
-  @Column({ nullable: true })
-  urlAvatar!: string;
+  @Column({ type: 'text', nullable: true })
+  urlAvatar!: string | null;
 
   @Column({ type: 'jsonb', default: [] })
   insignes!: string[];
+
+  /**
+   * Point de référence "chez vous" pour le défi Exploration (voir QuestsService) :
+   * coordonnées de la toute première capture géo-taguée de cet utilisateur, figées à ce
+   * moment-là (jamais recalculées ensuite, même si l'utilisateur déménage) — pas de champ
+   * dédié "domicile" dans le cahier des charges, donc pas de saisie manuelle demandée.
+   */
+  @Column({ type: 'double precision', nullable: true })
+  latitudeReference!: number | null;
+
+  @Column({ type: 'double precision', nullable: true })
+  longitudeReference!: number | null;
 
   @DeleteDateColumn({ nullable: true })
   dateSuppression!: Date | null;

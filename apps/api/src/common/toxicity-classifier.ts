@@ -26,7 +26,10 @@ import { ToxicityLevel } from '../entities/enums/toxicity-level.enum';
  *   cas mixte (ex. tomate, mangue) : ni "sans danger" ni "toxique" en bloc ne
  *   seraient honnêtes → `incertaine`.
  */
-export function classifyToxicity(toxicityText: string | null | undefined, edibleParts: string[] | null | undefined): ToxicityLevel {
+export function classifyToxicity(
+  toxicityText: string | null | undefined,
+  edibleParts: string[] | null | undefined,
+): ToxicityLevel {
   if (!toxicityText) {
     return ToxicityLevel.ORANGE;
   }
@@ -38,8 +41,14 @@ export function classifyToxicity(toxicityText: string | null | undefined, edible
     /non[\s-]?toxique|non-toxic|not toxic|sans danger|generally safe|considered safe|no known toxic|not known to be toxic/.test(
       text,
     );
-  const mentionsToxicity = /toxi[qc]|poisonous|dangereux|harmful if ingested|cardiac glycosides/.test(text);
-  const severe = /highly toxic|extremely toxic|all parts|hautement toxique|très toxique|toutes les parties/.test(text);
+  const mentionsToxicity =
+    /toxi[qc]|poisonous|dangereux|harmful if ingested|cardiac glycosides/.test(
+      text,
+    );
+  const severe =
+    /highly toxic|extremely toxic|all parts|hautement toxique|très toxique|toutes les parties/.test(
+      text,
+    );
 
   if (!mentionsToxicity || explicitlySafe) {
     return ToxicityLevel.GREEN;

@@ -77,12 +77,32 @@ describe('serializeConseilsEntretien', () => {
 describe('userFromBackend', () => {
   it('maps nomUtilisateur/experience to the front pseudo/xp fields', () => {
     const backend: BackendUser = { id: 'u1', email: 'a@b.com', nomUtilisateur: 'Djawad', experience: 240, niveau: 3, pieces: 50 };
-    expect(userFromBackend(backend)).toEqual({ id: 'u1', pseudo: 'Djawad', email: 'a@b.com', niveau: 3, xp: 240, pieces: 50 });
+    expect(userFromBackend(backend, 'http://localhost:3000')).toEqual({
+      id: 'u1',
+      pseudo: 'Djawad',
+      email: 'a@b.com',
+      niveau: 3,
+      xp: 240,
+      pieces: 50,
+      urlAvatar: null,
+    });
   });
 
   it('defaults pieces to 0 when the backend omits it (older payload shape)', () => {
     const backend: BackendUser = { id: 'u1', email: 'a@b.com', nomUtilisateur: 'Djawad', experience: 240, niveau: 3 };
-    expect(userFromBackend(backend).pieces).toBe(0);
+    expect(userFromBackend(backend, 'http://localhost:3000').pieces).toBe(0);
+  });
+
+  it('resolves a relative urlAvatar against the API base URL', () => {
+    const backend: BackendUser = {
+      id: 'u1',
+      email: 'a@b.com',
+      nomUtilisateur: 'Djawad',
+      experience: 240,
+      niveau: 3,
+      urlAvatar: '/uploads/avatars/a.jpg',
+    };
+    expect(userFromBackend(backend, 'http://localhost:3000').urlAvatar).toBe('http://localhost:3000/uploads/avatars/a.jpg');
   });
 });
 
@@ -415,6 +435,8 @@ describe('toStoryGroup', () => {
         dateExpiration: '2026-07-25T10:00:00.000Z',
         vuParMoi: false,
         vuesCount: 2,
+        likesCount: 0,
+        aimeParMoi: false,
       },
     ],
   };
@@ -447,10 +469,12 @@ describe('toComment', () => {
       auteur: { id: 'user-1', nomUtilisateur: 'djawad', urlAvatar: null },
     };
 
-    expect(toComment(backend)).toEqual({
+    expect(toComment(backend, 'http://localhost:3000')).toEqual({
       id: 'comment-1',
+      authorId: 'user-1',
       authorInitial: 'D',
       authorName: 'djawad',
+      authorAvatarUrl: null,
       createdAt: '2026-07-24T10:00:00.000Z',
       text: 'Belle plante !',
     });

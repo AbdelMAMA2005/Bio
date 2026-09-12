@@ -43,10 +43,15 @@ describe('IdentificationService', () => {
         { provide: HttpService, useValue: { post: jest.fn() } },
         {
           provide: ConfigService,
-          useValue: { get: jest.fn((key: string, def?: string) => config[key] ?? def) },
+          useValue: {
+            get: jest.fn((key: string, def?: string) => config[key] ?? def),
+          },
         },
         { provide: getRepositoryToken(Plant), useValue: plantRepo },
-        { provide: getRepositoryToken(IdentificationLog), useValue: identificationLogRepo },
+        {
+          provide: getRepositoryToken(IdentificationLog),
+          useValue: identificationLogRepo,
+        },
         { provide: getRepositoryToken(Collection), useValue: collectionRepo },
       ],
     }).compile();
@@ -56,9 +61,9 @@ describe('IdentificationService', () => {
     const module: TestingModule = await build();
     service = module.get(IdentificationService);
 
-    await expect(service.identifyPlantFromBuffer('user-1', Buffer.alloc(0))).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      service.identifyPlantFromBuffer('user-1', Buffer.alloc(0)),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it("classe 'Non toxique...' en GREEN malgré la sous-chaîne 'toxique' (négation gérée avant les mots-clés positifs)", async () => {
@@ -67,7 +72,10 @@ describe('IdentificationService', () => {
 
     // Le mock interne du service (MOCK_PLANTID=true) renvoie Rosa gallica avec
     // details.toxicity = "Non toxique pour les humains et les animaux domestiques."
-    const result = await service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image'));
+    const result = await service.identifyPlantFromBuffer(
+      'user-1',
+      Buffer.from('fake-image'),
+    );
 
     expect(result.nomScientifique).toBe('Rosa gallica');
     expect(result.toxicite).toBe(ToxicityLevel.GREEN);
@@ -77,24 +85,30 @@ describe('IdentificationService', () => {
     const module: TestingModule = await build();
     service = module.get(IdentificationService);
 
-    const result = await service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image'));
+    const result = await service.identifyPlantFromBuffer(
+      'user-1',
+      Buffer.from('fake-image'),
+    );
 
     expect(result.badgeRarete).toBe('Commun');
     expect(result.xpGagne).toBe(25);
   });
 
-  it("prévoit un aperçu de rareté/XP cohérent avec ce que CollectionService créditera réellement à la capture (jamais un chiffre qui changera ensuite)", async () => {
+  it('prévoit un aperçu de rareté/XP cohérent avec ce que CollectionService créditera réellement à la capture (jamais un chiffre qui changera ensuite)', async () => {
     const module: TestingModule = await build();
     service = module.get(IdentificationService);
     collectionRepo.count.mockResolvedValue(0); // aucune capture existante → Épique
 
-    const result = await service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image'));
+    const result = await service.identifyPlantFromBuffer(
+      'user-1',
+      Buffer.from('fake-image'),
+    );
 
     expect(result.badgeRarete).toBe('Épique');
     expect(result.xpGagne).toBe(100);
   });
 
-  it('réutilise une plante déjà en base plutôt que d\'en recréer une', async () => {
+  it("réutilise une plante déjà en base plutôt que d'en recréer une", async () => {
     const module: TestingModule = await build();
     service = module.get(IdentificationService);
     plantRepo.findOne.mockResolvedValue({
@@ -106,12 +120,19 @@ describe('IdentificationService', () => {
       badgeRarete: 'Commun',
       // Fiche détail déjà complète : ce test vérifie la réutilisation, pas le
       // backfill (voir le test dédié plus bas pour une plante encore incomplète).
+      // frequenceArrosageJours inclus depuis son ajout à la condition de complétude
+      // (identification.service.ts) — sans lui, ce fixture "déjà complet" retombait
+      // à tort dans la branche de backfill (bug réel trouvé par ce test, corrigé ici).
       aPropos: 'Déjà renseigné.',
       conseilsEntretien: { lumiere: 'Plein soleil' },
       urlImage: 'https://example.com/rosa.jpg',
+      frequenceArrosageJours: 5,
     });
 
-    const result = await service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image'));
+    const result = await service.identifyPlantFromBuffer(
+      'user-1',
+      Buffer.from('fake-image'),
+    );
 
     expect(result.plantId).toBe('plant-existante');
     expect(plantRepo.save).not.toHaveBeenCalled();
@@ -132,17 +153,22 @@ describe('IdentificationService', () => {
       urlImage: null,
     });
 
-    const result = await service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image'));
+    const result = await service.identifyPlantFromBuffer(
+      'user-1',
+      Buffer.from('fake-image'),
+    );
 
     // Le mock interne (MOCK_PLANTID=true) fournit désormais description/watering/
     // best_light_condition/best_soil_type/propagation_methods/image pour Rosa gallica.
     expect(result.aPropos).toEqual(expect.any(String));
-    expect(result.conseilsEntretien).toMatchObject({ lumiere: expect.any(String) });
+    expect(result.conseilsEntretien).toMatchObject({
+      lumiere: expect.any(String),
+    });
     expect(result.urlImage).toEqual(expect.any(String));
     expect(plantRepo.save).toHaveBeenCalled();
   });
 
-  it("ne réécrit jamais une donnée déjà présente lors du backfill (respecte ce qui a pu être édité manuellement)", async () => {
+  it('ne réécrit jamais une donnée déjà présente lors du backfill (respecte ce qui a pu être édité manuellement)', async () => {
     const module: TestingModule = await build();
     service = module.get(IdentificationService);
     plantRepo.findOne.mockResolvedValue({
@@ -157,16 +183,24 @@ describe('IdentificationService', () => {
       urlImage: null,
     });
 
-    const result = await service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image'));
+    const result = await service.identifyPlantFromBuffer(
+      'user-1',
+      Buffer.from('fake-image'),
+    );
 
-    expect(result.aPropos).toBe('Description déjà en place, ne doit pas être écrasée.');
+    expect(result.aPropos).toBe(
+      'Description déjà en place, ne doit pas être écrasée.',
+    );
   });
 
   it('renvoie un score de confiance réel (issu de la probabilité Plant.id), pas une valeur fixe', async () => {
     const module: TestingModule = await build();
     service = module.get(IdentificationService);
 
-    const result = await service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image'));
+    const result = await service.identifyPlantFromBuffer(
+      'user-1',
+      Buffer.from('fake-image'),
+    );
 
     // Le mock interne renvoie une probability de 0.92 pour la meilleure suggestion.
     expect(result.confiance).toBe(92);
@@ -189,10 +223,19 @@ describe('IdentificationService', () => {
   let lastHttpService: { post: jest.Mock };
 
   async function buildWithRealHttpFlow(plantIdData: any) {
-    plantRepo = { findOne: jest.fn().mockResolvedValue(null), create: jest.fn((d) => d), save: jest.fn(async (e) => ({ id: 'plant-1', ...e })) };
-    identificationLogRepo = { create: jest.fn((d) => d), save: jest.fn(async (e) => ({ id: 'log-1', ...e })) };
+    plantRepo = {
+      findOne: jest.fn().mockResolvedValue(null),
+      create: jest.fn((d) => d),
+      save: jest.fn(async (e) => ({ id: 'plant-1', ...e })),
+    };
+    identificationLogRepo = {
+      create: jest.fn((d) => d),
+      save: jest.fn(async (e) => ({ id: 'log-1', ...e })),
+    };
     collectionRepo = { count: jest.fn().mockResolvedValue(5) };
-    const httpService = { post: jest.fn().mockReturnValue(of({ data: plantIdData })) };
+    const httpService = {
+      post: jest.fn().mockReturnValue(of({ data: plantIdData })),
+    };
     lastHttpService = httpService;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -202,13 +245,23 @@ describe('IdentificationService', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn((key: string, def?: string) =>
-              ({ MOCK_PLANTID: 'false', PLANT_ID_API_KEY: 'test-key', PLANT_ID_API_URL: 'https://api.plant.id/v3/identification' } as any)[key] ?? def,
+            get: jest.fn(
+              (key: string, def?: string) =>
+                (
+                  ({
+                    MOCK_PLANTID: 'false',
+                    PLANT_ID_API_KEY: 'test-key',
+                    PLANT_ID_API_URL: 'https://api.plant.id/v3/identification',
+                  }) as any
+                )[key] ?? def,
             ),
           },
         },
         { provide: getRepositoryToken(Plant), useValue: plantRepo },
-        { provide: getRepositoryToken(IdentificationLog), useValue: identificationLogRepo },
+        {
+          provide: getRepositoryToken(IdentificationLog),
+          useValue: identificationLogRepo,
+        },
         { provide: getRepositoryToken(Collection), useValue: collectionRepo },
       ],
     }).compile();
@@ -219,25 +272,40 @@ describe('IdentificationService', () => {
     service = await buildWithRealHttpFlow({
       result: {
         is_plant: { probability: 0.05, binary: false },
-        classification: { suggestions: [{ name: 'Rosa gallica', probability: 0.9, details: {} }] },
+        classification: {
+          suggestions: [
+            { name: 'Rosa gallica', probability: 0.9, details: {} },
+          ],
+        },
       },
     });
 
-    await expect(service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image'))).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(
+      service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image')),
+    ).rejects.toThrow(NotFoundException);
     expect(identificationLogRepo.save).not.toHaveBeenCalled();
   });
 
-  it("demande bien `taxonomy` à Plant.id (sinon la famille botanique reste toujours null, bug trouvé en testant une vraie clé)", async () => {
+  it('demande bien `taxonomy` à Plant.id (sinon la famille botanique reste toujours null, bug trouvé en testant une vraie clé)', async () => {
     service = await buildWithRealHttpFlow({
       result: {
         is_plant: { probability: 0.95, binary: true },
-        classification: { suggestions: [{ name: 'Tacca chantrieri', probability: 0.98, details: { taxonomy: { family: 'Dioscoreaceae' } } }] },
+        classification: {
+          suggestions: [
+            {
+              name: 'Tacca chantrieri',
+              probability: 0.98,
+              details: { taxonomy: { family: 'Dioscoreaceae' } },
+            },
+          ],
+        },
       },
     });
 
-    const result = await service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image'));
+    const result = await service.identifyPlantFromBuffer(
+      'user-1',
+      Buffer.from('fake-image'),
+    );
 
     const calledUrl = lastHttpService.post.mock.calls[0][0] as string;
     expect(calledUrl).toContain('taxonomy');
@@ -248,14 +316,25 @@ describe('IdentificationService', () => {
     service = await buildWithRealHttpFlow({
       result: {
         is_plant: { probability: 0.95, binary: true },
-        classification: { suggestions: [{ name: 'Ocimum basilicum', probability: 0.98, details: {} }] },
+        classification: {
+          suggestions: [
+            { name: 'Ocimum basilicum', probability: 0.98, details: {} },
+          ],
+        },
       },
     });
 
     await service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image'));
 
     const calledUrl = lastHttpService.post.mock.calls[0][0] as string;
-    for (const param of ['description', 'watering', 'best_light_condition', 'best_soil_type', 'propagation_methods', 'image']) {
+    for (const param of [
+      'description',
+      'watering',
+      'best_light_condition',
+      'best_soil_type',
+      'propagation_methods',
+      'image',
+    ]) {
       expect(calledUrl).toContain(param);
     }
   });
@@ -270,7 +349,10 @@ describe('IdentificationService', () => {
               name: 'Ocimum basilicum',
               probability: 0.98,
               details: {
-                description: { value: 'Plante aromatique annuelle largement utilisée en cuisine méditerranéenne.' },
+                description: {
+                  value:
+                    'Plante aromatique annuelle largement utilisée en cuisine méditerranéenne.',
+                },
                 watering: { min: 2, max: 2 },
                 best_light_condition: 'Plein soleil',
                 best_soil_type: 'Riche, bien drainé',
@@ -283,9 +365,14 @@ describe('IdentificationService', () => {
       },
     });
 
-    const result = await service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image'));
+    const result = await service.identifyPlantFromBuffer(
+      'user-1',
+      Buffer.from('fake-image'),
+    );
 
-    expect(result.aPropos).toBe('Plante aromatique annuelle largement utilisée en cuisine méditerranéenne.');
+    expect(result.aPropos).toBe(
+      'Plante aromatique annuelle largement utilisée en cuisine méditerranéenne.',
+    );
     expect(result.urlImage).toBe('https://bs.plantnet.org/image/o/basilic.jpg');
     expect(result.conseilsEntretien).toEqual({
       lumiere: 'Plein soleil',
@@ -299,11 +386,16 @@ describe('IdentificationService', () => {
     service = await buildWithRealHttpFlow({
       result: {
         is_plant: { probability: 0.95, binary: true },
-        classification: { suggestions: [{ name: 'Espèce rare', probability: 0.9, details: {} }] },
+        classification: {
+          suggestions: [{ name: 'Espèce rare', probability: 0.9, details: {} }],
+        },
       },
     });
 
-    const result = await service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image'));
+    const result = await service.identifyPlantFromBuffer(
+      'user-1',
+      Buffer.from('fake-image'),
+    );
 
     expect(result.aPropos).toBeNull();
     expect(result.conseilsEntretien).toBeNull();
@@ -314,13 +406,17 @@ describe('IdentificationService', () => {
     service = await buildWithRealHttpFlow({
       result: {
         is_plant: { probability: 0.95, binary: true },
-        classification: { suggestions: [{ name: 'Plante mystère', probability: 0.01, details: {} }] },
+        classification: {
+          suggestions: [
+            { name: 'Plante mystère', probability: 0.01, details: {} },
+          ],
+        },
       },
     });
 
-    await expect(service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image'))).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(
+      service.identifyPlantFromBuffer('user-1', Buffer.from('fake-image')),
+    ).rejects.toThrow(NotFoundException);
     expect(identificationLogRepo.save).not.toHaveBeenCalled();
   });
 });

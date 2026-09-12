@@ -46,6 +46,9 @@ export function QuestsCard({ quests, coins }: Props) {
               ]}>
               {t(quest.label)}
             </Text>
+            {quest.type === 'exploration' ? (
+              <Icon name="explore" size={15} color={colors.muted} />
+            ) : null}
             {quest.rewardXp ? (
               <Text style={[styles.reward, { color: colors.active }]}>{t('scan.xpGain', { xp: quest.rewardXp })}</Text>
             ) : null}

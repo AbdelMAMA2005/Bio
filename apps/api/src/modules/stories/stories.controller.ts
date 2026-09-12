@@ -16,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { StoriesService } from './stories.service';
 import { JwtAuthGuard } from '../../common/guards';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../common/types/authenticated-user';
 
 @Controller('stories')
 @UseGuards(JwtAuthGuard)
@@ -24,7 +25,7 @@ export class StoriesController {
 
   // ----- Bulles groupées par auteur (comportement "statuts WhatsApp") -----
   @Get()
-  async getStories(@CurrentUser() user: any) {
+  async getStories(@CurrentUser() user: AuthenticatedUser) {
     return this.storiesService.getGroupedStories(user.id);
   }
 
@@ -32,7 +33,7 @@ export class StoriesController {
   @Post()
   @UseInterceptors(FileInterceptor('image'))
   async createStory(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @UploadedFile(
       new ParseFilePipe({
         validators: [
@@ -44,7 +45,9 @@ export class StoriesController {
     file: Express.Multer.File,
   ) {
     if (!file || !file.buffer) {
-      throw new BadRequestException('Aucun fichier fourni. Envoyez un fichier via le champ `image`.');
+      throw new BadRequestException(
+        'Aucun fichier fourni. Envoyez un fichier via le champ `image`.',
+      );
     }
     return this.storiesService.createStoryMedia(user.id, file);
   }
@@ -52,13 +55,28 @@ export class StoriesController {
   // ----- Enregistrer une vue sur un média -----
   @Post(':mediaId/view')
   @HttpCode(204)
-  async recordView(@CurrentUser() user: any, @Param('mediaId') mediaId: string) {
+  async recordView(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('mediaId') mediaId: string,
+  ) {
     await this.storiesService.recordView(mediaId, user.id);
+  }
+
+  // ----- Liker/Unliker un média (toggle) -----
+  @Post(':mediaId/like')
+  async toggleLike(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('mediaId') mediaId: string,
+  ) {
+    return this.storiesService.toggleLike(mediaId, user.id);
   }
 
   // ----- Liste des vues d'un média (réservé à son auteur) -----
   @Get(':mediaId/viewers')
-  async getViewers(@CurrentUser() user: any, @Param('mediaId') mediaId: string) {
+  async getViewers(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('mediaId') mediaId: string,
+  ) {
     return this.storiesService.getViewers(mediaId, user.id);
   }
 }

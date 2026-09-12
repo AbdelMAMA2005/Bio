@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     backgroundColor: chrome.screen,
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   header: {
     flexDirection: 'row',

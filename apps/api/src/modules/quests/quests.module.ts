@@ -11,7 +11,14 @@ import { QuestsController } from './quests.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([IdentificationLog, Collection, Post, Like, User, QuestProgress]),
+    TypeOrmModule.forFeature([
+      IdentificationLog,
+      Collection,
+      Post,
+      Like,
+      User,
+      QuestProgress,
+    ]),
   ],
   controllers: [QuestsController],
   providers: [QuestsService],

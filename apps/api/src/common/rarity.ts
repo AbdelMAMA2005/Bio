@@ -6,7 +6,9 @@
  * constante — plus une espèce est capturée par la communauté, plus elle devient
  * "Commun", à l'inverse une première capture mondiale est "Épique".
  */
-export function computeRarityFromPriorCaptures(priorCaptures: number): 'Épique' | 'Rare' | 'Commun' {
+export function computeRarityFromPriorCaptures(
+  priorCaptures: number,
+): 'Épique' | 'Rare' | 'Commun' {
   if (priorCaptures === 0) return 'Épique';
   if (priorCaptures < 5) return 'Rare';
   return 'Commun';

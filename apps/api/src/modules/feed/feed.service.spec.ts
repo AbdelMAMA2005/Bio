@@ -17,22 +17,56 @@ const mockedFs = fs as jest.Mocked<typeof fs>;
 
 describe('FeedService', () => {
   let service: FeedService;
-  let postRepo: { save: jest.Mock; findOne: jest.Mock; remove: jest.Mock; createQueryBuilder: jest.Mock };
-  let likeRepo: { find: jest.Mock; findOne: jest.Mock; create: jest.Mock; save: jest.Mock; remove: jest.Mock; count: jest.Mock };
-  let commentRepo: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock; remove: jest.Mock };
+  let postRepo: {
+    save: jest.Mock;
+    findOne: jest.Mock;
+    remove: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
+  let likeRepo: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+    remove: jest.Mock;
+    count: jest.Mock;
+  };
+  let commentRepo: {
+    create: jest.Mock;
+    save: jest.Mock;
+    findOne: jest.Mock;
+    remove: jest.Mock;
+  };
   let userRepo: { findOne: jest.Mock };
   let collectionRepo: { findOne: jest.Mock };
 
   beforeEach(async () => {
-    postRepo = { save: jest.fn(), findOne: jest.fn(), remove: jest.fn(), createQueryBuilder: jest.fn() };
-    likeRepo = { find: jest.fn(), findOne: jest.fn(), create: jest.fn((d) => d), save: jest.fn(), remove: jest.fn(), count: jest.fn() };
-    commentRepo = { create: jest.fn((d) => d), save: jest.fn(), findOne: jest.fn(), remove: jest.fn() };
+    postRepo = {
+      save: jest.fn(),
+      findOne: jest.fn(),
+      remove: jest.fn(),
+      createQueryBuilder: jest.fn(),
+    };
+    likeRepo = {
+      find: jest.fn(),
+      findOne: jest.fn(),
+      create: jest.fn((d) => d),
+      save: jest.fn(),
+      remove: jest.fn(),
+      count: jest.fn(),
+    };
+    commentRepo = {
+      create: jest.fn((d) => d),
+      save: jest.fn(),
+      findOne: jest.fn(),
+      remove: jest.fn(),
+    };
     userRepo = { findOne: jest.fn() };
     collectionRepo = { findOne: jest.fn() };
     jest.clearAllMocks();
     mockedFs.existsSync.mockReturnValue(true);
-    mockedFs.mkdirSync.mockReturnValue(undefined as any);
-    mockedFs.writeFileSync.mockReturnValue(undefined as any);
+    mockedFs.mkdirSync.mockReturnValue(undefined);
+    mockedFs.writeFileSync.mockReturnValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -54,7 +88,10 @@ describe('FeedService', () => {
       collectionRepo.findOne.mockResolvedValue(null);
 
       await expect(
-        service.createPost('user-1', { contenuTexte: 'Trouvée en forêt', collectionId: 'collection-autre' }),
+        service.createPost('user-1', {
+          contenuTexte: 'Trouvée en forêt',
+          collectionId: 'collection-autre',
+        }),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -68,11 +105,17 @@ describe('FeedService', () => {
         contenuTexte: 'Trouvée en forêt',
         urlImage: null,
         dateCreation: new Date('2026-07-15'),
-        utilisateur: { id: 'user-1', nomUtilisateur: 'Djawad', urlAvatar: null },
+        utilisateur: {
+          id: 'user-1',
+          nomUtilisateur: 'Djawad',
+          urlAvatar: null,
+        },
         collection: null,
       });
 
-      const result = await service.createPost('user-1', { contenuTexte: 'Trouvée en forêt' });
+      const result = await service.createPost('user-1', {
+        contenuTexte: 'Trouvée en forêt',
+      });
 
       expect(result.contenuTexte).toBe('Trouvée en forêt');
       expect(result.plante).toBeUndefined();
@@ -92,19 +135,33 @@ describe('FeedService', () => {
           contenuTexte: 'Ma tomate',
           urlImage: '/uploads/posts/some-uuid.jpg',
           dateCreation: new Date('2026-07-24'),
-          utilisateur: { id: 'user-1', nomUtilisateur: 'Djawad', urlAvatar: null },
+          utilisateur: {
+            id: 'user-1',
+            nomUtilisateur: 'Djawad',
+            urlAvatar: null,
+          },
           collection: null,
         }));
 
-        const file = { originalname: 'photo.jpg', buffer: Buffer.from('img') } as Express.Multer.File;
-        const result = await service.createPost('user-1', { contenuTexte: 'Ma tomate' }, file);
+        const file = {
+          originalname: 'photo.jpg',
+          buffer: Buffer.from('img'),
+        } as Express.Multer.File;
+        const result = await service.createPost(
+          'user-1',
+          { contenuTexte: 'Ma tomate' },
+          file,
+        );
 
-        expect(mockedFs.writeFileSync).toHaveBeenCalledWith(expect.stringContaining('uploads'), file.buffer);
+        expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
+          expect.stringContaining('uploads'),
+          file.buffer,
+        );
         expect(result.imageUrl).toBe('/uploads/posts/some-uuid.jpg');
       },
     );
 
-    it('retombe sur imageUrl (JSON) quand aucun fichier multipart n\'est fourni', async () => {
+    it("retombe sur imageUrl (JSON) quand aucun fichier multipart n'est fourni", async () => {
       userRepo.findOne.mockResolvedValue({ id: 'user-1' });
       postRepo.save.mockResolvedValue({ id: 'post-1' });
       postRepo.findOne.mockResolvedValue({
@@ -114,7 +171,11 @@ describe('FeedService', () => {
         contenuTexte: 'Texte seul',
         urlImage: null,
         dateCreation: new Date('2026-07-24'),
-        utilisateur: { id: 'user-1', nomUtilisateur: 'Djawad', urlAvatar: null },
+        utilisateur: {
+          id: 'user-1',
+          nomUtilisateur: 'Djawad',
+          urlAvatar: null,
+        },
         collection: null,
       });
 
@@ -143,9 +204,16 @@ describe('FeedService', () => {
       const qb = buildQb();
       likeRepo.find.mockResolvedValue([]);
 
-      await service.getFeed('user-1', { filter: 'near', latitude: 45.75, longitude: 4.85, radiusMetres: 5000 } as any);
+      await service.getFeed('user-1', {
+        filter: 'near',
+        latitude: 45.75,
+        longitude: 4.85,
+        radiusMetres: 5000,
+      } as any);
 
-      expect(qb.andWhere).toHaveBeenCalledWith('p.latitude IS NOT NULL AND p.longitude IS NOT NULL');
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'p.latitude IS NOT NULL AND p.longitude IS NOT NULL',
+      );
       expect(qb.andWhere).toHaveBeenCalledWith(
         expect.stringContaining('acos'),
         { lat: 45.75, lon: 4.85, radius: 5000 },
@@ -161,11 +229,15 @@ describe('FeedService', () => {
       expect(qb.andWhere).not.toHaveBeenCalled();
     });
 
-    it('n\'applique aucun filtre de distance pour filter=all même avec une position', async () => {
+    it("n'applique aucun filtre de distance pour filter=all même avec une position", async () => {
       const qb = buildQb();
       likeRepo.find.mockResolvedValue([]);
 
-      await service.getFeed('user-1', { filter: 'all', latitude: 45.75, longitude: 4.85 } as any);
+      await service.getFeed('user-1', {
+        filter: 'all',
+        latitude: 45.75,
+        longitude: 4.85,
+      } as any);
 
       expect(qb.andWhere).not.toHaveBeenCalled();
     });
@@ -197,7 +269,9 @@ describe('FeedService', () => {
 
     it('lève NotFoundException sur un post inexistant', async () => {
       postRepo.findOne.mockResolvedValue(null);
-      await expect(service.toggleLike('user-1', 'post-inconnu')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.toggleLike('user-1', 'post-inconnu'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -209,13 +283,17 @@ describe('FeedService', () => {
         publication: { userId: 'auteur-post' },
       });
 
-      await expect(service.deleteComment('quelqu-un-d-autre', 'post-1', 'comment-1')).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.deleteComment('quelqu-un-d-autre', 'post-1', 'comment-1'),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it("autorise l'auteur du post à supprimer le commentaire d'un tiers", async () => {
-      const comment = { id: 'comment-1', userId: 'auteur-commentaire', publication: { userId: 'auteur-post' } };
+      const comment = {
+        id: 'comment-1',
+        userId: 'auteur-commentaire',
+        publication: { userId: 'auteur-post' },
+      };
       commentRepo.findOne.mockResolvedValue(comment);
 
       await service.deleteComment('auteur-post', 'post-1', 'comment-1');
@@ -226,7 +304,9 @@ describe('FeedService', () => {
   describe('deletePost', () => {
     it("lève NotFoundException si l'appelant n'est pas l'auteur", async () => {
       postRepo.findOne.mockResolvedValue(null);
-      await expect(service.deletePost('pas-auteur', 'post-1')).rejects.toThrow(NotFoundException);
+      await expect(service.deletePost('pas-auteur', 'post-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

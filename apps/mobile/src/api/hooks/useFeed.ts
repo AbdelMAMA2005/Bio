@@ -1,13 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { BackendComment, BackendPost, BackendStoryGroup } from '@/api/adapters';
-import { toComment, toFeedPost, toStoryGroup } from '@/api/adapters';
+import { resolveUploadUrl, toComment, toFeedPost, toStoryGroup } from '@/api/adapters';
 import { apiClient } from '@/api/client';
 import { API_BASE_URL } from '@/api/config';
 import { useHerbarium } from '@/api/hooks/useHerbarium';
 import { useMyGarden } from '@/api/hooks/useMyGarden';
 import { queryKeys } from '@/api/queryKeys';
-import type { FeedComment, FeedPost, StoryGroup, TaggableCollectionItem } from '@/api/types';
+import type { FeedComment, StoryGroup, TaggableCollectionItem } from '@/api/types';
 import type { StoryViewer } from '@planai/shared';
 
 type BackendFeedResponse = { items: BackendPost[]; total: number };
@@ -15,14 +15,24 @@ type BackendFeedResponse = { items: BackendPost[]; total: number };
 type Coordinates = { latitude: number; longitude: number };
 type FeedFilter = 'all' | 'near';
 
-async function fetchFeed(coords?: Coordinates, filter?: FeedFilter): Promise<FeedPost[]> {
+const FEED_PAGE_SIZE = 15;
+
+async function fetchFeedPage(page: number, coords?: Coordinates, filter?: FeedFilter): Promise<BackendFeedResponse> {
   const { data } = await apiClient.get<BackendFeedResponse>('/feed', {
-    params: coords ? { latitude: coords.latitude, longitude: coords.longitude, filter } : undefined,
+    params: {
+      page,
+      limit: FEED_PAGE_SIZE,
+      ...(coords ? { latitude: coords.latitude, longitude: coords.longitude, filter } : {}),
+    },
   });
-  return data.items.map((post) => toFeedPost(post, API_BASE_URL));
+  return data;
 }
 
 /**
+ * Pagination réelle (`page`/`limit`, voir API_CONTRACT.md §5) via `useInfiniteQuery` : le fil
+ * ne charge plus jamais tous les posts d'un coup — seulement `FEED_PAGE_SIZE` par page,
+ * `fetchNextPage()` déclenché par `onEndReached` dans CommunityScreen.tsx.
+ *
  * `coords`, si fourni (position actuelle de l'appareil), permet au back de calculer une
  * vraie distance par post. `filter: 'near'` (avec `coords`) fait en plus filtrer les posts
  * réellement en base (cahier des charges §3.3) — voir `feed.service.ts#getFeed`, pas un
@@ -33,11 +43,21 @@ async function fetchFeed(coords?: Coordinates, filter?: FeedFilter): Promise<Fee
  */
 export function useFeed(coords?: Coordinates, filter?: FeedFilter) {
   const enabled = filter !== 'near' || !!coords;
-  return useQuery({
+  const query = useInfiniteQuery({
     queryKey: [...queryKeys.feed, filter ?? 'all', coords],
-    queryFn: () => fetchFeed(coords, filter),
+    queryFn: ({ pageParam }) => fetchFeedPage(pageParam, coords, filter),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0);
+      return loaded < lastPage.total ? allPages.length + 1 : undefined;
+    },
     enabled,
   });
+
+  return {
+    ...query,
+    data: query.data?.pages.flatMap((p) => p.items.map((post) => toFeedPost(post, API_BASE_URL))),
+  };
 }
 
 async function fetchStories(): Promise<StoryGroup[]> {
@@ -65,6 +85,10 @@ export function useToggleLike() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.feed });
+      // Un post liké depuis la grille du profil public (usePublicProfile.ts) vit dans un
+      // cache séparé (['userPosts', authorId]) : sans cette invalidation, le like resterait
+      // affiché comme non pris en compte tant que l'écran de profil n'est pas rouvert.
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
     },
   });
 }
@@ -105,9 +129,62 @@ export function useRecordStoryView() {
   });
 }
 
+/**
+ * POST /stories/:mediaId/like (toggle) — mise à jour optimiste immédiate de `aimeParMoi`/
+ * `likesCount` dans le cache `stories` dès le tap (StoryViewer lit ce cache en direct, voir
+ * StoryViewer.tsx, plutôt qu'un instantané figé) : corrige le bug où il fallait quitter et
+ * rouvrir la story pour voir l'effet d'un like. Rollback sur `onError`, refetch propre sur
+ * `onSettled` pour repartir de la vérité serveur (autres viewers ayant liké entre-temps…).
+ */
+export function useToggleStoryLike() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (mediaId: string) => {
+      const { data } = await apiClient.post<{ liked: boolean; likesCount: number }>(`/stories/${mediaId}/like`);
+      return data;
+    },
+    onMutate: async (mediaId: string) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.stories });
+      const previous = queryClient.getQueryData<StoryGroup[]>(queryKeys.stories);
+      if (previous) {
+        queryClient.setQueryData<StoryGroup[]>(
+          queryKeys.stories,
+          previous.map((group) => ({
+            ...group,
+            medias: group.medias.map((media) =>
+              media.id === mediaId
+                ? {
+                    ...media,
+                    aimeParMoi: !media.aimeParMoi,
+                    likesCount: media.likesCount + (media.aimeParMoi ? -1 : 1),
+                  }
+                : media,
+            ),
+          })),
+        );
+      }
+      return { previous };
+    },
+    onError: (_error, _mediaId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.stories, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.stories });
+    },
+  });
+}
+
 async function fetchStoryViewers(mediaId: string): Promise<StoryViewer[]> {
   const { data } = await apiClient.get<StoryViewer[]>(`/stories/${mediaId}/viewers`);
-  return data;
+  // Le back renvoie urlAvatar en URL relative (comme pour les auteurs de post/story) — sans
+  // cette résolution, StoryViewersSheet.tsx recevrait un chemin `/uploads/...` inutilisable
+  // tel quel par <Avatar>.
+  return data.map((viewer) => ({
+    ...viewer,
+    urlAvatar: viewer.urlAvatar ? resolveUploadUrl(viewer.urlAvatar, API_BASE_URL) : null,
+  }));
 }
 
 /** GET /stories/:mediaId/viewers — réservé à l'auteur du média (403 sinon côté back). */
@@ -164,7 +241,7 @@ export function useTaggableCollection() {
 
 async function fetchComments(postId: string): Promise<FeedComment[]> {
   const { data } = await apiClient.get<BackendComment[]>(`/feed/posts/${postId}/comments`);
-  return data.map(toComment);
+  return data.map((comment) => toComment(comment, API_BASE_URL));
 }
 
 export function useComments(postId: string | undefined) {

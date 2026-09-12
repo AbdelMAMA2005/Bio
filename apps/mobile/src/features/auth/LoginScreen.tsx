@@ -29,7 +29,8 @@ export function LoginScreen() {
     try {
       await login(email.trim(), password);
       router.replace('/jardin');
-    } catch {
+    } catch (e) {
+      console.error('[handleLogin] échec de la connexion', e);
       setError(t('auth.invalidCredentials'));
     }
   };

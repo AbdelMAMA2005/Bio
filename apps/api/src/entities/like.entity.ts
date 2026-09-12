@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  Unique,
+} from 'typeorm';
 import { Post } from './posts.entity';
 import { User } from './user.entity';
 
@@ -14,11 +21,15 @@ export class Like {
   @Column('uuid')
   userId!: string;
 
-  @ManyToOne(() => Post, (publication) => publication.jaimes, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Post, (publication) => publication.jaimes, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'postId' })
   publication!: Post;
 
-  @ManyToOne(() => User, (utilisateur) => utilisateur.jaimesUtilisateur, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => User, (utilisateur) => utilisateur.jaimesUtilisateur, {
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'userId' })
   utilisateur!: User;
 

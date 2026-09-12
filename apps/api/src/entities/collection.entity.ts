@@ -23,11 +23,15 @@ export class Collection {
   @Column('uuid')
   plantId!: string;
 
-  @ManyToOne(() => User, (utilisateur) => utilisateur.collectionsUtilisateur, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => User, (utilisateur) => utilisateur.collectionsUtilisateur, {
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'userId' })
   utilisateur!: User;
 
-  @ManyToOne(() => Plant, (plante) => plante.collectionsPlante, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => Plant, (plante) => plante.collectionsPlante, {
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'plantId' })
   plante!: Plant;
 
@@ -57,7 +61,11 @@ export class Collection {
   dernierDiagnostic!: {
     maladieNom: string | null;
     scoreGlobal: number;
-    traitement: { biologique?: string; chimique?: string; prevention?: string } | null;
+    traitement: {
+      biologique?: string;
+      chimique?: string;
+      prevention?: string;
+    } | null;
     description: string | null;
     estSain: boolean;
     dateDiagnostic: string;

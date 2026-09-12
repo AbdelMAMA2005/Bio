@@ -8,7 +8,8 @@
     "cancel": "Cancel",
     "networkErrorTitle": "Connection failed",
     "networkErrorBody": "Check your connection and try again.",
-    "retry": "Retry"
+    "retry": "Retry",
+    "you": "You"
   },
   "tabs": {
     "jardin": "My Garden",
@@ -127,7 +128,21 @@
     "noViewsYet": "No views yet.",
     "shareDefaultMessage": "Check out this post on PlanAI!",
     "shareErrorTitle": "Couldn't share",
-    "shareErrorSub": "Try again in a moment."
+    "shareErrorSub": "Try again in a moment.",
+    "storyReplyPlaceholder": "Reply to {{name}}…",
+    "storyReplySent": "Message sent!"
+  },
+  "profile": {
+    "sendMessage": "Message",
+    "postsTitle": "Posts",
+    "postsEmpty": "No posts yet."
+  },
+  "messages": {
+    "title": "Messages",
+    "emptyState": "No conversations yet.",
+    "noMessagesYet": "No messages yet. Say hi!",
+    "inputPlaceholder": "Write a message…",
+    "storyReplyLabel": "Replied to your story"
   },
   "plant": {
     "familyLabel": "Family: {{family}}",

@@ -1,4 +1,16 @@
-import type { CollectionItem, CollectionPhoto, Plante, Rarete, StoryMediaType, Toxicite, User } from '@planai/shared';
+import type {
+  ChatMessage,
+  CollectionItem,
+  CollectionPhoto,
+  Conversation,
+  Plante,
+  PublicProfile,
+  Rarete,
+  StoryMediaType,
+  StoryPreview,
+  Toxicite,
+  User,
+} from '@planai/shared';
 
 import type { DiagnosisResult } from '@/api/mock/diagnosis';
 import type {
@@ -123,9 +135,10 @@ export type BackendUser = {
   niveau: number;
   insignes?: string[];
   pieces?: number;
+  urlAvatar?: string | null;
 };
 
-export function userFromBackend(backend: BackendUser): User {
+export function userFromBackend(backend: BackendUser, apiBaseUrl: string): User {
   return {
     id: backend.id,
     pseudo: backend.nomUtilisateur,
@@ -133,6 +146,7 @@ export function userFromBackend(backend: BackendUser): User {
     niveau: backend.niveau,
     xp: backend.experience,
     pieces: backend.pieces ?? 0,
+    urlAvatar: backend.urlAvatar ? resolveUploadUrl(backend.urlAvatar, apiBaseUrl) : null,
   };
 }
 
@@ -185,7 +199,7 @@ export type BackendCollectionItem = {
   prochainArrosage: string;
 };
 
-function resolveUploadUrl(url: string, apiBaseUrl: string): string {
+export function resolveUploadUrl(url: string, apiBaseUrl: string): string {
   return url.startsWith('http') ? url : `${apiBaseUrl}${url}`;
 }
 
@@ -407,8 +421,10 @@ export function toFeedPost(post: BackendPost, apiBaseUrl: string): FeedPost {
 
   return {
     id: post.id,
+    authorId: post.auteur.id,
     authorInitial: post.auteur.nomUtilisateur.charAt(0).toUpperCase(),
     authorName: post.auteur.nomUtilisateur,
+    authorAvatarUrl: post.auteur.urlAvatar ? resolveUploadUrl(post.auteur.urlAvatar, apiBaseUrl) : null,
     createdAt: post.dateCreation,
     plant: post.plante
       ? toPlantWithIcon(post.plante.id, {
@@ -444,6 +460,8 @@ export type BackendStoryMedia = {
   dateExpiration: string;
   vuParMoi: boolean;
   vuesCount: number;
+  likesCount: number;
+  aimeParMoi: boolean;
 };
 
 export type BackendStoryGroup = {
@@ -481,11 +499,78 @@ export type BackendComment = {
   auteur: { id: string; nomUtilisateur: string; urlAvatar?: string | null };
 };
 
-export function toComment(comment: BackendComment): FeedComment {
+// ----- Messagerie privée (GET/POST /messages/*) -----
+
+export type BackendStoryPreview = { id: string; urlMedia: string; mediaType: StoryMediaType };
+
+export type BackendMessage = {
+  id: string;
+  idConversation: string;
+  idExpediteur: string;
+  contenu: string;
+  dateEnvoi: string;
+  lu: boolean;
+  storyPreview: BackendStoryPreview | null;
+};
+
+export type BackendConversation = {
+  id: string;
+  autreUtilisateur: { id: string; nomUtilisateur: string; urlAvatar: string | null };
+  dernierMessage: { contenu: string; dateEnvoi: string; estDeMoi: boolean; storyPreview: BackendStoryPreview | null } | null;
+  nonLusCount: number;
+};
+
+function toStoryPreview(preview: BackendStoryPreview | null, apiBaseUrl: string): StoryPreview | null {
+  if (!preview) return null;
+  return { ...preview, urlMedia: resolveUploadUrl(preview.urlMedia, apiBaseUrl) };
+}
+
+export function toChatMessage(message: BackendMessage, apiBaseUrl: string): ChatMessage {
+  return { ...message, storyPreview: toStoryPreview(message.storyPreview, apiBaseUrl) };
+}
+
+export function toConversation(conversation: BackendConversation, apiBaseUrl: string): Conversation {
+  return {
+    id: conversation.id,
+    autreUtilisateur: {
+      ...conversation.autreUtilisateur,
+      urlAvatar: conversation.autreUtilisateur.urlAvatar
+        ? resolveUploadUrl(conversation.autreUtilisateur.urlAvatar, apiBaseUrl)
+        : null,
+    },
+    dernierMessage: conversation.dernierMessage
+      ? { ...conversation.dernierMessage, storyPreview: toStoryPreview(conversation.dernierMessage.storyPreview, apiBaseUrl) }
+      : null,
+    nonLusCount: conversation.nonLusCount,
+  };
+}
+
+// ----- Profil public (GET /users/:id/public-profile) -----
+
+export type BackendPublicProfile = {
+  id: string;
+  nomUtilisateur: string;
+  urlAvatar: string | null;
+  niveau: number;
+  experience: number;
+  insignes: string[];
+  stats: { captures: number; especes: number; rares: number };
+};
+
+export function toPublicProfile(profile: BackendPublicProfile, apiBaseUrl: string): PublicProfile {
+  return {
+    ...profile,
+    urlAvatar: profile.urlAvatar ? resolveUploadUrl(profile.urlAvatar, apiBaseUrl) : null,
+  };
+}
+
+export function toComment(comment: BackendComment, apiBaseUrl: string): FeedComment {
   return {
     id: comment.id,
+    authorId: comment.auteur.id,
     authorInitial: comment.auteur.nomUtilisateur.charAt(0).toUpperCase(),
     authorName: comment.auteur.nomUtilisateur,
+    authorAvatarUrl: comment.auteur.urlAvatar ? resolveUploadUrl(comment.auteur.urlAvatar, apiBaseUrl) : null,
     createdAt: comment.dateCreation,
     text: comment.contenu,
   };

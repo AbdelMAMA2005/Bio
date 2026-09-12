@@ -8,7 +8,8 @@
     "cancel": "Cancelar",
     "networkErrorTitle": "Conexión fallida",
     "networkErrorBody": "Comprueba tu conexión e inténtalo de nuevo.",
-    "retry": "Reintentar"
+    "retry": "Reintentar",
+    "you": "Tú"
   },
   "tabs": {
     "jardin": "Mi Jardín",
@@ -127,7 +128,21 @@
     "noViewsYet": "Ninguna vista por ahora.",
     "shareDefaultMessage": "¡Descubre esta publicación en PlanAI!",
     "shareErrorTitle": "No se pudo compartir",
-    "shareErrorSub": "Inténtalo de nuevo en un momento."
+    "shareErrorSub": "Inténtalo de nuevo en un momento.",
+    "storyReplyPlaceholder": "Responder a {{name}}…",
+    "storyReplySent": "¡Mensaje enviado!"
+  },
+  "profile": {
+    "sendMessage": "Mensaje",
+    "postsTitle": "Publicaciones",
+    "postsEmpty": "Todavía no hay publicaciones."
+  },
+  "messages": {
+    "title": "Mensajes",
+    "emptyState": "Todavía no hay conversaciones.",
+    "noMessagesYet": "Ningún mensaje todavía. ¡Saluda!",
+    "inputPlaceholder": "Escribe un mensaje…",
+    "storyReplyLabel": "Respondió a tu estado"
   },
   "plant": {
     "familyLabel": "Familia: {{family}}",

@@ -18,7 +18,11 @@ describe('Auth (e2e)', () => {
 
     const res = await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `user${Date.now()}`, motDePasse: 'motdepasse' })
+      .send({
+        email,
+        nomUtilisateur: `user${Date.now()}`,
+        motDePasse: 'motdepasse',
+      })
       .expect(201);
 
     expect(res.body).not.toHaveProperty('accessToken');
@@ -38,7 +42,11 @@ describe('Auth (e2e)', () => {
 
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `${nomUtilisateur}-bis`, motDePasse: 'motdepasse' })
+      .send({
+        email,
+        nomUtilisateur: `${nomUtilisateur}-bis`,
+        motDePasse: 'motdepasse',
+      })
       .expect(409);
   });
 
@@ -46,7 +54,11 @@ describe('Auth (e2e)', () => {
     const email = uniqueEmail('badlogin');
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `user${Date.now()}`, motDePasse: 'bon-mot-de-passe' })
+      .send({
+        email,
+        nomUtilisateur: `user${Date.now()}`,
+        motDePasse: 'bon-mot-de-passe',
+      })
       .expect(201);
 
     const res = await request(app.getHttpServer())
@@ -61,7 +73,11 @@ describe('Auth (e2e)', () => {
     const email = uniqueEmail('goodlogin');
     await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email, nomUtilisateur: `user${Date.now()}`, motDePasse: 'bon-mot-de-passe' })
+      .send({
+        email,
+        nomUtilisateur: `user${Date.now()}`,
+        motDePasse: 'bon-mot-de-passe',
+      })
       .expect(201);
 
     const res = await request(app.getHttpServer())
@@ -70,10 +86,87 @@ describe('Auth (e2e)', () => {
       .expect(200);
 
     expect(typeof res.body.accessToken).toBe('string');
+    expect(typeof res.body.refreshToken).toBe('string');
     expect(res.body.user.email).toBe(email);
   });
 
   it('une route protégée (GET /users/me) rejette une requête sans Bearer token (401)', async () => {
     await request(app.getHttpServer()).get('/users/me').expect(401);
+  });
+
+  describe('POST /auth/refresh', () => {
+    it('rejette un refresh token inconnu (401)', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refreshToken: 'token-qui-n-existe-pas' })
+        .expect(401);
+    });
+
+    it('échange un refresh token valide contre un nouveau couple access/refresh (rotation)', async () => {
+      const email = uniqueEmail('refresh');
+      await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({
+          email,
+          nomUtilisateur: `user${Date.now()}`,
+          motDePasse: 'motdepasse',
+        })
+        .expect(201);
+      const loginRes = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email, motDePasse: 'motdepasse' })
+        .expect(200);
+      const oldRefreshToken = loginRes.body.refreshToken as string;
+
+      const refreshRes = await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refreshToken: oldRefreshToken })
+        .expect(200);
+
+      expect(typeof refreshRes.body.accessToken).toBe('string');
+      expect(typeof refreshRes.body.refreshToken).toBe('string');
+      expect(refreshRes.body.refreshToken).not.toBe(oldRefreshToken);
+
+      // Le nouvel accessToken fonctionne réellement contre une route protégée.
+      await request(app.getHttpServer())
+        .get('/users/me')
+        .set('Authorization', `Bearer ${refreshRes.body.accessToken}`)
+        .expect(200);
+
+      // L'ancien refresh token est révoqué par la rotation : le réutiliser doit échouer.
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refreshToken: oldRefreshToken })
+        .expect(401);
+    });
+  });
+
+  describe('POST /auth/logout', () => {
+    it('révoque le refresh token : il ne peut plus être échangé après', async () => {
+      const email = uniqueEmail('logout');
+      await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({
+          email,
+          nomUtilisateur: `user${Date.now()}`,
+          motDePasse: 'motdepasse',
+        })
+        .expect(201);
+      const loginRes = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email, motDePasse: 'motdepasse' })
+        .expect(200);
+      const refreshToken = loginRes.body.refreshToken as string;
+
+      await request(app.getHttpServer())
+        .post('/auth/logout')
+        .send({ refreshToken })
+        .expect(204);
+
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refreshToken })
+        .expect(401);
+    });
   });
 });

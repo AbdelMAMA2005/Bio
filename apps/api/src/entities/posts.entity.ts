@@ -24,7 +24,9 @@ export class Post {
   @Column('uuid', { nullable: true })
   collectionId!: string | null;
 
-  @ManyToOne(() => User, (utilisateur) => utilisateur.publicationsUtilisateur, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => User, (utilisateur) => utilisateur.publicationsUtilisateur, {
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'userId' })
   utilisateur!: User;
 

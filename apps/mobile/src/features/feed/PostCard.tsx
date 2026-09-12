@@ -1,14 +1,15 @@
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
+import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/Icon';
 import type { FeedPost } from '@/api/types';
 import type { SupportedLanguage } from '@/i18n';
 import { formatDistance, formatRelativeDate } from '@/utils/format';
 import { useAppTheme } from '@/theme';
-import { AccentGradient, AccentOnColor, RarityColors, RarityColorsLight, ToxicityColors } from '@/theme/colors';
+import { RarityColors, RarityColorsLight, ToxicityColors } from '@/theme/colors';
 import { Radius, Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
 
@@ -17,10 +18,19 @@ type Props = {
   onToggleLike: () => void;
   onOpenComments: () => void;
   onShare: () => void;
+  /** Absent (ex. modale profil public) : l'en-tête auteur devient non pressable. */
+  onPressAuthor?: (authorId: string) => void;
   sharing?: boolean;
 };
 
-export function PostCard({ post, onToggleLike, onOpenComments, onShare, sharing }: Props) {
+export const PostCard = memo(function PostCard({
+  post,
+  onToggleLike,
+  onOpenComments,
+  onShare,
+  onPressAuthor,
+  sharing,
+}: Props) {
   const { t, i18n } = useTranslation();
   const { colors, isDark } = useAppTheme();
   const language = (i18n.language as SupportedLanguage) ?? 'fr';
@@ -28,15 +38,17 @@ export function PostCard({ post, onToggleLike, onOpenComments, onShare, sharing 
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
-      <View style={styles.header}>
-        <LinearGradient colors={AccentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-          <Text style={styles.avatarInitial}>{post.authorInitial}</Text>
-        </LinearGradient>
+      <Pressable
+        style={styles.header}
+        disabled={!onPressAuthor}
+        onPress={() => onPressAuthor?.(post.authorId)}
+        hitSlop={4}>
+        <Avatar uri={post.authorAvatarUrl} name={post.authorName} size={38} />
         <View style={styles.headerText}>
           <Text style={[styles.authorName, { color: colors.text }]}>{post.authorName}</Text>
           <Text style={[styles.meta, { color: colors.muted }]}>{formatRelativeDate(post.createdAt, language)}</Text>
         </View>
-      </View>
+      </Pressable>
 
       {post.plant ? (
         <View style={[styles.plantChip, { backgroundColor: colors.chip }]}>
@@ -48,9 +60,21 @@ export function PostCard({ post, onToggleLike, onOpenComments, onShare, sharing 
       {post.caption ? <Text style={[styles.caption, { color: colors.text }]}>{post.caption}</Text> : null}
 
       {post.imageUri ? (
-        <Image source={{ uri: post.imageUri }} style={styles.image} />
+        <Image
+          source={{ uri: post.imageUri }}
+          style={styles.image}
+          cachePolicy="memory-disk"
+          transition={150}
+          recyclingKey={post.id}
+        />
       ) : post.plant?.urlImage ? (
-        <Image source={{ uri: post.plant.urlImage }} style={styles.image} />
+        <Image
+          source={{ uri: post.plant.urlImage }}
+          style={styles.image}
+          cachePolicy="memory-disk"
+          transition={150}
+          recyclingKey={post.plant.urlImage}
+        />
       ) : post.plant && rarityPalette ? (
         <View style={[styles.image, styles.imageFallback, { backgroundColor: rarityPalette.bg }]}>
           <Icon name={post.plant.icon} size={56} color={rarityPalette.text} />
@@ -87,7 +111,7 @@ export function PostCard({ post, onToggleLike, onOpenComments, onShare, sharing 
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {
@@ -100,18 +124,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-  },
-  avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: {
-    color: AccentOnColor,
-    fontFamily: FontFamily.extraBold,
-    fontSize: 15,
   },
   headerText: {
     flex: 1,

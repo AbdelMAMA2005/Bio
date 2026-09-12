@@ -33,6 +33,10 @@ export async function initI18n() {
   const stored = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
   const initialLanguage = isSupportedLanguage(stored) ? stored : detectDeviceLanguage();
 
+  // i18n est un singleton avec état interne : `use`/`changeLanguage` dépendent de `this`,
+  // un import nommé détacherait l'appel de son receveur et casserait l'exécution (vérifié
+  // empiriquement) — la caution eslint ci-dessous est un faux positif.
+  // eslint-disable-next-line import/no-named-as-default-member
   await i18n.use(initReactI18next).init({
     resources,
     lng: initialLanguage,
@@ -46,6 +50,7 @@ export async function initI18n() {
 
 export async function setAppLanguage(language: SupportedLanguage) {
   await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+  // eslint-disable-next-line import/no-named-as-default-member -- voir commentaire dans initI18n
   await i18n.changeLanguage(language);
 }
 

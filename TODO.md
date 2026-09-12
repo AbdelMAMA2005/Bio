@@ -115,7 +115,7 @@
 ### Back-end
 
 - [ ] Module `quests` : défis quotidiens (scanner 3 plantes, publier un conseil, 5 likes…) — **Abdel**
-- [ ] Défis « Exploration » avec Geo-Tag (plante rare à + de 1 km…) — **Abdel**
+- [x] Défis « Exploration » avec Geo-Tag (plante rare à + de 1 km…) — **Abdel** (implémenté 10/09/2026, voir API_CONTRACT.md §6)
 - [ ] Récompenses : XP, pièces virtuelles, badges exclusifs — **Abdel**
 - [ ] Calcul de niveau (paliers d'XP) — **Abdel**
 

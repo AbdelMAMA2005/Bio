@@ -11,6 +11,8 @@ export type QuestDefinition = {
   objectif: number;
   recompenseXp: number;
   recompensePieces: number;
+  /** 'exploration' : nécessite un Geo-Tag + `User.latitudeReference` connu (voir QuestsService). */
+  type?: 'quotidien' | 'exploration';
 };
 
 export const QUEST_CATALOG: QuestDefinition[] = [
@@ -41,5 +43,13 @@ export const QUEST_CATALOG: QuestDefinition[] = [
     objectif: 5,
     recompenseXp: 0,
     recompensePieces: 20,
+  },
+  {
+    id: 'explore-rare',
+    libelle: 'Découvrir une espèce Rare ou Épique à plus de 1 km de chez vous',
+    objectif: 1,
+    recompenseXp: 50,
+    recompensePieces: 30,
+    type: 'exploration',
   },
 ];

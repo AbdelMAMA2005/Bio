@@ -1,7 +1,9 @@
 // apps/api/src/app.module.ts
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { typeOrmConfig } from './config/typeorm.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -16,13 +18,19 @@ import { RemindersModule } from './modules/reminders/reminders.module';
 import { QuestsModule } from './modules/quests/quests.module';
 import { StoriesModule } from './modules/stories/stories.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { MessagesModule } from './modules/messages/messages.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // Rate limiting global (défaut : 100 req/min/IP) ; des limites plus strictes sont
+    // posées via @Throttle sur les endpoints sensibles (auth, identification, diagnosis,
+    // uploads) directement dans leurs contrôleurs.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => typeOrmConfig(configService),
+      useFactory: (configService: ConfigService) =>
+        typeOrmConfig(configService),
       inject: [ConfigService],
     }),
     AuthModule,
@@ -36,8 +44,9 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     QuestsModule,
     StoriesModule,
     NotificationsModule,
+    MessagesModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

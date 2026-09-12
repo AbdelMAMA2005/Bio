@@ -1,11 +1,21 @@
 // https://docs.expo.dev/guides/using-eslint/
 const { defineConfig } = require('eslint/config');
+const globals = require('globals');
 const expoConfig = require("eslint-config-expo/flat");
 
 module.exports = defineConfig([
   expoConfig,
   {
     ignores: ["dist/*"],
+  },
+  {
+    // jest.setup.js tourne sous Jest (global `jest` injecté à l'exécution) mais ne
+    // matche aucun des globs de fichiers de test d'eslint-config-expo/flat — sans
+    // ceci, `jest.mock(...)` y déclenchait un faux positif no-undef.
+    files: ['jest.setup.js'],
+    languageOptions: {
+      globals: { ...globals.jest },
+    },
   },
   {
     // eslint-config-expo's own resolver (eslint-import-resolver-node) doesn't

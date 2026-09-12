@@ -1,10 +1,11 @@
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AvatarBadge } from '@/components/AvatarBadge';
+import { Avatar } from '@/components/Avatar';
 import { CircleIconButton } from '@/components/CircleIconButton';
 import { GradientButton } from '@/components/GradientButton';
 import { Icon } from '@/components/Icon';
@@ -21,6 +22,7 @@ import { useAccountStats } from '@/features/account/useAccountStats';
 import { usePreferences } from '@/features/account/usePreferences';
 import { setAppLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/i18n';
 import { useAppTheme } from '@/theme';
+import { AccentOnColor } from '@/theme/colors';
 import { Radius, Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
 
@@ -28,11 +30,12 @@ export function AccountScreen() {
   const { t, i18n } = useTranslation();
   const { colors } = useAppTheme();
   const router = useRouter();
-  const { user, updateProfile, changePassword, logout, deleteAccount, isBusy } = useAuth();
+  const { user, updateProfile, updateAvatar, changePassword, logout, deleteAccount, isBusy } = useAuth();
   const { preference, setPreference } = useAppTheme();
   const stats = useAccountStats();
   const { notifications, setNotifications, geoPrivacy, setGeoPrivacy } = usePreferences();
 
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [pseudoDraft, setPseudoDraft] = useState(user?.pseudo ?? '');
   const [passwordFormOpen, setPasswordFormOpen] = useState(false);
@@ -47,6 +50,24 @@ export function AccountScreen() {
 
   const target = xpTargetForLevel(user.niveau);
   const progress = levelProgress(user.niveau, user.xp);
+
+  const pickAvatar = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+    if (result.canceled || !result.assets[0]) return;
+    setAvatarUploading(true);
+    try {
+      await updateAvatar(result.assets[0].uri);
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const saveProfile = async () => {
     await updateProfile({ pseudo: pseudoDraft.trim() || user.pseudo });
@@ -96,7 +117,20 @@ export function AccountScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* Carte profil */}
           <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
-            <AvatarBadge initial={user.pseudo.charAt(0)} size={72} />
+            <View style={styles.avatarWrap}>
+              <Avatar uri={user.urlAvatar} name={user.pseudo} size={72} />
+              <Pressable
+                onPress={pickAvatar}
+                disabled={avatarUploading}
+                hitSlop={6}
+                style={[styles.avatarEditBadge, { backgroundColor: colors.active, borderColor: colors.surface }]}>
+                {avatarUploading ? (
+                  <ActivityIndicator size="small" color={AccentOnColor} />
+                ) : (
+                  <Icon name="camera_alt" size={14} color={AccentOnColor} />
+                )}
+              </Pressable>
+            </View>
             {editingProfile ? (
               <View style={styles.editRow}>
                 <TextField icon="person" value={pseudoDraft} onChangeText={setPseudoDraft} />
@@ -289,6 +323,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: Radius.xxl,
     paddingVertical: Spacing.xl,
+  },
+  avatarWrap: {
+    width: 72,
+    height: 72,
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   editRow: {
     width: '80%',

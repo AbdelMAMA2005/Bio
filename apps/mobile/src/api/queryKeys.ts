@@ -5,7 +5,11 @@ export const queryKeys = {
   stories: ['stories'] as const,
   quests: ['quests'] as const,
   user: ['user'] as const,
+  conversations: ['conversations'] as const,
   plantDetail: (id: string) => ['plantDetail', id] as const,
   comments: (postId: string) => ['comments', postId] as const,
   storyViewers: (mediaId: string) => ['storyViewers', mediaId] as const,
+  messagesWith: (peerId: string) => ['messagesWith', peerId] as const,
+  publicProfile: (userId: string) => ['publicProfile', userId] as const,
+  userPosts: (userId: string) => ['userPosts', userId] as const,
 };

@@ -10,7 +10,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 type BackendQuest = {
   id: string;
   libelle: string;
-  type: 'quotidien';
+  type: 'quotidien' | 'exploration';
   progression: number;
   objectif: number;
   complete: boolean;
@@ -18,8 +18,8 @@ type BackendQuest = {
 };
 
 /**
- * Les défis eux-mêmes sont un catalogue fixe (4 défis quotidiens, voir
- * apps/api/src/modules/quests/quest-catalog.ts) — seule leur PROGRESSION change
+ * Les défis eux-mêmes sont un catalogue fixe (5 défis, dont 1 Exploration géolocalisé,
+ * voir apps/api/src/modules/quests/quest-catalog.ts) — seule leur PROGRESSION change
  * réellement par utilisateur. On garde donc des libellés traduits localement par
  * id plutôt que d'afficher le `libelle` français brut renvoyé par le back (pas
  * adapté aux utilisateurs EN/ES), avec repli sur ce libelle si jamais un id
@@ -30,6 +30,7 @@ const LABEL_KEY_BY_QUEST_ID: Record<string, string> = {
   'add-garden': 'quests.addGarden',
   'publish-tip': 'quests.postTip',
   'get-5-likes': 'quests.get5Likes',
+  'explore-rare': 'quests.rare1km',
 };
 
 function toFrontQuest(backend: BackendQuest): Quest {
@@ -39,6 +40,7 @@ function toFrontQuest(backend: BackendQuest): Quest {
     done: backend.complete,
     rewardXp: backend.recompense.xp > 0 ? backend.recompense.xp : undefined,
     rewardCoins: backend.recompense.pieces > 0 ? backend.recompense.pieces : undefined,
+    type: backend.type,
   };
 }
 

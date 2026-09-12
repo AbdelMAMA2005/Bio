@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AvatarBadge } from '@/components/AvatarBadge';
+import { Avatar } from '@/components/Avatar';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { HerbariumView } from '@/features/jardin/HerbariumView';
@@ -32,7 +32,7 @@ export function JardinScreen() {
             <Text style={[styles.subtitle, { color: colors.muted }]}>{t('jardin.subtitle')}</Text>
             <Text style={[styles.title, { color: colors.text }]}>{t('jardin.title')}</Text>
           </View>
-          <AvatarBadge initial={user?.pseudo?.charAt(0) ?? '?'} onPress={() => router.push('/compte')} />
+          <Avatar uri={user?.urlAvatar} name={user?.pseudo ?? '?'} onPress={() => router.push('/compte')} />
         </View>
 
         <View style={styles.segmentWrap}>
