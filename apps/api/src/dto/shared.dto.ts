@@ -167,6 +167,8 @@ export class RegisterResponseDto {
   niveau!: number;
   insignes!: string[];
   pieces!: number;
+  /** Absent à l'inscription (toujours 'membre' par défaut), présent après connexion. */
+  role?: 'membre' | 'moderateur' | 'admin';
 }
 
 export class LoginRequestDto {

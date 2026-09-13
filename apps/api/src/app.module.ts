@@ -19,6 +19,7 @@ import { QuestsModule } from './modules/quests/quests.module';
 import { StoriesModule } from './modules/stories/stories.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { MessagesModule } from './modules/messages/messages.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { MessagesModule } from './modules/messages/messages.module';
     StoriesModule,
     NotificationsModule,
     MessagesModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

@@ -4,6 +4,8 @@ export interface AuthenticatedUser {
   email: string;
   nomUtilisateur: string;
   estAdmin: boolean;
+  role: 'membre' | 'moderateur' | 'admin';
+  estSuspendu: boolean;
 }
 
 export interface JwtPayload {

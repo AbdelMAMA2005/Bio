@@ -130,7 +130,11 @@
     "shareErrorTitle": "Couldn't share",
     "shareErrorSub": "Try again in a moment.",
     "storyReplyPlaceholder": "Reply to {{name}}…",
-    "storyReplySent": "Message sent!"
+    "storyReplySent": "Message sent!",
+    "deleteStoryTitle": "Delete this story?",
+    "deleteStoryBody": "This action is permanent, your story will be removed immediately.",
+    "deleteStoryCta": "Delete",
+    "deleteStoryError": "Couldn't delete this story right now."
   },
   "profile": {
     "sendMessage": "Message",

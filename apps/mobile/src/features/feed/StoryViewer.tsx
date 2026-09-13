@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Dimensions, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/Icon';
-import { useRecordStoryView, useStories, useToggleStoryLike } from '@/api/hooks/useFeed';
+import { useDeleteStoryMedia, useRecordStoryView, useStories, useToggleStoryLike } from '@/api/hooks/useFeed';
 import { useSendMessage } from '@/api/hooks/useMessages';
 import { StoryViewersSheet } from '@/features/feed/StoryViewersSheet';
 import type { SupportedLanguage } from '@/i18n';
@@ -51,6 +51,7 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
   const language = (i18n.language as SupportedLanguage) ?? 'fr';
   const recordView = useRecordStoryView();
   const toggleLike = useToggleStoryLike();
+  const deleteMedia = useDeleteStoryMedia();
   const sendMessage = useSendMessage();
   const liveStories = useStories();
   const [position, setPosition] = useState(() => ({
@@ -90,6 +91,22 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
     setReplyText('');
     setReplySent(false);
   }, [media.id]);
+
+  const handleDelete = () => {
+    Alert.alert(t('community.deleteStoryTitle'), t('community.deleteStoryBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('community.deleteStoryCta'),
+        style: 'destructive',
+        onPress: () => {
+          deleteMedia.mutate(media.id, {
+            onSuccess: onClose,
+            onError: () => Alert.alert(t('community.deleteStoryError')),
+          });
+        },
+      },
+    ]);
+  };
 
   const handleSendReply = () => {
     const trimmed = replyText.trim();
@@ -223,6 +240,19 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
                 />
                 {media.likesCount > 0 ? <Text style={styles.likeCount}>{media.likesCount}</Text> : null}
               </Pressable>
+              {group.estMoi ? (
+                <Pressable
+                  onPress={handleDelete}
+                  disabled={deleteMedia.isPending}
+                  hitSlop={10}
+                  style={styles.closeButton}>
+                  {deleteMedia.isPending ? (
+                    <ActivityIndicator color={chrome.text} size="small" />
+                  ) : (
+                    <Icon name="delete_forever" size={22} color={chrome.text} />
+                  )}
+                </Pressable>
+              ) : null}
               <Pressable onPress={onClose} hitSlop={10} style={styles.closeButton}>
                 <Icon name="close" size={22} color={chrome.text} />
               </Pressable>

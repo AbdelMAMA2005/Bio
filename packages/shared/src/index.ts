@@ -140,3 +140,162 @@ export interface PublicProfile {
   insignes: string[];
   stats: { captures: number; especes: number; rares: number };
 }
+
+// ===================== Console admin (apps/admin) =====================
+// Enums back bruts (mêmes valeurs que l'API), pas les enums d'affichage mobile
+// ci-dessus (Rarete/Toxicite/EtatSante) : la console est un outil technique, le
+// libellé français est calculé côté front admin (voir theme/labels.ts).
+
+export type AdminRole = 'membre' | 'moderateur' | 'admin';
+export type AdminUserStatut = 'actif' | 'inactif' | 'suspendu';
+export type AdminToxicite = 'green' | 'orange' | 'red';
+export type AdminReportTargetType = 'post' | 'story' | 'comment';
+export type AdminReportStatut = 'ouvert' | 'ignore' | 'supprime';
+export type AdminQuestType = 'quotidien' | 'exploration';
+export type AdminServiceStatus = 'ok' | 'degrade' | 'down';
+
+export interface AdminUser {
+  id: string;
+  nomUtilisateur: string;
+  email: string;
+  urlAvatar: string | null;
+  role: AdminRole;
+  niveau: number;
+  experience: number;
+  capturesCount: number;
+  statut: AdminUserStatut;
+}
+
+export interface AdminUsersPage {
+  items: AdminUser[];
+  total: number;
+}
+
+export interface AdminConseilsEntretien {
+  lumiere?: string;
+  sol?: string;
+  arrosage?: string;
+  multiplication?: string;
+}
+
+export interface AdminPlant {
+  id: string;
+  nomScientifique: string;
+  nomCommun: string;
+  famille: string | null;
+  toxicite: AdminToxicite;
+  badgeRarete: string | null;
+  urlImage: string | null;
+  aPropos: string | null;
+  conseilsEntretien: AdminConseilsEntretien | null;
+  capturesCount: number;
+}
+
+export interface AdminPlantsPage {
+  items: AdminPlant[];
+  total: number;
+}
+
+export interface AdminPlantInput {
+  nomScientifique: string;
+  nomCommun: string;
+  famille?: string | null;
+  toxicite: AdminToxicite;
+  badgeRarete?: string | null;
+  urlImage?: string | null;
+  aPropos?: string | null;
+  conseilsEntretien?: AdminConseilsEntretien | null;
+}
+
+/** Un signalement groupé par contenu ciblé (targetType+targetId) — voir AdminModerationService. */
+export interface AdminReportGroup {
+  id: string;
+  targetType: AdminReportTargetType;
+  targetId: string;
+  auteurCible: string;
+  motif: string;
+  extrait: string;
+  signalementsCount: number;
+  statut: AdminReportStatut;
+  dateCreation: string;
+}
+
+export interface AdminQuest {
+  id: string;
+  libelle: string;
+  type: AdminQuestType;
+  objectif: number;
+  recompenseXp: number;
+  recompensePieces: number;
+  actif: boolean;
+  /** % (0-100) d'utilisateurs actifs ayant complété ce défi aujourd'hui. */
+  tauxCompletion: number;
+}
+
+export interface AdminFeatureFlag {
+  cle: string;
+  libelle: string;
+  description: string;
+  actif: boolean;
+}
+
+export interface AdminApiKeyStatus {
+  nom: string;
+  env: string;
+  status: 'connecte' | 'absent' | 'degrade';
+}
+
+export interface AdminAuditLogEntry {
+  id: string;
+  adminPseudo: string;
+  action: string;
+  cible: string | null;
+  dateCreation: string;
+}
+
+export interface AdminKpi {
+  utilisateursActifs: number;
+  utilisateursActifsTrendPct: number;
+  identifications7j: number;
+  identificationsTrendPct: number;
+  especesReferencees: number;
+  especesTrendCount: number;
+  signalements: number;
+  signalementsTrendCount: number;
+}
+
+export interface AdminChartPoint {
+  jour: string;
+  valeur: number;
+}
+
+export interface AdminRarityBucket {
+  rarete: string;
+  count: number;
+  pct: number;
+}
+
+export interface AdminServiceHealth {
+  nom: string;
+  latenceMs: number | null;
+  status: AdminServiceStatus;
+}
+
+export interface AdminStats {
+  kpi: AdminKpi;
+  chart7j: AdminChartPoint[];
+  raretes: AdminRarityBucket[];
+  aTraiter: {
+    publicationsSignalees: number;
+    especesAValider: number;
+    identificationsDouteuses: number;
+  };
+  services: AdminServiceHealth[];
+}
+
+export interface AdminMe {
+  id: string;
+  nomUtilisateur: string;
+  email: string;
+  role: AdminRole;
+}

@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Param,
   UploadedFile,
   UseInterceptors,
@@ -69,6 +70,16 @@ export class StoriesController {
     @Param('mediaId') mediaId: string,
   ) {
     return this.storiesService.toggleLike(mediaId, user.id);
+  }
+
+  // ----- Supprimer un média de sa story avant expiration (réservé à son auteur) -----
+  @Delete(':mediaId')
+  @HttpCode(204)
+  async deleteStoryMedia(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('mediaId') mediaId: string,
+  ) {
+    await this.storiesService.deleteStoryMedia(mediaId, user.id);
   }
 
   // ----- Liste des vues d'un média (réservé à son auteur) -----

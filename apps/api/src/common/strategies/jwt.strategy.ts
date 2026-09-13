@@ -27,7 +27,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: JwtPayload): Promise<AuthenticatedUser | null> {
     const user = await this.authService.validateUser(payload.sub);
-    if (!user) {
+    // Suspension effective immédiatement, même sur un access token déjà émis avant la
+    // suspension (pas besoin d'attendre son expiration naturelle) — voir modules/admin.
+    if (!user || user.estSuspendu) {
       return null;
     }
     return {
@@ -35,6 +37,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: user.email,
       nomUtilisateur: user.nomUtilisateur,
       estAdmin: user.estAdmin,
+      role: user.role,
+      estSuspendu: user.estSuspendu,
     };
   }
 }

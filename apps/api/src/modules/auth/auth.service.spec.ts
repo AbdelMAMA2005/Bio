@@ -306,7 +306,16 @@ describe('AuthService', () => {
 
       const result = await service.loginWithGoogle('un-token');
 
-      expect(userRepo.save).not.toHaveBeenCalled();
+      // save() est bien appelé — pas pour créer un doublon, mais pour horodater
+      // `derniereConnexion` (voir AuthService#loginWithGoogle, utilisé par la console
+      // admin pour le statut Actif/Inactif) : aucun NOUVEL utilisateur n'est créé.
+      expect(userRepo.save).toHaveBeenCalledTimes(1);
+      expect(userRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'user-existant',
+          derniereConnexion: expect.any(Date),
+        }),
+      );
       expect(result.user.id).toBe('user-existant');
     });
 

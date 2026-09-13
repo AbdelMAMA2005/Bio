@@ -2,6 +2,7 @@ node_modules
 .expo
 dist
 *.local
+*.tsbuildinfo
 
 # Docs de cadrage (PDF/maquette) : conservées hors dépôt, jamais nécessaires à l'exécution
 Cahier de charge/

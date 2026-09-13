@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  CreateDateColumn,
+} from 'typeorm';
 import { Collection } from './collection.entity';
 import { ToxicityLevel } from './enums/toxicity-level.enum';
 
@@ -51,4 +57,8 @@ export class Plant {
 
   @OneToMany(() => Collection, (collection) => collection.plante)
   collectionsPlante!: Collection[];
+
+  /** Ajouté pour la console admin (tendance "espèces référencées" du tableau de bord). */
+  @CreateDateColumn()
+  dateCreation!: Date;
 }

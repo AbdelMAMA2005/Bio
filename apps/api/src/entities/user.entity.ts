@@ -35,6 +35,25 @@ export class User {
   @Column({ default: false })
   estAdmin!: boolean;
 
+  /**
+   * Rôle fin pour la console admin (voir modules/admin) — 'admin' implique toujours
+   * `estAdmin: true` (maintenu en synchro par AdminUsersService), conservé pour ne pas
+   * casser l'AdminGuard existant (plants.controller). Un 'membre' n'atteint jamais un
+   * endpoint /admin/* (voir RoleGuard).
+   */
+  @Column({
+    type: 'enum',
+    enum: ['membre', 'moderateur', 'admin'],
+    default: 'membre',
+  })
+  role!: 'membre' | 'moderateur' | 'admin';
+
+  @Column({ default: false })
+  estSuspendu!: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  derniereConnexion!: Date | null;
+
   @Column({ default: 1 })
   niveau!: number;
 

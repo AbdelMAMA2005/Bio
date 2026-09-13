@@ -28,6 +28,7 @@ describe('StoriesService', () => {
   let storyRepo: {
     create: jest.Mock;
     save: jest.Mock;
+    remove: jest.Mock;
     findOne: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
@@ -53,6 +54,7 @@ describe('StoriesService', () => {
     storyRepo = {
       create: jest.fn((d) => d),
       save: jest.fn(async (s) => ({ id: 'story-1', ...s })),
+      remove: jest.fn(async () => undefined),
       findOne: jest.fn(),
       createQueryBuilder: jest.fn(),
     };
@@ -392,6 +394,36 @@ describe('StoriesService', () => {
       expect(storyLikeRepo.remove).toHaveBeenCalled();
       expect(storyLikeRepo.save).not.toHaveBeenCalled();
       expect(result).toEqual({ liked: false, likesCount: 0 });
+    });
+  });
+
+  describe('deleteStoryMedia', () => {
+    it('lève NotFoundException si le média est inconnu', async () => {
+      storyRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.deleteStoryMedia('media-1', 'author-1'),
+      ).rejects.toThrow(NotFoundException);
+      expect(storyRepo.remove).not.toHaveBeenCalled();
+    });
+
+    it("refuse la suppression à qui n'est pas l'auteur", async () => {
+      storyRepo.findOne.mockResolvedValue({
+        id: 'media-1',
+        userId: 'author-1',
+      });
+      await expect(
+        service.deleteStoryMedia('media-1', 'quelqu-un-d-autre'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(storyRepo.remove).not.toHaveBeenCalled();
+    });
+
+    it("supprime le média quand l'appelant en est l'auteur", async () => {
+      const story = { id: 'media-1', userId: 'author-1' };
+      storyRepo.findOne.mockResolvedValue(story);
+
+      await service.deleteStoryMedia('media-1', 'author-1');
+
+      expect(storyRepo.remove).toHaveBeenCalledWith(story);
     });
   });
 

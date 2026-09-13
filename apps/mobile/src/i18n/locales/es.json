@@ -130,7 +130,11 @@
     "shareErrorTitle": "No se pudo compartir",
     "shareErrorSub": "Inténtalo de nuevo en un momento.",
     "storyReplyPlaceholder": "Responder a {{name}}…",
-    "storyReplySent": "¡Mensaje enviado!"
+    "storyReplySent": "¡Mensaje enviado!",
+    "deleteStoryTitle": "¿Eliminar esta story?",
+    "deleteStoryBody": "Esta acción es definitiva, tu story se eliminará de inmediato.",
+    "deleteStoryCta": "Eliminar",
+    "deleteStoryError": "No se pudo eliminar esta story en este momento."
   },
   "profile": {
     "sendMessage": "Mensaje",

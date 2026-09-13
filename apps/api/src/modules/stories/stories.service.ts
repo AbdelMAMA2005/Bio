@@ -247,6 +247,25 @@ export class StoriesService {
     return { liked: !existing, likesCount };
   }
 
+  /**
+   * Supprime un média de story avant son expiration naturelle — réservé à son auteur.
+   * Les vues/likes associés partent en cascade (`onDelete: 'CASCADE'`, voir StoryView/
+   * StoryLike) ; les messages qui le citent (réponse à un statut) gardent leur texte,
+   * `storyId` repasse simplement à `null` (`onDelete: 'SET NULL'`, voir Message).
+   */
+  async deleteStoryMedia(mediaId: string, userId: string): Promise<void> {
+    const story = await this.storyRepo.findOne({ where: { id: mediaId } });
+    if (!story) {
+      throw new NotFoundException('Média de story non trouvé');
+    }
+    if (story.userId !== userId) {
+      throw new ForbiddenException(
+        "Seul l'auteur d'une story peut la supprimer",
+      );
+    }
+    await this.storyRepo.remove(story);
+  }
+
   /** Liste des vues d'un média — réservée à l'auteur (comportement WhatsApp : privé). */
   async getViewers(
     mediaId: string,

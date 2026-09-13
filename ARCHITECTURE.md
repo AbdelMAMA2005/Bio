@@ -14,9 +14,10 @@ Pour démarrer à deux, un **monorepo** est le plus simple : un seul dépôt, un
 planai/
 ├── apps/
 │   ├── mobile/          # Application React Native (Expo)
-│   └── api/             # Back-end NestJS
+│   ├── api/             # Back-end NestJS
+│   └── admin/           # Console admin web (React + Vite + TS), voir §3bis
 ├── packages/
-│   └── shared/          # Types TS partagés (Plante, User, DTOs, enums rareté/santé)
+│   └── shared/          # Types TS partagés (Plante, User, DTOs, enums rareté/santé, Admin*)
 ├── .github/
 │   └── workflows/       # CI : lint + tests sur chaque PR
 ├── package.json         # Workspaces (npm ou pnpm)
@@ -104,7 +105,9 @@ apps/api/
 │   │   ├── stories/             # stories éphémères 24h (entité Story dédiée) + likes (StoryLike)
 │   │   ├── messages/            # messagerie privée (réponses aux stories + messages directs)
 │   │   ├── quests/             # défis quotidiens + exploration, récompenses
-│   │   └── notifications/      # rappels push (arrosage, traitements)
+│   │   ├── notifications/      # rappels push (arrosage, traitements)
+│   │   └── admin/               # console admin : RoleGuard, stats, users, plants, modération,
+│   │                             #   quests (CRUD), feature flags, journal d'audit — voir §3bis
 │   ├── common/                 # guards, pipes, interceptors, filters
 │   ├── config/                 # env, base de données
 │   └── main.ts
@@ -125,7 +128,11 @@ apps/api/
 │   ├── story-like.entity.ts   # likes sur un média de story (storyId + userId, unique)
 │   ├── conversation.entity.ts # paire d'utilisateurs (user1Id/user2Id normalisés), 1 ligne/paire
 │   ├── message.entity.ts      # message privé, storyId optionnel (réponse à un statut)
-│   └── reminder.entity.ts
+│   ├── reminder.entity.ts
+│   ├── report.entity.ts       # signalement (post/story/comment) — file de modération admin
+│   ├── quest.entity.ts        # défi éditable admin (remplace QUEST_CATALOG en dur)
+│   ├── feature-flag.entity.ts # bascule fonctionnelle à chaud, éditable admin
+│   └── admin-audit-log.entity.ts # journal d'audit des actions d'administration
 ├── test/
 └── package.json
 ```
@@ -135,6 +142,42 @@ apps/api/
 - Un module = controller + service + entities + DTOs. Pas de logique dans les controllers.
 - Chaque module est autonome → migration future vers microservices (Auth, IA, Feed, Notifications) sans refonte.
 - Les DTOs sont validés (`class-validator`) et leurs types exportés vers `packages/shared`.
+
+---
+
+## 3bis. Console admin — `apps/admin` (React + Vite) + module `admin` (`apps/api`)
+
+Espace web séparé de l'app mobile, pour piloter l'application (utilisateurs, référentiel
+plantes, modération, défis, paramètres). Détail complet des endpoints dans
+`API_CONTRACT.md` §10 ; ce qui suit résume les décisions structurantes.
+
+```
+apps/admin/
+├── src/
+│   ├── main.tsx / App.tsx      # bootstrap, React Router
+│   ├── theme/                  # design system (variables CSS clair/sombre, repris de
+│   │                             #   maquette/PlanAI-admin-maquette.html), ThemeProvider
+│   ├── api/
+│   │   ├── client.ts           # axios + intercepteur JWT (Bearer + refresh, même schéma
+│   │   │                       #   que apps/mobile/src/api/client.ts)
+│   │   └── hooks/               # useStats(), useUsers(), usePlants(), useModeration()…
+│   ├── components/              # Sidebar, Topbar, Table, Badge, Switch, ProtectedRoute…
+│   └── pages/                   # LoginPage, DashboardPage, UsersPage, PlantsPage,
+│                                 #   ModerationPage, QuestsPage, SettingsPage (7 écrans)
+└── package.json                # scripts dev/build/preview (Vite)
+```
+
+**Rôles** : `User.role` (`'membre' | 'moderateur' | 'admin'`, nouveau champ — voir §4),
+distinct du booléen `estAdmin` historique (gardé, synchronisé automatiquement quand
+`role` passe à/depuis `'admin'`, pour ne jamais casser l'`AdminGuard` déjà en place sur
+`/plants`). Un `RoleGuard` + décorateur `@Roles(...)` protège individuellement chaque route
+`/admin/*` — `AdminModule` est autonome (réutilise `PlantsModule`/`UserModule` existants
+pour ne jamais dupliquer leur logique métier) et n'est monté nulle part côté mobile.
+
+**Pas de 2e système d'auth** : la console se connecte via le `POST /auth/login` déjà
+existant : c'est le `RoleGuard` sur les routes `/admin/*`, pas un mécanisme de connexion
+séparé, qui empêche un `'membre'` d'atteindre la console (`GET /admin/me` sert de
+vérification de session au chargement).
 
 ---
 
@@ -158,6 +201,10 @@ Les noms de tables PostgreSQL sont en anglais (`users`, `plants`, `collection`, 
 | `insignes` | `string[]` (JSONB) | Liste des badges débloqués |
 | `dateSuppression` | `Date \| null` | Date de suppression logique (soft delete) |
 | `latitudeReference` / `longitudeReference` | `number \| null` | Point "chez vous" pour le défi Exploration (ajouté 10/09/2026) — figé sur la 1ère capture géo-taguée, voir API_CONTRACT.md §6 |
+| `role` | `'membre' \| 'moderateur' \| 'admin'` | Ajouté 13/09/2026 (console admin) — distinct de `estAdmin` (gardé, synchronisé automatiquement) |
+| `estAdmin` | `boolean` | Historique — `true` ssi `role === 'admin'` (voir `AdminGuard`, `/plants`) |
+| `estSuspendu` | `boolean` | Ajouté 13/09/2026 — bloque la connexion et invalide les sessions déjà ouvertes (voir API_CONTRACT.md §10) |
+| `derniereConnexion` | `Date \| null` | Ajouté 13/09/2026 — horodaté à chaque login (mot de passe ou Google) ; sert au statut Actif/Inactif de la console admin |
 
 ---
 
@@ -172,6 +219,7 @@ Les noms de tables PostgreSQL sont en anglais (`users`, `plants`, `collection`, 
 | `conseilsEntretien` | `{ arrosage?, lumiere?, temperature?, rempotage? }` | Conseils en JSON |
 | `urlImage` | `string \| null` | URL d'illustration |
 | `badgeRarete` | `string \| null` | Ex: "Commun", "Rare", "Épique" |
+| `dateCreation` | `Date` | Ajouté 13/09/2026 — alimente la tendance "espèces référencées" du tableau de bord admin |
 
 ---
 
@@ -330,6 +378,47 @@ WhatsApp/Instagram.
 | `typeRappel` | `string` | Ex: "arrosage", "rempotage" |
 | `datePlanification` | `Date` | Date programmée |
 | `estNotifie` | `boolean` | Flag d'envoi |
+
+---
+
+### Table `reports` (signalements — ajouté 13/09/2026, console admin)
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` (UUID) | Identifiant unique |
+| `reporterId` | `string` (UUID) | Clé étrangère → `users.id` |
+| `targetType` | `'post' \| 'story' \| 'comment'` | Type de contenu signalé |
+| `targetId` | `string` (UUID) | Id du contenu signalé (dans sa propre table) |
+| `auteurCible` / `motif` / `extrait` | `string` | Instantané au moment du signalement (survit à la suppression du contenu original hors modération) |
+| `statut` | `'ouvert' \| 'ignore' \| 'supprime'` | Traité par `POST /admin/moderation/:id/ignore` ou `DELETE /admin/moderation/:id` |
+| `dateCreation` / `dateTraitement` | `Date` / `Date \| null` | Horodatages |
+
+Plusieurs signalements peuvent viser le même `(targetType, targetId)` — la console les
+groupe en une seule carte (voir API_CONTRACT.md §10).
+
+### Table `quests` (défis éditables — ajouté 13/09/2026, console admin)
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` | Slug stable (ex: `"scan-3"`) — référencé en dur dans `QuestsService#computeRealProgressions` |
+| `libelle` / `type` / `objectif` / `recompenseXp` / `recompensePieces` | — | Éditables depuis la console |
+| `actif` | `boolean` | `false` = retiré de `GET /quests/daily` côté mobile |
+
+Remplace `QUEST_CATALOG` (constante figée dans le code) comme source des définitions — la
+PROGRESSION reste calculée en direct depuis les tables métier, jamais stockée ici.
+
+### Table `feature_flags` (ajouté 13/09/2026, console admin)
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `cle` | `string` | Clé stable (ex: `"geotag"`) |
+| `libelle` / `description` | `string` | Affichage console |
+| `actif` | `boolean` | Basculable à chaud — voir API_CONTRACT.md §10 pour l'état réel du câblage |
+
+### Table `admin_audit_logs` (ajouté 13/09/2026, console admin)
+| Propriété (JSON) | Type TypeScript | Description |
+| :--- | :--- | :--- |
+| `id` | `string` (UUID) | Identifiant unique |
+| `adminId` / `adminPseudo` | `string` | Auteur de l'action (pseudo en instantané, lisible même si le compte est supprimé depuis) |
+| `action` / `cible` | `string` / `string \| null` | Texte libre lisible par un humain |
+| `dateCreation` | `Date` | Horodatage |
 
 ---
 

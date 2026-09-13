@@ -14,5 +14,6 @@ import { FeedModule } from '../feed/feed.module';
   ],
   providers: [UserService],
   controllers: [UserController],
+  exports: [UserService],
 })
 export class UserModule {}

@@ -176,6 +176,19 @@ export function useToggleStoryLike() {
   });
 }
 
+/** Supprime un média de sa propre story avant son expiration naturelle (voir StoryViewer). */
+export function useDeleteStoryMedia() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (mediaId: string) => {
+      await apiClient.delete(`/stories/${mediaId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.stories });
+    },
+  });
+}
+
 async function fetchStoryViewers(mediaId: string): Promise<StoryViewer[]> {
   const { data } = await apiClient.get<StoryViewer[]>(`/stories/${mediaId}/viewers`);
   // Le back renvoie urlAvatar en URL relative (comme pour les auteurs de post/story) — sans

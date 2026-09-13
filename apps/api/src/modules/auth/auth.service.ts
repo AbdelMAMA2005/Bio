@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, LessThan } from 'typeorm';
@@ -188,7 +189,16 @@ export class AuthService {
       throw new UnauthorizedException('Email ou mot de passe incorrect.');
     }
 
+    // Un compte suspendu ne peut pas se reconnecter (voir modules/admin/AdminUsersService) —
+    // message dédié plutôt qu'un 401 générique, pour ne pas laisser croire à un mot de
+    // passe incorrect.
+    if (user.estSuspendu) {
+      throw new ForbiddenException('Ce compte a été suspendu.');
+    }
+
     const { accessToken, refreshToken } = await this.issueTokenPair(user);
+    user.derniereConnexion = new Date();
+    await this.userRepo.save(user);
     // Hygiène de table best-effort (pas bloquant pour la connexion si ça échoue) : purge
     // les refresh tokens expirés depuis longtemps plutôt que de les laisser s'accumuler.
     this.pruneExpiredRefreshTokens().catch(() => undefined);
@@ -204,6 +214,7 @@ export class AuthService {
         niveau: user.niveau,
         insignes: user.insignes,
         pieces: user.pieces,
+        role: user.role,
       },
     };
   }
@@ -263,7 +274,13 @@ export class AuthService {
       user = await this.userRepo.save(user);
     }
 
+    if (user.estSuspendu) {
+      throw new ForbiddenException('Ce compte a été suspendu.');
+    }
+
     const { accessToken, refreshToken } = await this.issueTokenPair(user);
+    user.derniereConnexion = new Date();
+    await this.userRepo.save(user);
 
     return {
       accessToken,
@@ -276,6 +293,7 @@ export class AuthService {
         niveau: user.niveau,
         insignes: user.insignes,
         pieces: user.pieces,
+        role: user.role,
       },
     };
   }

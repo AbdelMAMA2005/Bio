@@ -7,14 +7,26 @@ import { Post } from '../../entities/posts.entity';
 import { Like } from '../../entities/like.entity';
 import { User } from '../../entities/user.entity';
 import { QuestProgress } from '../../entities/quest-progress.entity';
+import { Quest } from '../../entities/quest.entity';
 import { PlantType } from '../../entities/enums/plant-type.enum';
 import { QuestResponseDto } from '../../dto';
-import { QUEST_CATALOG } from './quest-catalog';
+import { QUEST_CATALOG, QuestDefinition } from './quest-catalog';
 import { haversineMeters } from '../../common/geo';
 
 /** Distance minimale (mètres) du point de référence pour compter comme "exploration". */
 const EXPLORE_MIN_DISTANCE_METERS = 1000;
 
+/**
+ * Les bornes de journée ci-dessous sont des `Date` liées à des colonnes
+ * `timestamp without time zone` : `pg` sérialise un objet `Date` selon le fuseau
+ * *local* du process Node, que Postgres interprète ensuite tel quel (sans
+ * conversion) sur une colonne sans fuseau — un décalage silencieux se produit
+ * donc si ce process ne tourne pas en UTC. D'où `TZ=UTC` forcé sur tous les
+ * scripts/serveurs de apps/api (package.json) et dans le Dockerfile : sans ça,
+ * toute action utilisateur survenant entre 00h et (décalage local) UTC chaque
+ * jour serait exclue du calcul de progression des défis du jour (bug réel
+ * trouvé le 13/09/2026, voir rapport.md).
+ */
 function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -34,7 +46,30 @@ export class QuestsService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(QuestProgress)
     private readonly questProgressRepo: Repository<QuestProgress>,
+    @InjectRepository(Quest)
+    private readonly questRepo: Repository<Quest>,
   ) {}
+
+  /**
+   * Définitions actives des défis — lues depuis la table `quests` (éditable depuis la
+   * console admin, voir modules/admin/admin-quests.service.ts) plutôt que directement
+   * `QUEST_CATALOG` : une désactivation/édition depuis la console se répercute donc
+   * immédiatement ici. `QUEST_CATALOG` sert de repli avant le premier seed (table encore
+   * vide — 1er démarrage, ou tests unitaires qui ne peuplent pas la table) pour ne jamais
+   * renvoyer une liste de défis vide.
+   */
+  private async getActiveQuestDefs(): Promise<QuestDefinition[]> {
+    const rows = await this.questRepo.find({ where: { actif: true } });
+    if (rows.length === 0) return QUEST_CATALOG;
+    return rows.map((r) => ({
+      id: r.id,
+      libelle: r.libelle,
+      objectif: r.objectif,
+      recompenseXp: r.recompenseXp,
+      recompensePieces: r.recompensePieces,
+      type: r.type,
+    }));
+  }
 
   /**
    * Calcule la progression réelle de chaque défi du jour à partir des tables
@@ -55,7 +90,7 @@ export class QuestsService {
     );
 
     const results: QuestResponseDto[] = [];
-    for (const quest of QUEST_CATALOG) {
+    for (const quest of await this.getActiveQuestDefs()) {
       const progression = Math.min(progressions[quest.id] ?? 0, quest.objectif);
       const complete = progression >= quest.objectif;
 

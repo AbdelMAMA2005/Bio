@@ -7,6 +7,7 @@ import { Post } from '../../entities/posts.entity';
 import { Like } from '../../entities/like.entity';
 import { User } from '../../entities/user.entity';
 import { QuestProgress } from '../../entities/quest-progress.entity';
+import { Quest } from '../../entities/quest.entity';
 
 function qbMock(
   finalMethods: Partial<Record<'getRawMany' | 'getCount' | 'getMany', any>>,
@@ -36,6 +37,7 @@ describe('QuestsService', () => {
     save: jest.Mock;
     create: jest.Mock;
   };
+  let questRepo: { find: jest.Mock };
 
   /** Par défaut, aucune progression sur aucun défi. */
   function setProgress({
@@ -79,6 +81,9 @@ describe('QuestsService', () => {
       save: jest.fn(async (e) => ({ id: 'progress-1', ...e })),
       create: jest.fn((d) => d),
     };
+    // Table vide par défaut : QuestsService retombe sur QUEST_CATALOG (voir
+    // QuestsService#getActiveQuestDefs) — mêmes 5 défis qu'avant cette table.
+    questRepo = { find: jest.fn().mockResolvedValue([]) };
     setProgress();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -96,6 +101,7 @@ describe('QuestsService', () => {
           provide: getRepositoryToken(QuestProgress),
           useValue: questProgressRepo,
         },
+        { provide: getRepositoryToken(Quest), useValue: questRepo },
       ],
     }).compile();
 
@@ -275,6 +281,32 @@ describe('QuestsService', () => {
         'pieces',
         30,
       );
+    });
+  });
+
+  describe('défis éditables depuis la console admin (table quests)', () => {
+    it('utilise les définitions de la table quests quand elle est peuplée, pas QUEST_CATALOG', async () => {
+      questRepo.find.mockResolvedValue([
+        {
+          id: 'custom-quest',
+          libelle: 'Défi personnalisé',
+          type: 'quotidien',
+          objectif: 2,
+          recompenseXp: 5,
+          recompensePieces: 1,
+          actif: true,
+        },
+      ]);
+
+      const quests = await service.getDailyQuests('user-1');
+
+      expect(quests).toHaveLength(1);
+      expect(quests[0]).toMatchObject({
+        id: 'custom-quest',
+        libelle: 'Défi personnalisé',
+        objectif: 2,
+      });
+      expect(questRepo.find).toHaveBeenCalledWith({ where: { actif: true } });
     });
   });
 });

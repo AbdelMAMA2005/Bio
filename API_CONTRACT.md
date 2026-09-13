@@ -1,5 +1,12 @@
-# PlanAI — Contrat d'API (v1 — état réel du backend, mis à jour le 24/07/2026)
+# PlanAI — Contrat d'API (v1 — état réel du backend, mis à jour le 13/09/2026)
 
+> **Mise à jour du 13/09/2026** : ajout de la console admin web (`apps/admin`) et de son
+> module back `admin` — voir §10. Nouveau champ `User.role` (`'membre'|'moderateur'|
+> 'admin'`), `RoleGuard`, 4 nouvelles tables (`reports`, `quests`, `feature_flags`,
+> `admin_audit_logs`). `QuestsService` lit désormais les défis depuis la table `quests`
+> (éditable) plutôt que la constante `QUEST_CATALOG` figée dans le code. Détail complet des
+> décisions dans `rapport.md`.
+>
 > **Mise à jour du 24/07/2026 (ter)** : stories réécrites pour un comportement identique aux
 > statuts WhatsApp (demande de Djawad) — plusieurs médias d'un même auteur regroupés en UNE
 > bulle (`GET /stories` renvoie désormais des `StoryGroupDto`, plus des entités `Story` à
@@ -96,6 +103,7 @@ Si un jour le back migre vers les enums `packages/shared`, seul ce fichier chang
 | §6 Défis          | `quests` (4 défis quotidiens, progression réelle)  | ✅ partiel | Abdel / Djawad                             |
 | §7 Rappels        | `reminders` (CRUD réel, pas de push serveur)       | ✅ partiel | Abdel / Djawad                             |
 | §8 Plantes        | `plants` (lecture publique, écriture admin)        | ✅     | Abdel                                          |
+| §10 Console admin | `admin` (RoleGuard, `apps/admin` web séparé)        | ✅     | —                                               |
 
 Le référentiel `plants` a désormais son propre module exposé (`GET /plants`,
 `GET /plants/:id`, publics) ; les plantes continuent d'être créées à la volée par
@@ -891,6 +899,119 @@ notifications. Pas de module `notifications`, aucun enregistrement de token côt
 // POST /notifications/device — body { "expoPushToken": "ExponentPushToken[...]", "plateforme": "ios" } → 204
 // DELETE /notifications/device → 204
 ```
+
+---
+
+## 10. Console admin (`apps/admin`) — module `admin`
+
+Espace web séparé (`apps/admin`, React + Vite), consommé par personne côté mobile. Réutilise
+le **même** `/auth/login` que le mobile (pas de 2e système d'auth à maintenir) : ce qui
+distingue la console, c'est un **rôle** (`User.role`, nouveau champ : `'membre' |
+'moderateur' | 'admin'`, distinct du booléen `estAdmin` déjà existant et gardé en synchro
+pour ne pas casser l'`AdminGuard` historique sur `/plants`) vérifié par un `RoleGuard` +
+décorateur `@Roles(...)` posé sur **toutes** les routes `/admin/*`. Un `'membre'` reçoit
+403 sur chacune d'entre elles — jamais un simple masquage côté front (voir
+`apps/api/test/admin.e2e-spec.ts`, contrôle d'accès systématique par route).
+
+Toute mutation via `/admin/*` est journalisée (qui/quoi/quand) dans `admin_audit_logs`,
+consultable via `GET /admin/settings/audit-log`.
+
+**Effets de bord réels sur le reste de l'app** (pas une console cosmétique) :
+- Suspendre un utilisateur (`PATCH /admin/users/:id/status`) l'empêche de se reconnecter
+  (`POST /auth/login` → 403) et invalide **immédiatement** ses sessions déjà ouvertes
+  (`JwtStrategy#validate` revérifie `estSuspendu` à chaque requête, pas seulement au login).
+- Désactiver un défi (`PATCH /admin/quests/:id`) le retire de `GET /quests/daily` côté
+  mobile au prochain appel (`QuestsService` lit désormais la table `quests`, éditable
+  depuis la console, plutôt que la constante `QUEST_CATALOG` figée dans le code — celle-ci
+  ne sert plus que de graine initiale, voir `seeds/admin.seed.ts`).
+- Supprimer une espèce ou modérer un contenu agit sur les **mêmes tables** que le mobile
+  (`plants`, `posts`, `comments`, `stories`) — pas de copie séparée.
+
+### ✅ GET /admin/me — `admin`, `moderateur`
+
+Confirme la session + le rôle au chargement de la console.
+
+```json
+// 200
+{ "id": "uuid", "nomUtilisateur": "Djawad", "email": "djawad@planai.app", "role": "admin" }
+```
+
+### ✅ GET /admin/stats — `admin`, `moderateur`
+
+Toutes les valeurs sont calculées en direct (aucune valeur fixe) : utilisateurs actifs (+
+% actifs sous 7 jours), identifications 7 jours (+ variation vs les 7 jours précédents),
+espèces référencées (+ nouvelles ce mois), signalements ouverts (+ variation vs hier),
+histogramme quotidien sur 7 jours, répartition par `badgeRarete` sur les captures réelles,
+santé des 4 services (API/PostgreSQL réellement pingués, Plant.id/notifications déduits de
+la config). `especesAValider`/`identificationsDouteuses` renvoient honnêtement `0` : aucun
+workflow de validation d'espèce ni score de confiance stocké dans le schéma actuel pour les
+calculer réellement (voir `AdminStatsService`, commentaire de classe).
+
+### ✅ GET /admin/users?page=&limit=&q=&filtre= — `admin`, `moderateur`
+
+`filtre` ∈ `tous|admins|inactifs|suspendus`. `statut` par utilisateur est calculé
+(`suspendu` > `inactif` si `derniereConnexion` absente ou > 30 jours > `actif`), jamais
+stocké tel quel.
+
+```json
+// 200
+{ "items": [{ "id":"uuid","nomUtilisateur":"...","email":"...","urlAvatar":null,"role":"membre","niveau":3,"experience":540,"capturesCount":12,"statut":"actif" }], "total": 12480 }
+```
+
+### ✅ PATCH /admin/users/:id/role — `admin` uniquement
+
+Body `{ "role": "moderateur" }`. Un modérateur ne peut pas s'auto-promouvoir (403).
+
+### ✅ PATCH /admin/users/:id/status — `admin`, `moderateur`
+
+Body `{ "suspendu": true }`. 400 si l'appelant cible son propre compte.
+
+### ✅ DELETE /admin/users/:id — `admin` uniquement
+
+Anonymisation RGPD (réutilise `UserService#softDelete` — même chemin que la suppression de
+compte par l'utilisateur lui-même) + révocation de tous ses refresh tokens. 400 sur soi-même,
+403 sur un autre admin.
+
+### ✅ GET /admin/plants?page=&limit=&q= · POST /admin/plants · PATCH /admin/plants/:id · DELETE /admin/plants/:id
+
+Lecture : `admin`, `moderateur`. Écriture : `admin` uniquement. Enveloppe `PlantsService`
+existant (§8) en ajoutant `capturesCount` (nombre de lignes `collection` référençant
+l'espèce), absent de `GET /plants` public. `conseilsEntretien` accepte un objet structuré
+`{ lumiere?, sol?, arrosage?, multiplication? }`.
+
+### ✅ GET /admin/moderation?page=&limit= · POST /admin/moderation/:id/ignore · DELETE /admin/moderation/:id — `admin`, `moderateur`
+
+Nouvelle table `reports` (`targetType: 'post'|'story'|'comment'`, `targetId`, `motif`,
+`extrait`, `statut`). La liste **groupe** les signalements par contenu ciblé
+(`signalementsCount` = nombre de lignes pour ce contenu) — plusieurs personnes signalant la
+même publication ne créent qu'une seule carte. `POST .../ignore` clôt tous les signalements
+ouverts de ce contenu sans y toucher ; `DELETE` supprime réellement le contenu (post/story/
+commentaire) puis clôt les signalements. Aucune UI mobile pour *créer* un signalement dans
+cette passe (hors périmètre de la mission console admin) — la file se peuple via les lignes
+insérées directement en base (voir `seeds/`) en attendant un futur bouton "Signaler" côté app.
+
+### ✅ GET /admin/quests · POST /admin/quests · PATCH /admin/quests/:id
+
+Lecture : `admin`, `moderateur`. Création + édition complète : `admin` uniquement — un
+`moderateur` ne peut envoyer que `{ "actif": boolean }` (toute autre propriété dans le body
+→ 403, vérifié serveur, pas seulement caché dans l'UI). `tauxCompletion` = % d'utilisateurs
+non suspendus ayant crédité la récompense de ce défi aujourd'hui (`quest_progress`).
+⚠️ Un défi créé avec un `id` inédit depuis la console n'a de progression réelle sur mobile
+que si son mécanisme existe déjà dans `QuestsService#computeRealProgressions` (5 mécaniques
+codées : `scan-3`, `add-garden`, `publish-tip`, `get-5-likes`, `explore-rare`) — sinon il
+reste visible mais bloqué à 0/objectif indéfiniment, sans erreur. Pensé pour ajuster
+libellé/récompenses/activation des défis existants, pas pour inventer une nouvelle mécanique
+de jeu sans code dédié.
+
+### ✅ GET /admin/settings/api-keys · GET+PATCH /admin/settings/flags · GET /admin/settings/audit-log — `admin` uniquement
+
+`api-keys` expose uniquement un statut (`connecte|absent|degrade`) déduit de
+`process.env`, **jamais** la valeur de la clé. `flags` (table `feature_flags`, graine :
+`geotag`, `stories`, `moderationAuto`, `coins`) sont **exposés et persistés** par la
+console, mais ne sont pour l'instant lus par **aucun** module métier existant (mobile
+compris) — les basculer change l'état renvoyé par `GET /admin/settings/flags`, sans encore
+activer/désactiver la fonctionnalité correspondante ailleurs dans l'app. Câblage réel des
+points de contrôle laissé en suite (voir `rapport.md`).
 
 ---
 

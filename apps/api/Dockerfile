@@ -43,6 +43,7 @@ RUN npm ci --workspace=api --include-workspace-root
 # -----------------------------------------------------------------------------
 FROM deps AS dev
 ENV NODE_ENV=development
+ENV TZ=UTC
 EXPOSE 3000
 CMD ["npm", "run", "start:dev", "--workspace=api"]
 
@@ -61,6 +62,7 @@ RUN npm run build --workspace=api
 FROM node:${NODE_VERSION} AS prod
 WORKDIR /app
 ENV NODE_ENV=production
+ENV TZ=UTC
 
 COPY package.json ./
 COPY package-lock.json ./

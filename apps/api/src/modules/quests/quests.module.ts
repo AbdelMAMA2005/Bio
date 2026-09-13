@@ -6,6 +6,7 @@ import { Post } from '../../entities/posts.entity';
 import { Like } from '../../entities/like.entity';
 import { User } from '../../entities/user.entity';
 import { QuestProgress } from '../../entities/quest-progress.entity';
+import { Quest } from '../../entities/quest.entity';
 import { QuestsService } from './quests.service';
 import { QuestsController } from './quests.controller';
 
@@ -18,6 +19,7 @@ import { QuestsController } from './quests.controller';
       Like,
       User,
       QuestProgress,
+      Quest,
     ]),
   ],
   controllers: [QuestsController],
