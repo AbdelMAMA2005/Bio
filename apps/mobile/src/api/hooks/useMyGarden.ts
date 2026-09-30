@@ -1,143 +1,57 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-
-import type { BackendCollectionItem, BackendDiagnosisResponse } from '@/api/adapters';
+import type { BackendCollectionItem } from '@/api/adapters';
 import { diagnosisFromBackend, toGardenClone } from '@/api/adapters';
-import { apiClient } from '@/api/client';
-import { API_BASE_URL, USE_MOCK_API } from '@/api/config';
-import { diagnosePlant, type DiagnosisResult } from '@/api/mock/diagnosis';
-import { setCloneHealth } from '@/api/mock/store';
 import { queryKeys } from '@/api/queryKeys';
+import type { DiagnosisResult } from '@/api/mock/diagnosis';
 import { useAuth } from '@/features/auth/AuthProvider';
-
-const GARDEN_PAGE_SIZE = 20;
-
-type BackendCollectionPage = { items: BackendCollectionItem[]; total: number };
-
-async function fetchGardenPage(page: number): Promise<BackendCollectionPage> {
-  const { data } = await apiClient.get<BackendCollectionPage>('/collection', {
-    params: { type: 'owned', page, limit: GARDEN_PAGE_SIZE },
-  });
-  return data;
+import { getStoragePublicUrl, supabase, uriToBlob, uriToImageDataUrl } from '@/lib/supabase';
+async function fetchGardenPage(page: number): Promise<{ items: BackendCollectionItem[]; total: number }> {
+  const from = (page - 1) * 20;
+  const { data, error, count } = await supabase.from('collection').select('*, plants(*)', { count: 'exact' }).eq('type_collection', 'owned').range(from, from + 19);
+  if (error) {
+    console.error('[garden] Supabase query failed', error);
+    throw error;
+  }
+  return { items: (data ?? []).map((row) => ({ ...row, idPlante: row.plant_id, nomScientifique: row.plants.nom_scientifique, nomCommun: row.plants.nom_commun, famille: row.plants.famille, toxicite: row.plants.toxicite, badgeRarete: row.plants.badge_rarete, aPropos: row.plants.a_propos, conseilsEntretien: row.plants.conseils_entretien, urlImage: row.plants.url_image, etatSante: row.etat_sante, dateAjout: row.date_ajout, historiquePhotos: row.historique_photos, prochainArrosage: row.prochain_arrosage })) as BackendCollectionItem[], total: count ?? 0 };
 }
 
-/**
- * Pagination réelle (`page`/`limit`, voir API_CONTRACT.md §4) via `useInfiniteQuery` : Mon
- * Jardin ne charge plus toute la collection d'un coup. `fetchNextPage()` est déclenché par
- * `onEndReached` dans QuotidienView.tsx — `.data` reste un tableau à plat (comme avant) pour
- * ne pas casser les autres consommateurs (usePlantDetail, useAccountStats, ScanScreen...),
- * qui n'ont pas besoin de connaître la pagination.
- */
 export function useMyGarden() {
   const { user } = useAuth();
-  const query = useInfiniteQuery({
-    queryKey: queryKeys.garden,
-    queryFn: ({ pageParam }) => fetchGardenPage(pageParam),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage, allPages) => {
-      const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0);
-      return loaded < lastPage.total ? allPages.length + 1 : undefined;
-    },
-    enabled: !!user,
-  });
-
-  return {
-    ...query,
-    data: query.data?.pages.flatMap((p) => p.items.map((item) => toGardenClone(item, user!.id, API_BASE_URL))),
-  };
-}
-
-/**
- * Le module `diagnosis` existe désormais côté back (POST /collection/:id/diagnosis,
- * voir API_CONTRACT.md §4) : on l'appelle réellement, avec un repli mock activable
- * via EXPO_PUBLIC_USE_MOCK_API si le back est indisponible en dev.
- *
- * `photoUri` (photo de la feuille prise par l'utilisateur, cahier des charges §"Détection
- * de maladies") est envoyée en multipart, exactement comme `addTrackingPhoto` ci-dessous —
- * sans elle, le back retombe sur la dernière photo de `historiquePhotos`, qui n'existe pas
- * pour une plante tout juste ajoutée (400 "Aucune image disponible pour le diagnostic").
- */
-async function checkHealth({
-  collectionId,
-  idPlante,
-  photoUri,
-}: {
-  collectionId: string;
-  idPlante: string;
-  photoUri: string;
-}): Promise<DiagnosisResult> {
-  if (USE_MOCK_API) {
-    const result = diagnosePlant(idPlante);
-    setCloneHealth(idPlante, result.status === 'disease' ? 'malade' : 'sain');
-    return result;
-  }
-
-  const formData = new FormData();
-  formData.append('image', {
-    uri: photoUri,
-    name: 'diagnostic.jpg',
-    type: 'image/jpeg',
-  } as unknown as Blob);
-
-  const { data } = await apiClient.post<BackendDiagnosisResponse>(`/collection/${collectionId}/diagnosis`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return diagnosisFromBackend(data);
+  const query = useInfiniteQuery({ queryKey: queryKeys.garden, queryFn: ({ pageParam }) => fetchGardenPage(pageParam), initialPageParam: 1, getNextPageParam: (last, pages) => pages.length * 20 < last.total ? pages.length + 1 : undefined, enabled: !!user });
+  return { ...query, data: query.data?.pages.flatMap((page) => page.items.map((item) => toGardenClone(item, user!.id, ''))) };
 }
 
 export function useCheckHealth() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: checkHealth,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.garden });
-    },
-  });
-}
-
-async function addTrackingPhoto(input: { collectionId: string; uri: string }): Promise<void> {
-  const formData = new FormData();
-  formData.append('image', {
-    uri: input.uri,
-    name: 'suivi.jpg',
-    type: 'image/jpeg',
-  } as unknown as Blob);
-
-  await apiClient.post(`/collection/${input.collectionId}/photos`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const client = useQueryClient();
+  return useMutation({ mutationFn: async ({ collectionId, photoUri }: { collectionId: string; idPlante: string; photoUri: string }): Promise<DiagnosisResult> => {
+    const imageBase64 = await uriToImageDataUrl(photoUri);
+    const { data, error } = await supabase.functions.invoke('diagnose-health', { body: { imageBase64, collectionId } });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return diagnosisFromBackend(data);
+  }, onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.garden }) });
 }
 
 export function useAddTrackingPhoto() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: addTrackingPhoto,
-    onSuccess: () => {
-      // La photo de capture initiale (scan) peut atterrir sur un item Jardin OU
-      // Herbarium selon le choix fait après l'identification : on invalide les deux
-      // plutôt que de savoir a priori lequel des deux caches contient cet item.
-      queryClient.invalidateQueries({ queryKey: queryKeys.garden });
-      queryClient.invalidateQueries({ queryKey: queryKeys.herbarium });
-    },
-  });
-}
-
-/**
- * POST /collection/:id/water (CollectionService#waterNow) : met à jour
- * `derniereArrosage` côté back, qui recalcule `prochainArrosage` en conséquence — voir
- * API_CONTRACT.md §4. Invalide le Jardin pour que le bandeau "N arrosages prévus
- * aujourd'hui" et le badge d'arrosage de la carte reflètent immédiatement la nouvelle
- * échéance (et pour que useWateringNotifications reprogramme la notification locale).
- */
-async function markWatered(collectionId: string): Promise<void> {
-  await apiClient.post(`/collection/${collectionId}/water`);
+  const client = useQueryClient();
+  return useMutation({ mutationFn: async ({ collectionId, uri }: { collectionId: string; uri: string }) => {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) throw new Error('Not authenticated');
+    const path = `${data.user.id}/${collectionId}/${Date.now()}.jpg`;
+    const { error: uploadError } = await supabase.storage.from('collections').upload(path, await uriToBlob(uri), { contentType: 'image/jpeg' });
+    if (uploadError) throw uploadError;
+    const { data: row, error } = await supabase.from('collection').select('historique_photos').eq('id', collectionId).single();
+    if (error) throw error;
+    const photos = Array.isArray(row.historique_photos) ? row.historique_photos : [];
+    const { error: updateError } = await supabase.from('collection').update({ historique_photos: [...photos, { url: getStoragePublicUrl('collections', path), date: new Date().toISOString() }] }).eq('id', collectionId);
+    if (updateError) throw updateError;
+  }, onSuccess: () => { client.invalidateQueries({ queryKey: queryKeys.garden }); client.invalidateQueries({ queryKey: queryKeys.herbarium }); } });
 }
 
 export function useMarkWatered() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: markWatered,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.garden });
-    },
-  });
+  const client = useQueryClient();
+  return useMutation({ mutationFn: async (collectionId: string) => {
+    const { error } = await supabase.from('collection').update({ prochain_arrosage: new Date(Date.now() + 7 * 86400000).toISOString() }).eq('id', collectionId);
+    if (error) throw error;
+  }, onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.garden }) });
 }

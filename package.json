@@ -8,17 +8,20 @@
   ],
   "scripts": {
     "postinstall": "git config core.hooksPath scripts/git-hooks || true",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f",
-    "docker:reset": "docker compose down -v && docker compose up -d",
-    "docker:migrate": "docker compose exec api npm run migrate --workspace=api",
-    "docker:seed": "docker compose exec api npm run seed --workspace=api"
+    "mobile:start": "cd apps/mobile && npx expo start",
+    "mobile:android": "cd apps/mobile && npx expo run:android",
+    "mobile:build:apk": "cd apps/mobile && npx eas-cli build --platform android --profile preview",
+    "mobile:typecheck": "cd apps/mobile && npx tsc --noEmit"
   },
   "overrides": {
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-test-renderer": "19.2.3",
     "multer": "2.3.0"
+  },
+  "dependencies": {
+    "expo": "~57.0.24",
+    "react": "19.2.3",
+    "react-native": "0.86.3"
   }
 }

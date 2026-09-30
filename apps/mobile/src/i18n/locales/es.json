@@ -200,7 +200,17 @@
     "signIn": "Iniciar sesión",
     "invalidCredentials": "Correo o contraseña inválidos.",
     "invalidFields": "Por favor completa todos los campos correctamente.",
+    "emptyPseudo": "El nombre de usuario es obligatorio.",
+    "emptyEmail": "El correo electrónico es obligatorio.",
+    "emptyPassword": "La contraseña es obligatoria.",
+    "invalidEmail": "Introduce un correo electrónico válido.",
+    "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
+    "pseudoTooShort": "El nombre de usuario debe tener al menos 3 caracteres.",
+    "pseudoTooLong": "El nombre de usuario no puede superar 20 caracteres.",
+    "pseudoInvalidChars": "El nombre de usuario solo puede contener letras, números y guiones bajos (_).",
+    "pseudoHint": "3 a 20 caracteres · letras, números y _ únicamente",
     "passwordMismatch": "Las contraseñas no coinciden.",
+    "registerError": "El registro ha fallado. Verifica tus datos e inténtalo de nuevo.",
     "genericError": "Ha ocurrido un error. Inténtalo de nuevo."
   },
   "account": {

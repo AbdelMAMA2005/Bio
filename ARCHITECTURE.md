@@ -1,35 +1,35 @@
 # PlanAI — Architecture & Conventions
 
-> Guide de mise en place du dépôt Git, de la structure front/back et des conventions d'équipe.
-> Stack : **React Native (Expo)** + **NestJS** + **PostgreSQL** (cf. cahier des charges §4).
+> Guide de mise en place du dépôt Git, de la structure du projet et des conventions d'équipe.
+> Stack actuelle : **React Native (Expo)** + **Supabase** (Auth, PostgreSQL, Storage, RLS, Edge Functions).
 
 ---
 
-
 ## 1. Organisation des dépôts
 
-Pour démarrer à deux, un **monorepo** est le plus simple : un seul dépôt, une seule CI, des types partagés entre le front et le back.
+Le dépôt reste un monorepo, mais la couche backend historique `apps/api` n'est plus la source de vérité du fonctionnement mobile.
 
 ```
 planai/
 ├── apps/
 │   ├── mobile/          # Application React Native (Expo)
-│   ├── api/             # Back-end NestJS
-│   └── admin/           # Console admin web (React + Vite + TS), voir §3bis
+│   ├── admin/           # Console admin web (legacy / migration séparée)
+│   └── api/             # Code historique, non requis par le mobile
 ├── packages/
-│   └── shared/          # Types TS partagés (Plante, User, DTOs, enums rareté/santé, Admin*)
-├── .github/
-│   └── workflows/       # CI : lint + tests sur chaque PR
-├── package.json         # Workspaces (npm ou pnpm)
-├── .gitignore
-└── README.md
+│   └── shared/          # Types TS partagés
+├── supabase/
+│   └── functions/       # Edge Functions Supabase (Plant.id, diagnostics, etc.)
+├── package.json
+├── README.md
+├── schema_supabase.sql
+└── .env.example
 ```
 
-**Pourquoi un monorepo ?**
+**Pourquoi cette structure ?**
 
-- Un seul `git clone` pour tout le projet.
-- Les types partagés (`packages/shared`) évitent que le front et le back divergent.
-- Migration facile vers des dépôts séparés (ou microservices) plus tard.
+- Le mobile accède directement à Supabase via le SDK JS.
+- La base de données, l'authentification, les buckets Storage et les règles RLS sont centralisées dans Supabase.
+- Le code historique sous `apps/api` est conservé pour référence, mais n'est plus nécessaire au fonctionnement du front.
 
 ---
 

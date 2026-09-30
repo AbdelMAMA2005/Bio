@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 
-import { apiClient } from '@/api/client';
-import { USE_MOCK_API } from '@/api/config';
+import { requireUserId } from '@/api/supabaseUser';
+import { supabase } from '@/lib/supabase';
 
 type CreateReminderInput = {
   collectionId: string;
@@ -26,14 +26,29 @@ type BackendReminder = {
  * données ; son échec ne doit pas bloquer la notification locale déjà programmée.
  */
 async function createReminder(input: CreateReminderInput): Promise<BackendReminder | null> {
-  if (USE_MOCK_API) return null;
-
-  const { data } = await apiClient.post<BackendReminder>('/reminders', {
-    collectionId: input.collectionId,
-    typeRappel: input.typeRappel,
-    datePlanification: input.datePlanification.toISOString(),
-  });
-  return data;
+  const userId = await requireUserId();
+  const { data, error } = await supabase
+    .from('reminders')
+    .insert({
+      user_id: userId,
+      plant_collection_id: input.collectionId,
+      frequence_jours: 7,
+      prochain_arrosage: input.datePlanification.toISOString(),
+      actif: true,
+    })
+    .select('id,user_id,plant_collection_id,prochain_arrosage,actif')
+    .single();
+  if (error) throw error;
+  return data
+    ? {
+        id: data.id,
+        userId: data.user_id,
+        collectionId: data.plant_collection_id,
+        typeRappel: input.typeRappel,
+        datePlanification: data.prochain_arrosage,
+        estNotifie: !data.actif,
+      }
+    : null;
 }
 
 export function useCreateReminder() {

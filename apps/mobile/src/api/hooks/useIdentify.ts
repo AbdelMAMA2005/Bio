@@ -1,70 +1,25 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-
-import type { BackendIdentifyResponse } from '@/api/adapters';
 import { toPlantWithIcon } from '@/api/adapters';
-import { apiClient } from '@/api/client';
-import { queryKeys } from '@/api/queryKeys';
 import type { IdentificationResult } from '@/api/types';
-
-type IdentifyInput = {
-  photoUri: string;
-};
-
-async function identifyPlant(input: IdentifyInput): Promise<IdentificationResult> {
-  const formData = new FormData();
-  formData.append('image', {
-    uri: input.photoUri,
-    name: 'scan.jpg',
-    type: 'image/jpeg',
-  } as unknown as Blob);
-
-  const { data } = await apiClient.post<BackendIdentifyResponse>('/identification', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-
-  return {
-    plant: toPlantWithIcon(data.plantId, data),
-    // Score de confiance réel de Plant.id (voir API_CONTRACT.md §3) — plus une
-    // valeur fixe : le back rejette déjà les identifications trop peu fiables
-    // (voir identification.service.ts), donc ce chiffre reflète une vraie mesure.
-    confidence: data.confiance,
-    xpAwarded: data.xpGagne,
-  };
-}
-
+import { queryKeys } from '@/api/queryKeys';
+import { supabase, uriToImageDataUrl } from '@/lib/supabase';
 export function useIdentify() {
-  return useMutation({
-    mutationFn: identifyPlant,
-  });
-}
-
-type AddToCollectionInput = {
-  plant: IdentificationResult['plant'];
-  type: 'owned' | 'discovered';
-  geoTagged: boolean;
-  latitude?: number;
-  longitude?: number;
-};
-
-async function addToCollection(input: AddToCollectionInput): Promise<{ collectionId: string }> {
-  const { data } = await apiClient.post<{ id: string }>('/collection', {
-    plantId: input.plant.id,
-    type: input.type,
-    ...(input.geoTagged && input.latitude !== undefined && input.longitude !== undefined
-      ? { latitude: input.latitude, longitude: input.longitude }
-      : {}),
-  });
-  return { collectionId: data.id };
+  return useMutation({ mutationFn: async ({ photoUri }: { photoUri: string }): Promise<IdentificationResult> => {
+    const imageBase64 = await uriToImageDataUrl(photoUri);
+    const { data, error } = await supabase.functions.invoke('identify-plant', { body: { imageBase64 } });
+    if (error) throw error;
+    if (!data?.plantId) throw new Error(data?.error ?? 'Plant identification failed');
+    return { plant: toPlantWithIcon(data.plantId, data), confidence: data.confiance, xpAwarded: data.xpGagne };
+  } });
 }
 
 export function useAddToCollection() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: addToCollection,
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: variables.type === 'owned' ? queryKeys.garden : queryKeys.herbarium,
-      });
-    },
-  });
+  const client = useQueryClient();
+  return useMutation({ mutationFn: async ({ plant, type, geoTagged, latitude, longitude }: { plant: IdentificationResult['plant']; type: 'owned' | 'discovered'; geoTagged: boolean; latitude?: number; longitude?: number }) => {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) throw new Error('Not authenticated');
+    const { data, error } = await supabase.from('collection').insert({ user_id: user.user.id, plant_id: plant.id, type_collection: type, latitude: geoTagged ? latitude : null, longitude: geoTagged ? longitude : null }).select('id').single();
+    if (error) throw error;
+    return { collectionId: data.id };
+  }, onSuccess: (_data, variables) => client.invalidateQueries({ queryKey: variables.type === 'owned' ? queryKeys.garden : queryKeys.herbarium }) });
 }

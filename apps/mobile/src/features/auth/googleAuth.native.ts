@@ -66,6 +66,8 @@ export function useGoogleSignIn(): { isConfigured: boolean; signIn: () => Promis
     if (!mod) {
       throw new Error('Google Sign-In indisponible (nécessite un build de développement, absent dans Expo Go).');
     }
+    // Configure synchronously too: a tap can arrive before the effect runs.
+    ensureConfigured(mod);
     if (Platform.OS === 'android') {
       await mod.GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     }

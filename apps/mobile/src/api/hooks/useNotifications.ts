@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 
-import { apiClient } from '@/api/client';
-import { USE_MOCK_API } from '@/api/config';
+import { requireUserId } from '@/api/supabaseUser';
+import { supabase } from '@/lib/supabase';
 
 type RegisterDeviceInput = { expoPushToken: string; plateforme: string };
 
@@ -13,8 +13,12 @@ type RegisterDeviceInput = { expoPushToken: string; plateforme: string };
  * notifications locales déjà programmées).
  */
 async function registerDevice(input: RegisterDeviceInput): Promise<void> {
-  if (USE_MOCK_API) return;
-  await apiClient.post('/notifications/device', input);
+  const userId = await requireUserId();
+  const { error } = await supabase.from('device_tokens').upsert(
+    { user_id: userId, token: input.expoPushToken, plateforme: input.plateforme },
+    { onConflict: 'user_id,token' },
+  );
+  if (error) throw error;
 }
 
 export function useRegisterDeviceToken() {
@@ -22,8 +26,11 @@ export function useRegisterDeviceToken() {
 }
 
 async function unregisterDevice(expoPushToken?: string): Promise<void> {
-  if (USE_MOCK_API) return;
-  await apiClient.delete('/notifications/device', { data: expoPushToken ? { expoPushToken } : {} });
+  const userId = await requireUserId();
+  let query = supabase.from('device_tokens').delete().eq('user_id', userId);
+  if (expoPushToken) query = query.eq('token', expoPushToken);
+  const { error } = await query;
+  if (error) throw error;
 }
 
 export function useUnregisterDeviceToken() {

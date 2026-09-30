@@ -1,5 +1,14 @@
 {
   "plugins": [
     "expo-router"
-  ]
+  ],
+  "android": {
+    "package": "com.adamskader.planai"
+  },
+  "extra": {
+    "router": {},
+    "eas": {
+      "projectId": "cc040a2f-b96a-42df-ae16-f0efc9707c5e"
+    }
+  }
 }

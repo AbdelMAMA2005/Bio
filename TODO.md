@@ -20,12 +20,14 @@
 - [x] Créer le dépôt GitHub `planai` (monorepo) — **Ensemble**
 - [x] Initialiser les workspaces (`apps/*`, `packages/*`) — **Djawad**
 - [x] Bootstrap `apps/mobile` (create-expo-app) — **Djawad**
-- [ ] Bootstrap `apps/api` (NestJS CLI) — **Abdel**
-- [ ] Créer `packages/shared` (types communs) — **Abdel**
-- [x] `.gitignore` + `.env.example` (aucun secret commité) — **Djawad**
+- [x] Migrer la logique applicative vers Supabase — **Abdel / Djawad**
+- [x] Créer `packages/shared` (types communs) — **Abdel**
+- [x] `.gitignore` + `.env.example` (config Supabase) — **Djawad**
 - [ ] Protéger les branches `main` et `dev` (PR obligatoire) — **Ensemble**
 - [ ] CI GitHub Actions : lint + tests sur chaque PR — **Abdel**
 - [x] README : instructions d'installation et de lancement — **Djawad**
+
+> NOTE : le backend legacy `apps/api` est conservé uniquement comme archive de référence. Les tâches backend historiques sont désormais considérées comme migrées vers Supabase.
 
 ### Base de données
 

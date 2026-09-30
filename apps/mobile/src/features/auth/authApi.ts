@@ -1,94 +1,128 @@
 import type { User } from '@planai/shared';
 
-import { userFromBackend, type BackendUser } from '@/api/adapters';
-import { apiClient } from '@/api/client';
-import { API_BASE_URL } from '@/api/config';
-
-type LoginResponse = { accessToken: string; refreshToken: string; user: BackendUser };
+import { getStoragePublicUrl, supabase, uriToBlob } from '@/lib/supabase';
 type AuthResult = { token: string; refreshToken: string; user: User };
 
+type ProfileRow = {
+  id: string;
+  email: string;
+  nom_utilisateur: string;
+  experience: number;
+  niveau: number;
+  pieces: number;
+  url_avatar: string | null;
+};
+
+type AuthUser = {
+  id: string;
+  email?: string | null;
+  user_metadata?: Record<string, unknown>;
+};
+
+function userFromProfile(profile: ProfileRow): User {
+  return {
+    id: profile.id,
+    pseudo: profile.nom_utilisateur,
+  email: profile.email,
+  niveau: profile.niveau,
+  xp: profile.experience,
+    pieces: profile.pieces,
+    urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null,
+  };
+}
+
+async function profileForUser(authUser: AuthUser): Promise<User> {
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle<ProfileRow>();
+  if (!data && !error) {
+    const metadata = authUser.user_metadata ?? {};
+    const metadataName = typeof metadata.nom_utilisateur === 'string' ? metadata.nom_utilisateur : undefined;
+    const metadataDisplayName = typeof metadata.name === 'string' ? metadata.name : undefined;
+    const username = (metadataName ?? metadataDisplayName ?? `User_${authUser.id.slice(0, 6)}`).slice(0, 20);
+    const { data: created, error: createError } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: authUser.id,
+          email: authUser.email ?? `${authUser.id}@placeholder.invalid`,
+          nom_utilisateur: username,
+        },
+        { onConflict: 'id' },
+      )
+      .select('*')
+      .single<ProfileRow>();
+    if (createError || !created) throw createError ?? new Error('Unable to create profile');
+    return userFromProfile(created);
+  }
+  if (error || !data) throw error ?? new Error('Profile not found');
+  return userFromProfile(data);
+}
+
+async function resultFromSession(session: {
+  access_token: string;
+  refresh_token: string;
+  user: { id: string };
+}): Promise<AuthResult> {
+  return {
+    token: session.access_token,
+    refreshToken: session.refresh_token,
+    user: await profileForUser(session.user),
+  };
+}
+
 export async function login(email: string, password: string): Promise<AuthResult> {
-  const { data } = await apiClient.post<LoginResponse>('/auth/login', { email, motDePasse: password });
-  return { token: data.accessToken, refreshToken: data.refreshToken, user: userFromBackend(data.user, API_BASE_URL) };
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data.session) throw error ?? new Error('Unable to sign in');
+  return resultFromSession(data.session);
 }
 
-/**
- * POST /auth/google : le back vérifie le idToken Google (audience = GOOGLE_CLIENT_ID)
- * et crée le compte au premier login (voir apps/api/src/modules/auth/auth.service.ts).
- */
 export async function loginWithGoogle(idToken: string): Promise<AuthResult> {
-  const { data } = await apiClient.post<LoginResponse>('/auth/google', { idToken });
-  return { token: data.accessToken, refreshToken: data.refreshToken, user: userFromBackend(data.user, API_BASE_URL) };
+  const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken });
+  if (error || !data.session) throw error ?? new Error('Unable to sign in with Google');
+  return resultFromSession(data.session);
 }
 
-/**
- * POST /auth/register ne renvoie pas de token (voir API_CONTRACT.md §1) : on enchaîne
- * un login juste après pour connecter l'utilisateur immédiatement, comme le veut le
- * flux front existant.
- */
 export async function register(pseudo: string, email: string, password: string): Promise<AuthResult> {
-  await apiClient.post<BackendUser>('/auth/register', {
+  const { data, error } = await supabase.auth.signUp({
     email,
-    nomUtilisateur: pseudo,
-    motDePasse: password,
+    password,
+    options: { data: { nom_utilisateur: pseudo } },
   });
-  return login(email, password);
+  if (error || !data.session) throw error ?? new Error('Email confirmation required');
+  return resultFromSession(data.session);
 }
 
-type RefreshResponse = { accessToken: string; refreshToken: string };
-
-/**
- * POST /auth/refresh — échange un refresh token contre un nouveau couple access/refresh
- * (rotation côté back, voir API_CONTRACT.md §1) : appelé silencieusement par le client HTTP
- * sur un 401 (voir client.ts), jamais directement par un écran.
- */
-export async function refreshAccessToken(refreshToken: string): Promise<RefreshResponse> {
-  const { data } = await apiClient.post<RefreshResponse>('/auth/refresh', { refreshToken });
-  return data;
+export async function logout(): Promise<void> {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
 }
-
-/**
- * POST /auth/logout — révoque le refresh token côté back (best-effort : la déconnexion
- * locale a lieu même si cet appel échoue, voir AuthProvider.tsx).
- */
-export async function logout(refreshToken: string): Promise<void> {
-  await apiClient.post('/auth/logout', { refreshToken });
-}
-
-/**
- * GET /users/me — relit le profil réel (XP/pièces/niveau à jour), utilisé après
- * toute action susceptible de créditer XP/pièces côté back sans que le front
- * en ait déjà la valeur exacte (ex. défis quotidiens, voir useQuests()).
- */
 export async function fetchProfile(): Promise<User> {
-  const { data } = await apiClient.get<BackendUser>('/users/me');
-  return userFromBackend(data, API_BASE_URL);
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) throw new Error('Not authenticated');
+  return profileForUser(data.user);
 }
 
-/** PATCH /users/me existe désormais côté back (voir API_CONTRACT.md §2). */
 export async function updateProfile(patch: Partial<Pick<User, 'pseudo'>>): Promise<User> {
-  const { data } = await apiClient.patch<BackendUser>('/users/me', {
-    nomUtilisateur: patch.pseudo,
-  });
-  return userFromBackend(data, API_BASE_URL);
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) throw new Error('Not authenticated');
+  const { error } = await supabase.from('profiles').update({ nom_utilisateur: patch.pseudo }).eq('id', data.user.id);
+  if (error) throw error;
+  return profileForUser(data.user);
 }
-
-/**
- * POST /users/me/avatar (multipart, champ `image`) — chaque upload écrit un nouveau
- * fichier (nom en uuid, voir UserController#uploadAvatar côté back) : l'URL renvoyée
- * change donc systématiquement, ce qui suffit à invalider le cache image sans paramètre
- * de cache-busting supplémentaire.
- */
 export async function uploadAvatar(imageUri: string): Promise<User> {
-  const formData = new FormData();
-  formData.append('image', { uri: imageUri, name: 'avatar.jpg', type: 'image/jpeg' } as unknown as Blob);
-  const { data } = await apiClient.post<BackendUser>('/users/me/avatar', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) throw new Error('Not authenticated');
+  const path = `${data.user.id}/${Date.now()}.jpg`;
+  const { error: uploadError } = await supabase.storage.from('avatars').upload(path, await uriToBlob(imageUri), {
+    contentType: 'image/jpeg',
+    upsert: true,
   });
-  return userFromBackend(data, API_BASE_URL);
+  if (uploadError) throw uploadError;
+  const { error } = await supabase.from('profiles').update({ url_avatar: path }).eq('id', data.user.id);
+  if (error) throw error;
+  return profileForUser(data.user);
 }
 
-/** DELETE /users/me existe désormais côté back, protégé par re-saisie du mot de passe. */
-export async function deleteAccount(password: string): Promise<void> {
-  await apiClient.delete('/users/me', { data: { motDePasse: password } });
+export async function deleteAccount(_password: string): Promise<void> {
+  const { error } = await supabase.rpc('delete_my_account');
+  if (error) throw error;
 }

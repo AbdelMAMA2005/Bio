@@ -6,12 +6,22 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fzllbtkjpwhadkdragno.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_LF3NdZ7ly02PSE4qapImSg_OAmUZ_Ga",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "433759550825-8gvba1obcad5651mth7p9dckd9tcn33i.apps.googleusercontent.com"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fzllbtkjpwhadkdragno.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_LF3NdZ7ly02PSE4qapImSg_OAmUZ_Ga",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "433759550825-8gvba1obcad5651mth7p9dckd9tcn33i.apps.googleusercontent.com"
+      },
       "android": {
         "buildType": "apk"
       },
@@ -20,6 +30,11 @@
     "production": {
       "autoIncrement": true,
       "distribution": "store",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fzllbtkjpwhadkdragno.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_LF3NdZ7ly02PSE4qapImSg_OAmUZ_Ga",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "433759550825-8gvba1obcad5651mth7p9dckd9tcn33i.apps.googleusercontent.com"
+      },
       "android": {
         "buildType": "app-bundle"
       },

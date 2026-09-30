@@ -1,0 +1,2 @@
+* Faire un modèle basé sur l'ia qui mettra une meilleur analyse des maladies ( actuelle notre modèle peut mais c'est pas gratuit donc ... Je pense à utiliser Claude ou Gémini pour celà on peut se faire une mascorte (la logique utiliser par duoligo ....))
+* Je pense à faire passer le projet vers 

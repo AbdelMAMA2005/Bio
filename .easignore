@@ -44,3 +44,14 @@ apps/mobile/coverage
 .git
 .expo
 apps/mobile/.expo
+apps/mobile/.expo-production-check
+node_modules
+**/node_modules
+# Gradle cache files may be locked by Android Studio or a local build. They
+# are not source files and must not be included in an EAS upload.
+android/.gradle/
+android/build/
+android/app/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/build/
+apps/mobile/android/app/build/

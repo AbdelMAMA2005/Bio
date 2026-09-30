@@ -2,6 +2,7 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "types": ["jest"],
     // tsc n'implémente pas nativement la résolution par plateforme de Metro
     // (googleAuth.native.ts / googleAuth.web.ts) sans ceci — Metro, lui, résout
     // déjà correctement par cible de build indépendamment de ce réglage.
@@ -17,6 +18,9 @@
       ],
       "@/assets/*": [
         "./assets/*"
+      ],
+      "@planai/shared": [
+        "../../packages/shared/src/index.ts"
       ]
     }
   },

@@ -1,31 +1,51 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { BackendComment, BackendPost, BackendStoryGroup } from '@/api/adapters';
-import { resolveUploadUrl, toComment, toFeedPost, toStoryGroup } from '@/api/adapters';
-import { apiClient } from '@/api/client';
-import { API_BASE_URL } from '@/api/config';
+import { toComment, toFeedPost, toStoryGroup } from '@/api/adapters';
 import { useHerbarium } from '@/api/hooks/useHerbarium';
 import { useMyGarden } from '@/api/hooks/useMyGarden';
 import { queryKeys } from '@/api/queryKeys';
 import type { FeedComment, StoryGroup, TaggableCollectionItem } from '@/api/types';
 import type { StoryViewer } from '@planai/shared';
+import { requireUserId } from '@/api/supabaseUser';
+import { getStoragePublicUrl, supabase, uriToBlob } from '@/lib/supabase';
 
 type BackendFeedResponse = { items: BackendPost[]; total: number };
 
 type Coordinates = { latitude: number; longitude: number };
 type FeedFilter = 'all' | 'near';
+type ProfileRow = { id: string; nom_utilisateur: string; url_avatar: string | null };
 
 const FEED_PAGE_SIZE = 15;
 
 async function fetchFeedPage(page: number, coords?: Coordinates, filter?: FeedFilter): Promise<BackendFeedResponse> {
-  const { data } = await apiClient.get<BackendFeedResponse>('/feed', {
-    params: {
-      page,
-      limit: FEED_PAGE_SIZE,
-      ...(coords ? { latitude: coords.latitude, longitude: coords.longitude, filter } : {}),
-    },
+  const userId = await requireUserId();
+  const { data: rows, error, count } = await supabase.from('posts').select('id,user_id,contenu,url_image,latitude,longitude,created_at,collection:plant_collection_id(plant_id,type_collection,plants(*))', { count: 'exact' }).order('created_at', { ascending: false }).range((page - 1) * FEED_PAGE_SIZE, page * FEED_PAGE_SIZE - 1);
+  if (error) throw error;
+  const posts = (rows ?? []) as any[];
+  const [{ data: profiles, error: profilesError }, { data: likes, error: likesError }, { data: comments, error: commentsError }] = await Promise.all([
+    supabase.from('profiles').select('id,nom_utilisateur,url_avatar').in('id', [...new Set(posts.map((post) => post.user_id))]),
+    supabase.from('likes').select('post_id,user_id').in('post_id', posts.map((post) => post.id)),
+    supabase.from('comments').select('post_id').in('post_id', posts.map((post) => post.id)),
+  ]);
+  if (profilesError || likesError || commentsError) throw profilesError ?? likesError ?? commentsError;
+  const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+  const distance = (post: any) => {
+    if (!coords || post.latitude == null || post.longitude == null) return null;
+    const rad = (value: number) => (value * Math.PI) / 180;
+    const a = Math.sin(rad(post.latitude - coords.latitude) / 2) ** 2 + Math.cos(rad(coords.latitude)) * Math.cos(rad(post.latitude)) * Math.sin(rad(post.longitude - coords.longitude) / 2) ** 2;
+    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+  const items = posts.flatMap((post) => {
+    const profile = profileMap.get(post.user_id);
+    const distanceMeters = distance(post);
+    if (!profile || (filter === 'near' && (distanceMeters == null || distanceMeters > 5000))) return [];
+    const postLikes = (likes ?? []).filter((like) => like.post_id === post.id);
+    const postComments = (comments ?? []).filter((comment) => comment.post_id === post.id);
+    const plant = post.collection?.plants;
+    return [{ id: post.id, idUtilisateur: post.user_id, contenuTexte: post.contenu, imageUrl: getStoragePublicUrl('posts', post.url_image), dateCreation: post.created_at, auteur: { id: profile.id, nomUtilisateur: profile.nom_utilisateur, urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null }, plante: plant ? { id: post.collection.plant_id, nomScientifique: plant.nom_scientifique, nomCommun: plant.nom_commun, badgeRarete: plant.badge_rarete, urlImage: plant.url_image } : undefined, typeCollection: post.collection?.type_collection, likesCount: postLikes.length, commentairesCount: postComments.length, estLikedParUtilisateur: postLikes.some((like) => like.user_id === userId), distanceMetres: distanceMeters } satisfies BackendPost];
   });
-  return data;
+  return { items, total: count ?? items.length };
 }
 
 /**
@@ -56,13 +76,35 @@ export function useFeed(coords?: Coordinates, filter?: FeedFilter) {
 
   return {
     ...query,
-    data: query.data?.pages.flatMap((p) => p.items.map((post) => toFeedPost(post, API_BASE_URL))),
+    data: query.data?.pages.flatMap((p) => p.items.map((post) => toFeedPost(post, ''))),
   };
 }
 
 async function fetchStories(): Promise<StoryGroup[]> {
-  const { data } = await apiClient.get<BackendStoryGroup[]>('/stories');
-  return data.map((group) => toStoryGroup(group, API_BASE_URL));
+  const userId = await requireUserId();
+  const { data: stories, error } = await supabase.from('stories').select('id,user_id,url_media,media_type,created_at,date_expiration').gt('date_expiration', new Date().toISOString()).order('created_at', { ascending: true });
+  if (error) throw error;
+  const rows = stories ?? [];
+  const [{ data: profiles, error: profilesError }, { data: views, error: viewsError }, { data: likes, error: likesError }] = await Promise.all([
+    supabase.from('profiles').select('id,nom_utilisateur,url_avatar').in('id', [...new Set(rows.map((story) => story.user_id))]),
+    supabase.from('story_views').select('story_id,viewer_id').in('story_id', rows.map((story) => story.id)),
+    supabase.from('story_likes').select('story_id,user_id').in('story_id', rows.map((story) => story.id)),
+  ]);
+  if (profilesError || viewsError || likesError) throw profilesError ?? viewsError ?? likesError;
+  const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+  const groups = new Map<string, BackendStoryGroup>();
+  for (const story of rows) {
+    const profile = profileMap.get(story.user_id);
+    if (!profile) continue;
+    const storyViews = (views ?? []).filter((view) => view.story_id === story.id);
+    const storyLikes = (likes ?? []).filter((like) => like.story_id === story.id);
+    const seen = storyViews.some((view) => view.viewer_id === userId);
+    const group: BackendStoryGroup = groups.get(story.user_id) ?? { idUtilisateur: story.user_id, nomUtilisateur: profile.nom_utilisateur, urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null, estMoi: story.user_id === userId, entierementVue: true, medias: [] };
+    group.medias.push({ id: story.id, urlMedia: getStoragePublicUrl('stories', story.url_media), mediaType: story.media_type, dateCreation: story.created_at, dateExpiration: story.date_expiration, vuParMoi: story.user_id === userId || seen, vuesCount: storyViews.length, likesCount: storyLikes.length, aimeParMoi: storyLikes.some((like) => like.user_id === userId) });
+    group.entierementVue = group.entierementVue && (story.user_id === userId || seen);
+    groups.set(story.user_id, group);
+  }
+  return [...groups.values()].map((group) => toStoryGroup(group, ''));
 }
 
 /**
@@ -81,7 +123,11 @@ export function useToggleLike() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (postId: string) => {
-      await apiClient.post(`/feed/posts/${postId}/like`);
+      const userId = await requireUserId();
+      const { data: existing, error: readError } = await supabase.from('likes').select('id').eq('post_id', postId).eq('user_id', userId).maybeSingle();
+      if (readError) throw readError;
+      const result = existing ? await supabase.from('likes').delete().eq('id', existing.id) : await supabase.from('likes').insert({ post_id: postId, user_id: userId });
+      if (result.error) throw result.error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.feed });
@@ -102,9 +148,12 @@ export function usePublishStoryMedia() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (imageUri: string) => {
-      const formData = new FormData();
-      formData.append('image', { uri: imageUri, name: 'story.jpg', type: 'image/jpeg' } as unknown as Blob);
-      await apiClient.post('/stories', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const userId = await requireUserId();
+      const path = `${userId}/${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from('stories').upload(path, await uriToBlob(imageUri), { contentType: 'image/jpeg' });
+      if (uploadError) throw uploadError;
+      const { error } = await supabase.from('stories').insert({ user_id: userId, url_media: path, media_type: 'image' });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.stories });
@@ -121,7 +170,9 @@ export function useRecordStoryView() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (mediaId: string) => {
-      await apiClient.post(`/stories/${mediaId}/view`);
+      const userId = await requireUserId();
+      const { error } = await supabase.from('story_views').upsert({ story_id: mediaId, viewer_id: userId }, { onConflict: 'viewer_id,story_id', ignoreDuplicates: true });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.stories });
@@ -140,8 +191,12 @@ export function useToggleStoryLike() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (mediaId: string) => {
-      const { data } = await apiClient.post<{ liked: boolean; likesCount: number }>(`/stories/${mediaId}/like`);
-      return data;
+      const userId = await requireUserId();
+      const { data: existing, error: readError } = await supabase.from('story_likes').select('id').eq('story_id', mediaId).eq('user_id', userId).maybeSingle();
+      if (readError) throw readError;
+      const result = existing ? await supabase.from('story_likes').delete().eq('id', existing.id) : await supabase.from('story_likes').insert({ story_id: mediaId, user_id: userId });
+      if (result.error) throw result.error;
+      return undefined;
     },
     onMutate: async (mediaId: string) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.stories });
@@ -181,7 +236,8 @@ export function useDeleteStoryMedia() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (mediaId: string) => {
-      await apiClient.delete(`/stories/${mediaId}`);
+      const { error } = await supabase.from('stories').delete().eq('id', mediaId);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.stories });
@@ -190,13 +246,16 @@ export function useDeleteStoryMedia() {
 }
 
 async function fetchStoryViewers(mediaId: string): Promise<StoryViewer[]> {
-  const { data } = await apiClient.get<StoryViewer[]>(`/stories/${mediaId}/viewers`);
+  const { data, error } = await supabase.from('story_views').select('viewer_id,created_at,profiles(id,nom_utilisateur,url_avatar)').eq('story_id', mediaId).order('created_at', { ascending: false });
+  if (error) throw error;
   // Le back renvoie urlAvatar en URL relative (comme pour les auteurs de post/story) — sans
   // cette résolution, StoryViewersSheet.tsx recevrait un chemin `/uploads/...` inutilisable
   // tel quel par <Avatar>.
   return data.map((viewer) => ({
-    ...viewer,
-    urlAvatar: viewer.urlAvatar ? resolveUploadUrl(viewer.urlAvatar, API_BASE_URL) : null,
+    idUtilisateur: viewer.viewer_id,
+    nomUtilisateur: (Array.isArray(viewer.profiles) ? viewer.profiles[0] : viewer.profiles).nom_utilisateur,
+    urlAvatar: ((Array.isArray(viewer.profiles) ? viewer.profiles[0] : viewer.profiles).url_avatar) ? getStoragePublicUrl('avatars', (Array.isArray(viewer.profiles) ? viewer.profiles[0] : viewer.profiles).url_avatar) : null,
+    dateVue: viewer.created_at,
   }));
 }
 
@@ -225,7 +284,12 @@ export function usePublishPost() {
       formData.append('contenuTexte', input.texte);
       if (input.collectionItemId) formData.append('collectionId', input.collectionItemId);
       formData.append('image', { uri: input.imageUri, name: 'post.jpg', type: 'image/jpeg' } as unknown as Blob);
-      await apiClient.post('/feed/posts', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const userId = await requireUserId();
+      const path = `${userId}/${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from('posts').upload(path, await uriToBlob(input.imageUri), { contentType: 'image/jpeg' });
+      if (uploadError) throw uploadError;
+      const { error } = await supabase.from('posts').insert({ user_id: userId, plant_collection_id: input.collectionItemId ?? null, contenu: input.texte, url_image: path });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.feed });
@@ -253,8 +317,9 @@ export function useTaggableCollection() {
 }
 
 async function fetchComments(postId: string): Promise<FeedComment[]> {
-  const { data } = await apiClient.get<BackendComment[]>(`/feed/posts/${postId}/comments`);
-  return data.map((comment) => toComment(comment, API_BASE_URL));
+  const { data, error } = await supabase.from('comments').select('id,post_id,user_id,contenu,created_at,profiles(id,nom_utilisateur,url_avatar)').eq('post_id', postId).order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((comment) => { const profile = (Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles) as ProfileRow; return toComment({ id: comment.id, idPost: comment.post_id, idUtilisateur: comment.user_id, contenu: comment.contenu, dateCreation: comment.created_at, auteur: { id: profile.id, nomUtilisateur: profile.nom_utilisateur, urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null } } satisfies BackendComment, ''); });
 }
 
 export function useComments(postId: string | undefined) {
@@ -269,7 +334,9 @@ export function useAddComment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ postId, texte }: { postId: string; texte: string }) => {
-      await apiClient.post(`/feed/posts/${postId}/comments`, { contenu: texte });
+      const userId = await requireUserId();
+      const { error } = await supabase.from('comments').insert({ post_id: postId, user_id: userId, contenu: texte });
+      if (error) throw error;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.comments(variables.postId) });

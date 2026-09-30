@@ -1,11 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { apiClient } from '@/api/client';
-import { USE_MOCK_API } from '@/api/config';
 import { queryKeys } from '@/api/queryKeys';
-import { dailyCoinsBalance, dailyQuests, wait } from '@/api/mock/store';
 import type { Quest } from '@/api/types';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { supabase } from '@/lib/supabase';
 
 type BackendQuest = {
   id: string;
@@ -45,8 +43,15 @@ function toFrontQuest(backend: BackendQuest): Quest {
 }
 
 async function fetchQuestsFromApi(): Promise<Quest[]> {
-  const { data } = await apiClient.get<BackendQuest[]>('/quests/daily');
-  return data.map(toFrontQuest);
+  const { data, error } = await supabase.rpc('get_daily_quests');
+  if (error) {
+    // Older Supabase deployments may not have the optional quests RPC yet.
+    // Quests must not prevent the rest of the authenticated app from loading.
+    if (error.code === 'PGRST202') return [];
+    console.error('[quests] Supabase RPC failed', error);
+    throw error;
+  }
+  return ((data ?? []) as BackendQuest[]).map(toFrontQuest);
 }
 
 export function useQuests() {
@@ -55,7 +60,6 @@ export function useQuests() {
   const query = useQuery({
     queryKey: queryKeys.quests,
     queryFn: async () => {
-      if (USE_MOCK_API) return wait([...dailyQuests], 350);
       const quests = await fetchQuestsFromApi();
       // Un défi peut venir de se compléter (XP/pièces crédités côté back à
       // l'instant) : on resynchronise le profil pour que le solde affiché soit
@@ -67,6 +71,6 @@ export function useQuests() {
 
   return {
     ...query,
-    data: query.data ? { quests: query.data, coins: USE_MOCK_API ? dailyCoinsBalance : (user?.pieces ?? 0) } : undefined,
+    data: query.data ? { quests: query.data, coins: user?.pieces ?? 0 } : undefined,
   };
 }

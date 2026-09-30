@@ -1,12 +1,8 @@
 import type { User } from '@planai/shared';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { getRefreshToken, setAuthToken, setRefreshToken } from '@/api/authToken';
-import { setRefreshHandler, setUnauthorizedHandler } from '@/api/client';
-import { USE_MOCK_API } from '@/api/config';
 import { queryClient } from '@/api/queryClient';
 import { queryKeys } from '@/api/queryKeys';
-import { clearSession, readSession, writeSession } from '@/features/auth/authStorage';
 import {
   login as apiLogin,
   register as apiRegister,
@@ -15,11 +11,11 @@ import {
   uploadAvatar as apiUploadAvatar,
   deleteAccount as apiDeleteAccount,
   fetchProfile as apiFetchProfile,
-  refreshAccessToken as apiRefreshAccessToken,
   logout as apiLogout,
 } from '@/features/auth/authApi';
-import { mockChangePassword, mockDeleteAccount, mockUpdateProfile } from '@/features/auth/mockAuthApi';
+import { mockChangePassword } from '@/features/auth/mockAuthApi';
 import { xpTargetForLevel } from '@/features/account/levels';
+import { getSafeSession, supabase } from '@/lib/supabase';
 
 type AuthContextValue = {
   user: User | null;
@@ -51,8 +47,15 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export async function restoreSession(): Promise<User | null> {
-  const session = await readSession();
-  return session?.user ?? null;
+  const session = await getSafeSession();
+  if (!session) return null;
+  try {
+    const profile = await apiFetchProfile();
+    return profile;
+  } catch (error) {
+    console.error('[restoreSession] Supabase profile error', error);
+    return null;
+  }
 }
 
 export function AuthProvider({
@@ -66,46 +69,33 @@ export function AuthProvider({
   const [isBusy, setIsBusy] = useState(false);
 
   useEffect(() => {
-    // Le client HTTP ne garde les tokens qu'en mémoire : on les réhydrate depuis
-    // SecureStore au boot (initialUser seul ne suffit pas à authentifier les requêtes).
-    readSession().then((session) => {
-      if (session) {
-        setAuthToken(session.token);
-        setRefreshToken(session.refreshToken);
+    let active = true;
+    let revision = 0;
+    let pending: ReturnType<typeof setTimeout> | undefined;
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const currentRevision = ++revision;
+      clearTimeout(pending);
+      if (!session) {
+        setUser(null);
+        return;
       }
+      // Run outside the auth callback, and ignore a response from an old session.
+      pending = setTimeout(() => {
+        void apiFetchProfile()
+          .then((profile) => {
+            if (active && revision === currentRevision) setUser(profile);
+          })
+          .catch((error) => {
+            console.error('[AuthProvider] Supabase profile error', error);
+            if (active && revision === currentRevision) setUser(null);
+          });
+      }, 0);
     });
-  }, []);
-
-  useEffect(() => {
-    // Dernier recours : session vraiment invalide (refresh token lui-même expiré/révoqué,
-    // ou absent) — le route guard de _layout.tsx renvoie alors vers l'écran de connexion.
-    setUnauthorizedHandler(() => {
-      setAuthToken(null);
-      setRefreshToken(null);
-      clearSession();
-      setUser(null);
-    });
-    return () => setUnauthorizedHandler(null);
-  }, []);
-
-  useEffect(() => {
-    // Renouvellement silencieux (POST /auth/refresh, voir client.ts) : appelé par le
-    // client HTTP sur un 401, avant d'abandonner et de déclencher onUnauthorized.
-    setRefreshHandler(async () => {
-      const currentRefreshToken = getRefreshToken();
-      if (!currentRefreshToken) return null;
-      try {
-        const { accessToken, refreshToken: newRefreshToken } = await apiRefreshAccessToken(currentRefreshToken);
-        setAuthToken(accessToken);
-        setRefreshToken(newRefreshToken);
-        const session = await readSession();
-        if (session) await writeSession({ ...session, token: accessToken, refreshToken: newRefreshToken });
-        return accessToken;
-      } catch {
-        return null;
-      }
-    });
-    return () => setRefreshHandler(null);
+    return () => {
+      active = false;
+      clearTimeout(pending);
+      data.subscription.unsubscribe();
+    };
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -117,9 +107,8 @@ export function AuthProvider({
         setIsBusy(true);
         try {
           const { token, refreshToken, user: loggedInUser } = await apiLogin(email, password);
-          setAuthToken(token);
-          setRefreshToken(refreshToken);
-          await writeSession({ token, refreshToken, user: loggedInUser });
+          void token;
+          void refreshToken;
           setUser(loggedInUser);
         } finally {
           setIsBusy(false);
@@ -129,9 +118,8 @@ export function AuthProvider({
         setIsBusy(true);
         try {
           const { token, refreshToken, user: registeredUser } = await apiRegister(pseudo, email, password);
-          setAuthToken(token);
-          setRefreshToken(refreshToken);
-          await writeSession({ token, refreshToken, user: registeredUser });
+          void token;
+          void refreshToken;
           setUser(registeredUser);
         } finally {
           setIsBusy(false);
@@ -141,9 +129,8 @@ export function AuthProvider({
         setIsBusy(true);
         try {
           const { token, refreshToken, user: googleUser } = await apiLoginWithGoogle(idToken);
-          setAuthToken(token);
-          setRefreshToken(refreshToken);
-          await writeSession({ token, refreshToken, user: googleUser });
+          void token;
+          void refreshToken;
           setUser(googleUser);
         } finally {
           setIsBusy(false);
@@ -153,29 +140,16 @@ export function AuthProvider({
         // Révocation côté back best-effort (API_CONTRACT.md §1) : la déconnexion locale a
         // lieu dans tous les cas, même si le serveur est injoignable — sinon un utilisateur
         // hors-ligne ne pourrait jamais se déconnecter.
-        const currentRefreshToken = getRefreshToken();
-        if (currentRefreshToken) {
-          apiLogout(currentRefreshToken).catch(() => undefined);
-        }
-        setAuthToken(null);
-        setRefreshToken(null);
-        await clearSession();
+        await apiLogout();
         setUser(null);
       },
       updateProfile: async (patch) => {
         // PATCH /users/me existe désormais côté back (API_CONTRACT.md §2), repli mock
         // activable via EXPO_PUBLIC_USE_MOCK_API.
-        if (USE_MOCK_API) {
-          await mockUpdateProfile(patch);
-        } else {
-          await apiUpdateProfile(patch);
-        }
+        await apiUpdateProfile(patch);
         setUser((prev) => {
           if (!prev) return prev;
           const next = { ...prev, ...patch };
-          readSession().then((session) => {
-            if (session) writeSession({ ...session, user: next });
-          });
           return next;
         });
       },
@@ -184,10 +158,8 @@ export function AuthProvider({
         try {
           const fresh = await apiUploadAvatar(imageUri);
           setUser(fresh);
-          const session = await readSession();
-          if (session) await writeSession({ ...session, user: fresh });
           // Le feed/les stories déjà en cache portent un instantané de l'ancien
-          // urlAvatar (résolu au moment de leur propre fetch) — sans cette
+          // urlAvatar (résolu au moment de leur propre lecture) — sans cette
           // invalidation, la nouvelle photo n'apparaîtrait qu'aux endroits qui
           // lisent `user` directement (Mon Jardin, Scan, Compte), pas dans les
           // publications/stories déjà affichées.
@@ -204,14 +176,8 @@ export function AuthProvider({
       deleteAccount: async (password) => {
         // DELETE /users/me existe désormais côté back, protégé par re-saisie du mot de
         // passe (API_CONTRACT.md §2), repli mock activable via EXPO_PUBLIC_USE_MOCK_API.
-        if (USE_MOCK_API) {
-          await mockDeleteAccount();
-        } else {
-          await apiDeleteAccount(password);
-        }
-        setAuthToken(null);
-        setRefreshToken(null);
-        await clearSession();
+        await apiDeleteAccount(password);
+        await apiLogout().catch(() => undefined);
         setUser(null);
       },
       refreshUser: async () => {
@@ -221,9 +187,6 @@ export function AuthProvider({
         try {
           const fresh = await apiFetchProfile();
           setUser(fresh);
-          readSession().then((session) => {
-            if (session) writeSession({ ...session, user: fresh });
-          });
         } catch {
           // Le prochain accès normal à l'API remontera l'erreur (401, réseau…) via
           // le mécanisme habituel — un simple refresh en arrière-plan ne doit pas
@@ -242,9 +205,6 @@ export function AuthProvider({
             target = xpTargetForLevel(niveau);
           }
           const next = { ...prev, xp, niveau };
-          readSession().then((session) => {
-            if (session) writeSession({ ...session, user: next });
-          });
           return next;
         });
       },

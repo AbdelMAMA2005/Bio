@@ -14,10 +14,13 @@ export function AuthScreenLayout({ children }: { children: ReactNode }) {
     <LinearGradient colors={colors.backdropGradient} style={styles.fill}>
       <SafeAreaView style={styles.fill}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior="padding"
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
           style={styles.fill}>
           <ScrollView
             contentContainerStyle={styles.scrollContent}
+            automaticallyAdjustKeyboardInsets
+            keyboardDismissMode="on-drag"
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
             <View style={styles.logoWrap}>

@@ -13,7 +13,6 @@ import { GradientButton } from '@/components/GradientButton';
 import { Icon } from '@/components/Icon';
 import { useAddToCollection, useIdentify } from '@/api/hooks/useIdentify';
 import { useAddTrackingPhoto } from '@/api/hooks/useMyGarden';
-import { ApiError } from '@/api/client';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { GeoTagModal } from '@/features/scan/GeoTagModal';
 import { IdentificationResultCard } from '@/features/scan/IdentificationResultCard';
@@ -74,7 +73,7 @@ export function ScanScreen() {
             // 404 = plante non reconnue ou confiance trop faible (voir
             // identification.service.ts) : message actionnable plutôt qu'un échec
             // silencieux qui laisserait croire que rien ne s'est passé.
-            const notRecognized = error instanceof ApiError && error.status === 404;
+            const notRecognized = error instanceof Error && 'status' in error && error.status === 404;
             setToast({
               title: notRecognized ? t('scan.notRecognized') : t('scan.genericError'),
               subtitle: '',

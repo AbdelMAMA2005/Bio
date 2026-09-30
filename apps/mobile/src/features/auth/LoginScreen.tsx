@@ -9,6 +9,7 @@ import { TextField } from '@/components/TextField';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { AuthScreenLayout } from '@/features/auth/AuthScreenLayout';
 import { useGoogleSignIn } from '@/features/auth/googleAuth';
+import { authErrorMessage } from '@/features/auth/authError';
 import { useAppTheme } from '@/theme';
 import { FontFamily } from '@/theme/typography';
 import { Spacing } from '@/theme/spacing';
@@ -26,12 +27,23 @@ export function LoginScreen() {
 
   const handleLogin = async () => {
     setError(null);
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError(t('auth.emptyEmail'));
+      return;
+    }
+    if (!password) {
+      setError(t('auth.emptyPassword'));
+      return;
+    }
     try {
-      await login(email.trim(), password);
+      await login(trimmedEmail, password);
       router.replace('/jardin');
     } catch (e) {
       console.error('[handleLogin] échec de la connexion', e);
-      setError(t('auth.invalidCredentials'));
+      const message = authErrorMessage(e, t('auth.genericError'));
+      const isInvalidCredentials = message.toLowerCase().includes('invalid login credentials');
+      setError(isInvalidCredentials ? `${message}. ${t('auth.loginAccountHint')}` : message);
     }
   };
 
@@ -46,7 +58,7 @@ export function LoginScreen() {
       router.replace('/jardin');
     } catch (e) {
       console.error('[handleGoogle] échec de la connexion Google', e);
-      setError(t('auth.genericError'));
+      setError(authErrorMessage(e, t('auth.genericError')));
     }
   };
 
@@ -60,6 +72,8 @@ export function LoginScreen() {
           icon="mail"
           placeholder={t('auth.emailPlaceholder')}
           keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
           value={email}
           onChangeText={setEmail}
         />

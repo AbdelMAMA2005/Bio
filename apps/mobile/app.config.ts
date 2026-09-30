@@ -18,6 +18,7 @@ const isDevelopmentProfile = process.env.EAS_BUILD_PROFILE === 'development';
 const config = {
   name: 'PlanAI',
   slug: 'mobile',
+  owner: 'adamskader',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
@@ -30,7 +31,9 @@ const config = {
     bundleIdentifier: 'app.planai.mobile',
   },
   android: {
-    package: 'app.planai.mobile',
+    // The native Android project is used by EAS, so this must match its
+    // applicationId. Google Sign-In also identifies the installed APK by it.
+    package: 'com.planai',
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
       foregroundImage: './assets/images/android-icon-foreground.png',
@@ -108,7 +111,7 @@ const config = {
   extra: {
     router: {},
     eas: {
-      projectId: 'cb285673-015e-457b-9d2c-06a5c7b95d63',
+              "projectId": "c2e1fbf6-4c75-478e-85ed-781d6cbb1509"
     },
   },
 };
