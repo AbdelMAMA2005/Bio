@@ -1,8 +1,8 @@
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
+import { getCurrentCoordinates, showLocationError } from '@/utils/location';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,6 +33,8 @@ export function CommunityScreen() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | undefined>();
+  const locationRequest = useRef(0);
+  const [locating, setLocating] = useState(false);
   const [filter, setFilter] = useState<FeedFilter>('all');
   const feed = useFeed(coords, filter === 'near' ? 'near' : undefined);
   const stories = useStories();
@@ -59,17 +61,21 @@ export function CommunityScreen() {
   };
 
   const handleFilterChange = async (next: FeedFilter) => {
+    const request = ++locationRequest.current;
     setFilter(next);
+    setLocating(false);
     if (next !== 'near' || coords) return;
+    setLocating(true);
     try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) return;
-      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setCoords({ latitude: position.coords.latitude, longitude: position.coords.longitude });
-    } catch {
-      // Position indisponible (émulateur sans GPS, permission refusée en cours de
-      // route...) : le filtre "Près de moi" restera honnêtement vide plutôt que
-      // d'afficher des distances inventées.
+      const position = await getCurrentCoordinates();
+      if (request === locationRequest.current) setCoords(position);
+    } catch (error) {
+      if (request === locationRequest.current) {
+        setFilter('all');
+        showLocationError(error);
+      }
+    } finally {
+      if (request === locationRequest.current) setLocating(false);
     }
   };
 
@@ -220,7 +226,7 @@ export function CommunityScreen() {
             ListEmptyComponent={
               <View style={styles.center}>
                 <Icon name="forum" size={44} color={colors.muted} />
-                <Text style={[styles.placeholder, { color: colors.muted }]}>{t('community.emptyNear')}</Text>
+                {locating ? <ActivityIndicator color={colors.active} /> : <Text style={[styles.placeholder, { color: colors.muted }]}>{t('community.emptyNear')}</Text>}
               </View>
             }
             renderItem={({ item }) => (

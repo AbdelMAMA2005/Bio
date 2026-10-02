@@ -52,6 +52,7 @@ export function PostViewerModal({ post, onClose }: Props) {
             <ScrollView contentContainerStyle={styles.content}>
               <PostCard
                 post={post}
+                onDeleted={onClose}
                 onToggleLike={() => toggleLike.mutate(post.id)}
                 onOpenComments={() => setCommentsOpen(true)}
                 onShare={handleShare}

@@ -4,6 +4,7 @@
  * MaterialCommunityIcons), comme convenu dans le brief produit.
  */
 export const IconSets = {
+  delete: { set: 'MaterialIcons', name: 'delete' },
   spa: { set: 'MaterialIcons', name: 'spa' },
   potted_plant: { set: 'MaterialCommunityIcons', name: 'flower' },
   menu_book: { set: 'MaterialIcons', name: 'menu-book' },

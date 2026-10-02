@@ -10,26 +10,27 @@ import { FontFamily } from '@/theme/typography';
 
 type Props = {
   visible: boolean;
+  busy?: boolean;
   onAccept: () => void;
   onDecline: () => void;
 };
 
-export function GeoTagModal({ visible, onAccept, onDecline }: Props) {
+export function GeoTagModal({ visible, busy, onAccept, onDecline }: Props) {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onDecline}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={busy ? undefined : onDecline}>
       <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onDecline} />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onDecline} disabled={busy} />
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
           <View style={[styles.iconWrap, { backgroundColor: ToxicityColors.safe.bg }]}>
             <Icon name="location_on" size={28} color={ToxicityColors.safe.text} />
           </View>
           <Text style={[styles.title, { color: colors.text }]}>{t('geoTag.title')}</Text>
           <Text style={[styles.body, { color: colors.muted }]}>{t('geoTag.body')}</Text>
-          <GradientButton label={t('geoTag.accept')} onPress={onAccept} style={styles.acceptButton} />
-          <Pressable onPress={onDecline} hitSlop={8}>
+          <GradientButton loading={busy} label={t('geoTag.accept')} onPress={onAccept} style={styles.acceptButton} />
+          <Pressable onPress={onDecline} disabled={busy} hitSlop={8}>
             <Text style={[styles.decline, { color: colors.muted }]}>{t('common.decline')}</Text>
           </Pressable>
         </View>

@@ -1,4 +1,35 @@
 {
+  "legal": {
+    "title": "Informations légales",
+    "privacy": "Politique de confidentialité",
+    "terms": "Conditions d'utilisation",
+    "openErrorTitle": "Lien indisponible",
+    "openErrorBody": "Impossible d'ouvrir ce lien. Vérifie ta connexion et réessaie."
+  },
+  "feedback": {
+    "sectionTitle": "Aide et suggestions",
+    "suggestionTitle": "Faire une suggestion",
+    "suggestionHint": "Une idée pour améliorer PlantAI ?",
+    "reportTitle": "Signaler un problème",
+    "reportHint": "Dis-nous ce qui ne fonctionne pas",
+    "suggestionBody": "Partage ton idée avec l'équipe PlantAI. Chaque suggestion nous aide à améliorer l'application.",
+    "reportBody": "Décris le problème et les étapes pour le reproduire. Indique ce que tu attendais et ce qui s'est passé.",
+    "messageLabel": "Ton message",
+    "suggestionPlaceholder": "J'aimerais pouvoir…",
+    "reportPlaceholder": "Quand je… le problème suivant apparaît…",
+    "minimum": "10 caractères minimum",
+    "privacy": "Ton message et l'e-mail de ton compte seront transmis à l'équipe pour pouvoir te répondre. N'inclus pas de mot de passe.",
+    "send": "Envoyer",
+    "sentTitle": "Message envoyé !",
+    "sentBody": "Merci ! Ton message a été transmis à l'équipe PlantAI.",
+    "errors": {
+      "unavailable": "L'envoi est momentanément indisponible. Ton texte est conservé ici ; réessaie plus tard.",
+      "rate_limited": "Tu as envoyé plusieurs messages récemment. Patiente quelques minutes avant de réessayer.",
+      "unauthorized": "Ta session a expiré. Reconnecte-toi pour envoyer ton message.",
+      "invalid": "Vérifie ton message (10 à 3000 caractères). Si le brouillon est ancien, rouvre le formulaire.",
+      "failed": "Le message n'a pas pu être envoyé. Vérifie ta connexion et réessaie ; ton texte est conservé ici."
+    }
+  },
   "common": {
     "level": "Niv. {{level}}",
     "xp": "{{count}} XP",
@@ -49,6 +80,7 @@
     "title": "Mon Jardin",
     "quotidien": "Mon Quotidien",
     "herbarium": "Mon Herbarium",
+    "addPlant": "Ajouter",
     "reminderTitle_one": "{{count}} arrosage prévu aujourd'hui",
     "reminderTitle_other": "{{count}} arrosages prévus aujourd'hui",
     "questsTitle": "Défis du jour",
@@ -134,7 +166,10 @@
     "deleteStoryTitle": "Supprimer cette story ?",
     "deleteStoryBody": "Cette action est définitive, ta story sera immédiatement retirée.",
     "deleteStoryCta": "Supprimer",
-    "deleteStoryError": "Impossible de supprimer cette story pour le moment."
+    "deleteStoryError": "Impossible de supprimer cette story pour le moment.",
+    "deletePost": "Supprimer",
+    "deleteConfirm": "Supprimer cette publication ? Cette action est définitive.",
+    "deleteError": "La publication n’a pas pu être supprimée. Réessaie."
   },
   "profile": {
     "sendMessage": "Message",
@@ -267,5 +302,13 @@
     "slide2Body": "Suis la santé de tes clones au quotidien et retrouve toutes tes découvertes dans ton Herbarium.",
     "slide3Title": "Rejoins la Communauté",
     "slide3Body": "Partage tes trouvailles, découvre celles des autres près de chez toi et gagne de l'XP."
+  },
+  "location": {
+    "errorTitle": "Localisation indisponible",
+    "permission": "Autorise la localisation de PlantAI dans les réglages, puis réessaie.",
+    "services": "Active la localisation du téléphone, puis réessaie.",
+    "unavailable": "Impossible d’obtenir ta position. Réessaie à l’extérieur ou vérifie les réglages de localisation.",
+    "close": "Annuler",
+    "settings": "Ouvrir les réglages"
   }
 }

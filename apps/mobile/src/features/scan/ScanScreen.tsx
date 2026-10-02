@@ -1,6 +1,6 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
-import * as Location from 'expo-location';
+import { getCurrentCoordinates, showLocationError } from '@/utils/location';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +33,8 @@ export function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
 
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const [phase, setPhase] = useState<Phase>('idle');
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -54,12 +56,12 @@ export function ScanScreen() {
   const handleCapture = async () => {
     if (phase !== 'idle' || !cameraRef.current) return;
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5, skipProcessing: true });
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5, base64: true });
       const startedAt = Date.now();
       setCapturedUri(photo.uri);
       setPhase('analyzing');
       identify.mutate(
-        { photoUri: photo.uri },
+        { photoUri: photo.uri, imageBase64: photo.base64 ? `data:image/jpeg;base64,${photo.base64}` : undefined },
         {
           onSuccess: (result) => {
             setElapsedSeconds((Date.now() - startedAt) / 1000);
@@ -70,65 +72,54 @@ export function ScanScreen() {
           },
           onError: (error) => {
             resetScan();
-            // 404 = plante non reconnue ou confiance trop faible (voir
-            // identification.service.ts) : message actionnable plutôt qu'un échec
-            // silencieux qui laisserait croire que rien ne s'est passé.
-            const notRecognized = error instanceof Error && 'status' in error && error.status === 404;
+            const notRecognized = error instanceof Error && 'status' in error &&
+              (error.status === 404 || error.status === 422);
             setToast({
               title: notRecognized ? t('scan.notRecognized') : t('scan.genericError'),
-              subtitle: '',
+              subtitle: notRecognized ? '' : error.message,
               variant: 'error',
             });
-            setTimeout(() => setToast(null), 3200);
+            setTimeout(() => setToast(null), 6000);
           },
         },
       );
-    } catch {
-      // Camera not ready yet: ignore, the user can tap again.
+    } catch (error) {
+      resetScan();
+      setToast({ title: t('scan.genericError'), subtitle: error instanceof Error ? error.message : '', variant: 'error' });
+      setTimeout(() => setToast(null), 6000);
     }
   };
 
   const finalizeAdd = async (geoTagged: boolean) => {
-    if (!identify.data || !pendingType) return;
+    if (!identify.data || !pendingType || savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    const result = identify.data;
     const type = pendingType;
-    // Capturée avant resetScan() (qui remet capturedUri à null) : c'est la vraie photo
-    // prise par l'utilisateur, à persister telle quelle plutôt que de laisser la fiche
-    // retomber sur l'image générique de l'espèce (plant.urlImage).
     const photoUri = capturedUri;
-
-    let coords: { latitude: number; longitude: number } | undefined;
-    if (geoTagged) {
-      try {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (permission.granted) {
-          const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          coords = { latitude: position.coords.latitude, longitude: position.coords.longitude };
-        }
-      } catch {
-        // Position indisponible (émulateur sans GPS, permission refusée en cours de route, etc.) : on continue sans.
+    try {
+      let coords: { latitude: number; longitude: number } | undefined;
+      if (geoTagged) {
+        try { coords = await getCurrentCoordinates(); }
+        catch (error) { showLocationError(error); return; }
       }
+      const { collectionId } = await addToCollection.mutateAsync({ plant: result.plant, type, geoTagged, ...coords });
+      if (photoUri) addTrackingPhoto.mutate({ collectionId, uri: photoUri });
+      addXp(result.xpAwarded);
+      setPendingType(null);
+      setToast({
+        title: t(type === 'owned' ? 'toast.addedToJardinTitle' : 'toast.addedToHerbariumTitle'),
+        subtitle: t(type === 'owned' ? 'toast.addedToJardinSub' : 'toast.addedToHerbariumSub'),
+      });
+      setTimeout(() => setToast(null), 2200);
+      resetScan();
+    } catch (error) {
+      setToast({ title: t('scan.genericError'), subtitle: error instanceof Error ? error.message : '', variant: 'error' });
+      setTimeout(() => setToast(null), 6000);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
-
-    addToCollection.mutate(
-      { plant: identify.data.plant, type, geoTagged, ...coords },
-      {
-        onSuccess: ({ collectionId }) => {
-          // Best-effort : la capture a déjà réussi (toast affiché) même si cet upload
-          // échoue (réseau...), la fiche retombe alors sur l'image générique de l'espèce.
-          if (photoUri) {
-            addTrackingPhoto.mutate({ collectionId, uri: photoUri });
-          }
-        },
-      },
-    );
-    addXp(identify.data.xpAwarded);
-    setPendingType(null);
-    setToast({
-      title: t(type === 'owned' ? 'toast.addedToJardinTitle' : 'toast.addedToHerbariumTitle'),
-      subtitle: t(type === 'owned' ? 'toast.addedToJardinSub' : 'toast.addedToHerbariumSub'),
-    });
-    setTimeout(() => setToast(null), 2200);
-    resetScan();
   };
 
   if (!permission) {
@@ -212,7 +203,7 @@ export function ScanScreen() {
         />
       ) : null}
 
-      <GeoTagModal visible={pendingType !== null} onAccept={() => finalizeAdd(true)} onDecline={() => finalizeAdd(false)} />
+      <GeoTagModal busy={saving} visible={pendingType !== null} onAccept={() => finalizeAdd(true)} onDecline={() => finalizeAdd(false)} />
 
       {toast ? (
         <SafeAreaView style={StyleSheet.absoluteFill} pointerEvents="none">

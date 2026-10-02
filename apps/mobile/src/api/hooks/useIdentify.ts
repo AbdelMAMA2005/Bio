@@ -1,16 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toPlantWithIcon } from '@/api/adapters';
+import { identifyPlant } from '@/api/identifyPlant';
 import type { IdentificationResult } from '@/api/types';
 import { queryKeys } from '@/api/queryKeys';
-import { supabase, uriToImageDataUrl } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 export function useIdentify() {
-  return useMutation({ mutationFn: async ({ photoUri }: { photoUri: string }): Promise<IdentificationResult> => {
-    const imageBase64 = await uriToImageDataUrl(photoUri);
-    const { data, error } = await supabase.functions.invoke('identify-plant', { body: { imageBase64 } });
-    if (error) throw error;
-    if (!data?.plantId) throw new Error(data?.error ?? 'Plant identification failed');
-    return { plant: toPlantWithIcon(data.plantId, data), confidence: data.confiance, xpAwarded: data.xpGagne };
-  } });
+  return useMutation({ mutationFn: identifyPlant });
 }
 
 export function useAddToCollection() {

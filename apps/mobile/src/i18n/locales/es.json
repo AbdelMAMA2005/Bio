@@ -1,4 +1,35 @@
 {
+  "legal": {
+    "title": "Información legal",
+    "privacy": "Política de privacidad",
+    "terms": "Términos y condiciones",
+    "openErrorTitle": "Enlace no disponible",
+    "openErrorBody": "No se pudo abrir el enlace. Revisa tu conexión e inténtalo de nuevo."
+  },
+  "feedback": {
+    "sectionTitle": "Ayuda y sugerencias",
+    "suggestionTitle": "Hacer una sugerencia",
+    "suggestionHint": "¿Una idea para mejorar PlantAI?",
+    "reportTitle": "Informar de un problema",
+    "reportHint": "Cuéntanos qué no funciona",
+    "suggestionBody": "Comparte tu idea con el equipo de PlantAI. Cada sugerencia nos ayuda a mejorar la aplicación.",
+    "reportBody": "Describe el problema y los pasos para reproducirlo. Explica qué esperabas y qué ocurrió.",
+    "messageLabel": "Tu mensaje",
+    "suggestionPlaceholder": "Me gustaría poder…",
+    "reportPlaceholder": "Cuando… aparece este problema…",
+    "minimum": "10 caracteres como mínimo",
+    "privacy": "Tu mensaje y el correo de tu cuenta se compartirán con el equipo para poder responderte. No incluyas contraseñas.",
+    "send": "Enviar",
+    "sentTitle": "¡Mensaje enviado!",
+    "sentBody": "¡Gracias! Tu mensaje se ha enviado al equipo de PlantAI.",
+    "errors": {
+      "unavailable": "El envío no está disponible temporalmente. Tu texto se conserva aquí; inténtalo más tarde.",
+      "rate_limited": "Has enviado varios mensajes recientemente. Espera unos minutos antes de intentarlo de nuevo.",
+      "unauthorized": "Tu sesión ha caducado. Inicia sesión de nuevo para enviar tu mensaje.",
+      "invalid": "Revisa tu mensaje (de 10 a 3000 caracteres). Si el borrador es antiguo, vuelve a abrir el formulario.",
+      "failed": "No se pudo enviar el mensaje. Revisa tu conexión e inténtalo de nuevo; tu texto se conserva aquí."
+    }
+  },
   "common": {
     "level": "Niv. {{level}}",
     "xp": "{{count}} XP",
@@ -49,6 +80,7 @@
     "title": "Mi Jardín",
     "quotidien": "Mi Rutina",
     "herbarium": "Mi Herbario",
+    "addPlant": "Añadir",
     "reminderTitle_one": "{{count}} riego previsto hoy",
     "reminderTitle_other": "{{count}} riegos previstos hoy",
     "questsTitle": "Retos del día",
@@ -134,7 +166,10 @@
     "deleteStoryTitle": "¿Eliminar esta story?",
     "deleteStoryBody": "Esta acción es definitiva, tu story se eliminará de inmediato.",
     "deleteStoryCta": "Eliminar",
-    "deleteStoryError": "No se pudo eliminar esta story en este momento."
+    "deleteStoryError": "No se pudo eliminar esta story en este momento.",
+    "deletePost": "Eliminar",
+    "deleteConfirm": "¿Eliminar esta publicación? Esta acción es definitiva.",
+    "deleteError": "No se pudo eliminar la publicación. Inténtalo de nuevo."
   },
   "profile": {
     "sendMessage": "Mensaje",
@@ -265,5 +300,13 @@
     "slide2Body": "Sigue la salud de tus clones cada día y encuentra todos tus descubrimientos en tu Herbario.",
     "slide3Title": "Únete a la Comunidad",
     "slide3Body": "Comparte tus hallazgos, descubre los de otros cerca de ti y gana XP."
+  },
+  "location": {
+    "errorTitle": "Ubicación no disponible",
+    "permission": "Permite la ubicación de PlantAI en ajustes e inténtalo de nuevo.",
+    "services": "Activa la ubicación del teléfono e inténtalo de nuevo.",
+    "unavailable": "No se pudo obtener tu posición. Prueba al aire libre o revisa los ajustes.",
+    "close": "Cancelar",
+    "settings": "Abrir ajustes"
   }
 }

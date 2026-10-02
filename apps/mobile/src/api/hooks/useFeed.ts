@@ -10,7 +10,7 @@ import type { StoryViewer } from '@planai/shared';
 import { requireUserId } from '@/api/supabaseUser';
 import { getStoragePublicUrl, supabase, uriToBlob } from '@/lib/supabase';
 
-type BackendFeedResponse = { items: BackendPost[]; total: number };
+type BackendFeedResponse = { items: BackendPost[]; total: number; fetchedCount: number };
 
 type Coordinates = { latitude: number; longitude: number };
 type FeedFilter = 'all' | 'near';
@@ -20,7 +20,10 @@ const FEED_PAGE_SIZE = 15;
 
 async function fetchFeedPage(page: number, coords?: Coordinates, filter?: FeedFilter): Promise<BackendFeedResponse> {
   const userId = await requireUserId();
-  const { data: rows, error, count } = await supabase.from('posts').select('id,user_id,contenu,url_image,latitude,longitude,created_at,collection:plant_collection_id(plant_id,type_collection,plants(*))', { count: 'exact' }).order('created_at', { ascending: false }).range((page - 1) * FEED_PAGE_SIZE, page * FEED_PAGE_SIZE - 1);
+  const source = filter === 'near' && coords
+    ? supabase.rpc('nearby_posts', { p_latitude: coords.latitude, p_longitude: coords.longitude }, { count: 'exact' })
+    : supabase.from('posts');
+  const { data: rows, error, count } = await source.select('id,user_id,contenu,url_image,latitude,longitude,created_at,collection:plant_collection_id(plant_id,type_collection,plants(*))', { count: 'exact' }).order('created_at', { ascending: false }).order('id', { ascending: false }).range((page - 1) * FEED_PAGE_SIZE, page * FEED_PAGE_SIZE - 1);
   if (error) throw error;
   const posts = (rows ?? []) as any[];
   const [{ data: profiles, error: profilesError }, { data: likes, error: likesError }, { data: comments, error: commentsError }] = await Promise.all([
@@ -39,13 +42,13 @@ async function fetchFeedPage(page: number, coords?: Coordinates, filter?: FeedFi
   const items = posts.flatMap((post) => {
     const profile = profileMap.get(post.user_id);
     const distanceMeters = distance(post);
-    if (!profile || (filter === 'near' && (distanceMeters == null || distanceMeters > 5000))) return [];
+    if (!profile) return [];
     const postLikes = (likes ?? []).filter((like) => like.post_id === post.id);
     const postComments = (comments ?? []).filter((comment) => comment.post_id === post.id);
     const plant = post.collection?.plants;
     return [{ id: post.id, idUtilisateur: post.user_id, contenuTexte: post.contenu, imageUrl: getStoragePublicUrl('posts', post.url_image), dateCreation: post.created_at, auteur: { id: profile.id, nomUtilisateur: profile.nom_utilisateur, urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null }, plante: plant ? { id: post.collection.plant_id, nomScientifique: plant.nom_scientifique, nomCommun: plant.nom_commun, badgeRarete: plant.badge_rarete, urlImage: plant.url_image } : undefined, typeCollection: post.collection?.type_collection, likesCount: postLikes.length, commentairesCount: postComments.length, estLikedParUtilisateur: postLikes.some((like) => like.user_id === userId), distanceMetres: distanceMeters } satisfies BackendPost];
   });
-  return { items, total: count ?? items.length };
+  return { items, total: count ?? posts.length, fetchedCount: posts.length };
 }
 
 /**
@@ -68,7 +71,7 @@ export function useFeed(coords?: Coordinates, filter?: FeedFilter) {
     queryFn: ({ pageParam }) => fetchFeedPage(pageParam, coords, filter),
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
-      const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0);
+      const loaded = allPages.reduce((sum, p) => sum + p.fetchedCount, 0);
       return loaded < lastPage.total ? allPages.length + 1 : undefined;
     },
     enabled,
@@ -288,7 +291,13 @@ export function usePublishPost() {
       const path = `${userId}/${Date.now()}.jpg`;
       const { error: uploadError } = await supabase.storage.from('posts').upload(path, await uriToBlob(input.imageUri), { contentType: 'image/jpeg' });
       if (uploadError) throw uploadError;
-      const { error } = await supabase.from('posts').insert({ user_id: userId, plant_collection_id: input.collectionItemId ?? null, contenu: input.texte, url_image: path });
+      let coordinates: { latitude: number | null; longitude: number | null } | null = null;
+      if (input.collectionItemId) {
+        const { data, error } = await supabase.from('collection').select('latitude,longitude').eq('id', input.collectionItemId).eq('user_id', userId).single();
+        if (error) throw error;
+        coordinates = data;
+      }
+      const { error } = await supabase.from('posts').insert({ user_id: userId, plant_collection_id: input.collectionItemId ?? null, contenu: input.texte, url_image: path, latitude: coordinates?.latitude ?? null, longitude: coordinates?.longitude ?? null });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -344,6 +353,23 @@ export function useAddComment() {
       // uniquement dans le fil de commentaires ouvert — sans cette invalidation, il
       // resterait figé jusqu'au prochain rechargement complet de l'écran.
       queryClient.invalidateQueries({ queryKey: queryKeys.feed });
+    },
+  });
+}
+
+export function useDeletePost() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (postId: string) => {
+      const userId = await requireUserId();
+      const { data, error } = await supabase.from('posts').delete().eq('id', postId).eq('user_id', userId).select('id');
+      if (error) throw error;
+      if (!data?.length) throw new Error('Post could not be deleted');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed });
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+      queryClient.invalidateQueries({ queryKey: ['publicProfile'] });
     },
   });
 }

@@ -193,7 +193,7 @@ export type BackendCollectionItem = {
   conseilsEntretien: BackendConseilsEntretien;
   latitude: number | null;
   longitude: number | null;
-  historiquePhotos?: string[];
+  historiquePhotos?: (string | CollectionPhoto)[];
   dernierDiagnostic?: BackendDernierDiagnostic | null;
   /** Calculé côté back (CollectionService#computeProchainArrosage), voir API_CONTRACT.md §4. */
   prochainArrosage: string;
@@ -204,15 +204,18 @@ export function resolveUploadUrl(url: string, apiBaseUrl: string): string {
 }
 
 /**
- * Le back renvoie désormais historiquePhotos dans GET /collection (URLs relatives,
- * sans date par photo) : on résout les URLs contre apiBaseUrl et on retombe sur
- * dateAjout de la collection faute de date individuelle par photo.
+ * Supabase stocke des objets { url, date }; les anciens historiques contiennent
+ * uniquement des URLs. Conserver la date de chaque photo lorsqu'elle est disponible.
  */
 function resolveHistoriquePhotos(item: BackendCollectionItem, apiBaseUrl: string): CollectionPhoto[] {
-  return (item.historiquePhotos ?? []).map((url) => ({
-    url: resolveUploadUrl(url, apiBaseUrl),
-    date: item.dateAjout,
-  }));
+  if (!Array.isArray(item.historiquePhotos)) return [];
+  return item.historiquePhotos.flatMap((photo) => {
+    const url = typeof photo === 'string' ? photo : photo?.url;
+    if (typeof url !== 'string' || !url.trim()) return [];
+    const date = typeof photo === 'object' && typeof photo?.date === 'string' && photo.date
+      ? photo.date : item.dateAjout;
+    return [{ url: resolveUploadUrl(url, apiBaseUrl), date }];
+  });
 }
 
 function etatSanteFromBackend(value: BackendCollectionItem['etatSante']): NonNullable<CollectionItem['etatSante']> {

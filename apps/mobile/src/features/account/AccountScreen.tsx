@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/Avatar';
 import { CircleIconButton } from '@/components/CircleIconButton';
 import { GradientButton } from '@/components/GradientButton';
+import { LegalLinks } from '@/components/LegalLinks';
 import { Icon } from '@/components/Icon';
 import { SecondaryButton } from '@/components/SecondaryButton';
 import { SectionCard } from '@/components/SectionCard';
@@ -20,6 +21,8 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { levelProgress, levelTitleKey, xpTargetForLevel } from '@/features/account/levels';
 import { useAccountStats } from '@/features/account/useAccountStats';
 import { usePreferences } from '@/features/account/usePreferences';
+import { FeedbackModal } from '@/features/account/FeedbackModal';
+import type { FeedbackKind } from '@/features/account/feedbackApi';
 import { setAppLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/i18n';
 import { useAppTheme } from '@/theme';
 import { AccentOnColor } from '@/theme/colors';
@@ -45,6 +48,7 @@ export function AccountScreen() {
   const [deleteFormOpen, setDeleteFormOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [feedbackKind, setFeedbackKind] = useState<FeedbackKind | null>(null);
 
   if (!user) return null;
 
@@ -219,6 +223,19 @@ export function AccountScreen() {
             />
           </SectionCard>
 
+          <SectionCard title={t('feedback.sectionTitle')}>
+            <SettingRow icon="auto_awesome" label={t('feedback.suggestionTitle')} hint={t('feedback.suggestionHint')}
+              trailing={<Icon name="chevron_right" size={20} color={colors.muted} />}
+              onPress={() => setFeedbackKind('suggestion')} showBorder />
+            <SettingRow icon="flag" label={t('feedback.reportTitle')} hint={t('feedback.reportHint')}
+              trailing={<Icon name="chevron_right" size={20} color={colors.muted} />}
+              onPress={() => setFeedbackKind('report')} />
+          </SectionCard>
+
+          <SectionCard title={t('legal.title')}>
+            <LegalLinks />
+          </SectionCard>
+
           {/* Compte */}
           <SectionCard title={t('account.accountSectionTitle')}>
             <SettingRow
@@ -295,6 +312,7 @@ export function AccountScreen() {
           </SectionCard>
         </ScrollView>
       </SafeAreaView>
+      {feedbackKind ? <FeedbackModal kind={feedbackKind} onClose={() => setFeedbackKind(null)} /> : null}
     </View>
   );
 }

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { GradientButton } from '@/components/GradientButton';
+import { LegalLinks } from '@/components/LegalLinks';
 import { TextField } from '@/components/TextField';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { authErrorMessage } from '@/features/auth/authError';
@@ -131,6 +132,7 @@ export function RegisterScreen() {
           </Pressable>
         </Link>
       </View>
+      <LegalLinks />
     </AuthScreenLayout>
   );
 }

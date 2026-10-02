@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { GradientButton } from '@/components/GradientButton';
+import { LegalLinks } from '@/components/LegalLinks';
 import { SecondaryButton } from '@/components/SecondaryButton';
 import { TextField } from '@/components/TextField';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -118,6 +119,7 @@ export function LoginScreen() {
           </Pressable>
         </Link>
       </View>
+      <LegalLinks />
     </AuthScreenLayout>
   );
 }

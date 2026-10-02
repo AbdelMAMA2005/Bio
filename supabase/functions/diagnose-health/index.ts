@@ -1,119 +1,15 @@
-// Supabase Edge Function: diagnose-health
-// Déployable avec: supabase functions deploy diagnose-health
-// Secrets requis: PLANT_ID_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
-  try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Non autorise" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Utilisateur introuvable" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const body = await req.json();
-    const { collectionId, imageBase64 } = body;
-
-    if (!collectionId) {
-      return new Response(JSON.stringify({ error: "collectionId requis" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const plantIdKey = Deno.env.get("PLANT_ID_API_KEY");
-    let resultDiagnosis = {
-      isHealthy: true,
-      diseaseName: null as string | null,
-      confidence: 96,
-      treatment: null as any,
-      description: null as string | null,
-    };
-
-    if (plantIdKey && imageBase64) {
-      const plantHealthRes = await fetch("https://plant.id/api/v3/health_assessment", {
-        method: "POST",
-        headers: {
-          "Api-Key": plantIdKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          images: [imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`],
-          disease_details: ["description", "treatment"],
-        }),
-      });
-
-      const healthData = await plantHealthRes.json();
-      const isHealthy = healthData?.result?.is_healthy?.binary ?? true;
-      const topDisease = healthData?.result?.disease?.suggestions?.[0];
-
-      resultDiagnosis = {
-        isHealthy,
-        diseaseName: isHealthy ? null : (topDisease?.name ?? "Maladie non specifiee"),
-        confidence: Math.round((topDisease?.probability ?? (healthData?.result?.is_healthy?.probability ?? 0.95)) * 100),
-        treatment: topDisease?.details?.treatment ?? null,
-        description: topDisease?.details?.description ?? null,
-      };
-    }
-
-    // Sauvegarder dans la table collection
-    const adminSupabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
-
-    const savedDiag = {
-      maladieNom: resultDiagnosis.diseaseName,
-      scoreGlobal: resultDiagnosis.confidence,
-      traitement: resultDiagnosis.treatment,
-      description: resultDiagnosis.description,
-      estSain: resultDiagnosis.isHealthy,
-      dateDiagnostic: new Date().toISOString(),
-    };
-
-    await adminSupabase
-      .from("collection")
-      .update({
-        etat_sante: resultDiagnosis.isHealthy ? "green" : "red",
-        dernier_diagnostic: savedDiag,
-      })
-      .eq("id", collectionId)
-      .eq("user_id", user.id);
-
-    return new Response(JSON.stringify(savedDiag), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-});
+const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type"},reply=(b:unknown,s=200)=>new Response(JSON.stringify(b),{status:s,headers:{...cors,"Content-Type":"application/json"}});
+serve(async(req)=>{if(req.method==="OPTIONS")return new Response("ok",{headers:cors});try{
+ const auth=req.headers.get("Authorization");if(!auth)return reply({error:"Non autorisé"},401);const url=Deno.env.get("SUPABASE_URL")??"",service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")??"";
+ const userClient=createClient(url,Deno.env.get("SUPABASE_ANON_KEY")??"",{global:{headers:{Authorization:auth}}});const{data:{user}}=await userClient.auth.getUser();if(!user)return reply({error:"Utilisateur introuvable"},401);
+ const{collectionId,imageBase64}=await req.json(),m=imageBase64?.match(/^data:(image\/(?:jpeg|png));base64,(.+)$/s);if(!collectionId||!m)return reply({error:"Plante et image requises"},400);
+ const admin=createClient(url,service),{data:item}=await admin.from("collection").select("id,plants(nom_scientifique,nom_commun)").eq("id",collectionId).eq("user_id",user.id).single();if(!item)return reply({error:"Plante introuvable"},404);
+ const key=Deno.env.get("GEMINI_API_KEY");if(!key)return reply({error:"Clé Gemini absente"},503);const plant:any=item.plants;
+ const prompt=`Analyse la santé de cette plante (${plant?.nom_scientifique??plant?.nom_commun}). Réponds uniquement en JSON: {"isHealthy":boolean,"diseaseName":string|null,"confidence":0-100,"description":string|null,"treatment":{"biological":[],"chemical":[],"prevention":[]}|null}. Si la photo est insuffisante, baisse la confiance.`;
+ const gr=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:m[1],data:m[2]}}]}],generationConfig:{responseMimeType:"application/json",temperature:.1}})});if(!gr.ok)return reply({error:`Gemini indisponible (${gr.status})`},502);
+ const gd=await gr.json(),text=(gd?.candidates?.[0]?.content?.parts??[]).map((p:any)=>p.text??"").join("").replace(/^```json\s*|\s*```$/g,""),d=JSON.parse(text);
+ const saved={maladieNom:d.isHealthy?null:(d.diseaseName??"Problème non déterminé"),scoreGlobal:Math.max(0,Math.min(100,Math.round(Number(d.confidence)||0))),traitement:d.treatment??null,description:d.description??null,estSain:Boolean(d.isHealthy),dateDiagnostic:new Date().toISOString(),source:"gemini"};
+ const{error}=await admin.from("collection").update({etat_sante:saved.estSain?"green":"red",dernier_diagnostic:saved}).eq("id",collectionId).eq("user_id",user.id);if(error)throw error;return reply(saved);
+}catch(e){console.error(e);return reply({error:e instanceof Error?e.message:"Erreur interne"},500)}});

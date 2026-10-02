@@ -1,0 +1,32 @@
+import { Alert } from 'react-native';
+import { fireEvent, render } from '@testing-library/react-native';
+import { PostCard } from '../PostCard';
+const mockDelete = jest.fn();
+const mockUser = { id: 'owner' };
+jest.mock('@/features/auth/AuthProvider', () => ({ useAuth: () => ({ user: mockUser }) }));
+jest.mock('@/api/hooks/useFeed', () => ({ useDeletePost: () => ({ mutate: mockDelete, isPending: false }) }));
+jest.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'fr' } }) }));
+jest.mock('@/theme', () => ({ useAppTheme: () => ({ colors: {}, isDark: false }) }));
+jest.mock('@/components/Icon', () => ({ Icon: () => null }));
+jest.mock('@/components/Avatar', () => ({ Avatar: () => null }));
+const post: any = { id: 'post', authorId: 'owner', authorName: 'Owner', createdAt: new Date().toISOString(), distanceMeters: null, likes: 0, comments: 0 };
+const props = { post, onToggleLike: jest.fn(), onOpenComments: jest.fn(), onShare: jest.fn() };
+beforeEach(() => jest.clearAllMocks());
+it('only exposes deletion for the current author', () => {
+  const view = render(<PostCard {...props} post={{ ...post, authorId: 'someone-else' }} />);
+  expect(view.queryByText('community.deletePost')).toBeNull();
+});
+it('requires confirmation and closes the viewer only after successful deletion', () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  const onDeleted = jest.fn();
+  const view = render(<PostCard {...props} onDeleted={onDeleted} />);
+  fireEvent.press(view.getByText('community.deletePost'));
+  expect(mockDelete).not.toHaveBeenCalled();
+  const buttons = alert.mock.calls[0][2]!;
+  buttons[1].onPress!();
+  expect(mockDelete).toHaveBeenCalledWith('post', expect.any(Object));
+  expect(onDeleted).not.toHaveBeenCalled();
+  mockDelete.mock.calls[0][1].onSuccess();
+  expect(onDeleted).toHaveBeenCalledTimes(1);
+  alert.mockRestore();
+});

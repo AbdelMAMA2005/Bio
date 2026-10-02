@@ -7,6 +7,7 @@ import { Icon } from '@/components/Icon';
 import { useHerbarium } from '@/api/hooks/useHerbarium';
 import { DiscoveryCard } from '@/features/jardin/DiscoveryCard';
 import { useAppTheme } from '@/theme';
+import { AccentOnColor } from '@/theme/colors';
 import { Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
 
@@ -31,6 +32,10 @@ export function HerbariumView() {
     return (
       <View style={styles.emptyWrap}>
         <Text style={[styles.empty, { color: colors.muted }]}>{t('jardin.emptyHerbarium')}</Text>
+        <Pressable style={[styles.addButton, { backgroundColor: colors.active }]} onPress={() => router.push('/(tabs)/scan')}>
+          <Icon name="add_a_photo" size={18} color={AccentOnColor} />
+          <Text style={[styles.addLabel, { color: AccentOnColor }]}>{t('jardin.addPlant')}</Text>
+        </Pressable>
       </View>
     );
   }
@@ -59,6 +64,10 @@ export function HerbariumView() {
           <Text style={[styles.headerCount, { color: colors.text }]}>
             {`${t('jardin.discoveriesCount', { count: discoveries.length })} ${t('jardin.rareCount', { count: rareCount })}`}
           </Text>
+          <Pressable style={[styles.addChip, { backgroundColor: colors.active }]} onPress={() => router.push('/(tabs)/scan')}>
+            <Icon name="add" size={16} color={AccentOnColor} />
+            <Text style={[styles.addChipLabel, { color: AccentOnColor }]}>{t('jardin.addPlant')}</Text>
+          </Pressable>
           <Pressable style={[styles.sortChip, { backgroundColor: colors.chip }]}>
             <Icon name="sort" size={15} color={colors.muted} />
             <Text style={[styles.sortLabel, { color: colors.muted }]}>{t('jardin.sortRecent')}</Text>
@@ -90,6 +99,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
   },
+  addButton: { marginTop: Spacing.lg, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 18, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm },
+  addLabel: { fontFamily: FontFamily.semiBold, fontSize: 13 },
+  addChip: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 12, paddingHorizontal: Spacing.sm, paddingVertical: 5 },
+  addChipLabel: { fontFamily: FontFamily.semiBold, fontSize: 11.5 },
   content: {
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xxl,

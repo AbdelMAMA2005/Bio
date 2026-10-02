@@ -1,171 +1,28 @@
-// Supabase Edge Function: identify-plant
-// Déployable avec: supabase functions deploy identify-plant
-// Secrets requis: PLANT_ID_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
-  try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Non autorise" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Utilisateur introuvable" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const body = await req.json();
-    const { imageBase64, latitude, longitude } = body;
-
-    if (!imageBase64) {
-      return new Response(JSON.stringify({ error: "Image requise (base64)" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const plantIdKey = Deno.env.get("PLANT_ID_API_KEY");
-    if (!plantIdKey) {
-      // Repli dev/mock si pas de clé configurée
-      return new Response(JSON.stringify({
-        plantId: "11111111-1111-1111-1111-111111111111",
-        nomScientifique: "Monstera deliciosa",
-        nomCommun: "Monstera",
-        famille: "Araceae",
-        toxicite: "orange",
-        badgeRarete: "Commun",
-        aPropos: "Plante tropicale populaire.",
-        conseilsEntretien: {
-          lumiere: "Lumière indirecte",
-          sol: "Drainant",
-          arrosage: "1x par semaine",
-          multiplication: "Bouturage"
-        },
-        urlImage: "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=400",
-        xpGagne: 25,
-        confiance: 95
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Appel API Plant.id v3
-    const plantIdRes = await fetch("https://plant.id/api/v3/identification", {
-      method: "POST",
-      headers: {
-        "Api-Key": plantIdKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        images: [imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`],
-        latitude: latitude ?? undefined,
-        longitude: longitude ?? undefined,
-        similar_images: true,
-      }),
-    });
-
-    const plantIdData = await plantIdRes.json();
-    const bestSuggestion = plantIdData?.result?.classification?.suggestions?.[0];
-
-    if (!bestSuggestion) {
-      return new Response(JSON.stringify({ error: "Plante non reconnue" }), {
-        status: 422,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const nomScientifique = bestSuggestion.name;
-    const nomCommun = bestSuggestion.details?.common_names?.[0] ?? nomScientifique;
-    const famille = bestSuggestion.details?.taxonomy?.family ?? "Inconnue";
-    const confiance = Math.round((bestSuggestion.probability ?? 0) * 100);
-
-    // Upsert plant dans la base
-    const adminSupabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
-
-    let { data: existingPlant } = await adminSupabase
-      .from("plants")
-      .select("id, badge_rarete")
-      .eq("nom_scientifique", nomScientifique)
-      .maybeSingle();
-
-    let plantId = existingPlant?.id;
-    let badgeRarete = existingPlant?.badge_rarete ?? "Commun";
-
-    if (!plantId) {
-      const { data: newPlant } = await adminSupabase
-        .from("plants")
-        .insert({
-          nom_scientifique: nomScientifique,
-          nom_commun: nomCommun,
-          famille: famille,
-          toxicite: "green",
-          badge_rarete: "Commun",
-          url_image: bestSuggestion.similar_images?.[0]?.url ?? null,
-        })
-        .select()
-        .single();
-      plantId = newPlant?.id;
-    }
-
-    // Logger le scan
-    await adminSupabase.from("identification_logs").insert({
-      user_id: user.id,
-      plant_id: plantId,
-      score_confiance: confiance,
-      reussi: true,
-    });
-
-    return new Response(JSON.stringify({
-      plantId,
-      nomScientifique,
-      nomCommun,
-      famille,
-      toxicite: "green",
-      badgeRarete,
-      aPropos: bestSuggestion.details?.description?.value ?? null,
-      conseilsEntretien: {
-        lumiere: bestSuggestion.details?.best_light_condition ?? "Lumière indirecte",
-        sol: bestSuggestion.details?.best_soil_type ?? "Terreau riche",
-        arrosage: bestSuggestion.details?.watering?.max ? `${bestSuggestion.details.watering.max} jours` : "Modéré",
-        multiplication: "Bouturage"
-      },
-      urlImage: bestSuggestion.similar_images?.[0]?.url ?? null,
-      xpGagne: badgeRarete === "Épique" ? 100 : badgeRarete === "Rare" ? 50 : 25,
-      confiance,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type"};
+const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,"Content-Type":"application/json"}});
+const image=(value:string)=>{const m=value.match(/^data:(image\/(?:jpeg|png));base64,(.+)$/s);if(!m)throw new Error("Image JPEG ou PNG invalide");return{mime:m[1],b64:m[2],blob:new Blob([Uint8Array.from(atob(m[2]),c=>c.charCodeAt(0))],{type:m[1]})}};
+const geminiJson=(d:any)=>JSON.parse((d?.candidates?.[0]?.content?.parts??[]).map((p:any)=>p.text??"").join("").replace(/^```json\s*|\s*```$/g,""));
+serve(async(req)=>{
+ if(req.method==="OPTIONS")return new Response("ok",{headers:cors});
+ try{
+  const auth=req.headers.get("Authorization");if(!auth)return reply({error:"Non autorisé"},401);
+  const url=Deno.env.get("SUPABASE_URL")??"",anon=Deno.env.get("SUPABASE_ANON_KEY")??"",service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")??"";
+  const client=createClient(url,anon,{global:{headers:{Authorization:auth}}});const{data:{user}}=await client.auth.getUser();if(!user)return reply({error:"Utilisateur introuvable"},401);
+  const{imageBase64,latitude,longitude}=await req.json();if(!imageBase64)return reply({error:"Image requise"},400);
+  const pk=Deno.env.get("PLANTNET_API_KEY");if(!pk)return reply({error:"Clé Pl@ntNet absente"},503);
+  const img=image(imageBase64),form=new FormData();form.append("images",img.blob,"plant.jpg");form.append("organs","auto");
+  const q=new URLSearchParams({"api-key":pk,lang:"fr","include-related-images":"true"});if(typeof latitude==="number")q.set("lat",String(latitude));if(typeof longitude==="number")q.set("lon",String(longitude));
+  const pr=await fetch(`https://my-api.plantnet.org/v2/identify/all?${q}`,{method:"POST",body:form}),pd=await pr.json();if(!pr.ok)return reply({error:pd?.message??"Pl@ntNet indisponible"},pr.status);
+  const best=pd?.results?.[0];if(!best||(best.score??0)<.05)return reply({error:"Plante non reconnue"},422);
+  const taxonomy={nomScientifique:best.species?.scientificNameWithoutAuthor??pd.bestMatch,nomCommun:best.species?.commonNames?.[0]??best.species?.scientificNameWithoutAuthor??pd.bestMatch,famille:best.species?.family?.scientificNameWithoutAuthor??"Inconnue"};
+  let extra:any={};const gk=Deno.env.get("GEMINI_API_KEY");
+  if(gk){try{const prompt=`Tu es botaniste. Pl@ntNet identifie: ${taxonomy.nomScientifique}, famille ${taxonomy.famille}. Réponds uniquement en JSON: {"toxicite":"green|orange|red","badgeRarete":"Commun|Rare|Épique","aPropos":"2 phrases en français","conseilsEntretien":{"lumiere":"","sol":"","arrosage":"","multiplication":""}}. La rareté décrit la disponibilité horticole générale.`;const gr=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${gk}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:img.mime,data:img.b64}}]}],generationConfig:{responseMimeType:"application/json",temperature:.2}})});if(gr.ok)extra=geminiJson(await gr.json())}catch(e){console.warn(e)}}
+  const values={nom_scientifique:taxonomy.nomScientifique,nom_commun:taxonomy.nomCommun,famille:taxonomy.famille,toxicite:["green","orange","red"].includes(extra.toxicite)?extra.toxicite:"green",badge_rarete:["Commun","Rare","Épique"].includes(extra.badgeRarete)?extra.badgeRarete:"Commun",a_propos:extra.aPropos??null,conseils_entretien:extra.conseilsEntretien??null,url_image:best.images?.[0]?.url?.m??best.images?.[0]?.url?.o??null};
+  const admin=createClient(url,service);const{data:old}=await admin.from("plants").select("id").eq("nom_scientifique",taxonomy.nomScientifique).maybeSingle();let plantId=old?.id;
+  if(plantId){const{error}=await admin.from("plants").update(values).eq("id",plantId);if(error)throw error}else{const{data,error}=await admin.from("plants").insert(values).select("id").single();if(error)throw error;plantId=data.id}
+  const confiance=Math.round((best.score??0)*100);const{error}=await admin.from("identification_logs").insert({user_id:user.id,plant_id:plantId,score_confiance:confiance,reussi:true});if(error)throw error;
+  return reply({plantId,...taxonomy,toxicite:values.toxicite,badgeRarete:values.badge_rarete,aPropos:values.a_propos,conseilsEntretien:values.conseils_entretien,urlImage:values.url_image,xpGagne:values.badge_rarete==="Épique"?100:values.badge_rarete==="Rare"?50:25,confiance,sourceIdentification:"plantnet",sourceEnrichissement:extra.aPropos?"gemini":null});
+ }catch(e){console.error(e);return reply({error:e instanceof Error?e.message:"Erreur interne"},500)}
 });

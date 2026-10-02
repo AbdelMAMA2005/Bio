@@ -1,4 +1,35 @@
 {
+  "legal": {
+    "title": "Legal information",
+    "privacy": "Privacy Policy",
+    "terms": "Terms & Conditions",
+    "openErrorTitle": "Link unavailable",
+    "openErrorBody": "Could not open this link. Check your connection and try again."
+  },
+  "feedback": {
+    "sectionTitle": "Help and suggestions",
+    "suggestionTitle": "Make a suggestion",
+    "suggestionHint": "An idea to improve PlantAI?",
+    "reportTitle": "Report a problem",
+    "reportHint": "Tell us what isn't working",
+    "suggestionBody": "Share your idea with the PlantAI team. Every suggestion helps us improve the app.",
+    "reportBody": "Describe the problem and the steps to reproduce it. Include what you expected and what happened.",
+    "messageLabel": "Your message",
+    "suggestionPlaceholder": "I'd like to be able to…",
+    "reportPlaceholder": "When I… this problem occurs…",
+    "minimum": "10 characters minimum",
+    "privacy": "Your message and account email will be shared with the team so we can reply. Do not include passwords.",
+    "send": "Send",
+    "sentTitle": "Message sent!",
+    "sentBody": "Thank you! Your message has been sent to the PlantAI team.",
+    "errors": {
+      "unavailable": "Sending is temporarily unavailable. Your text is kept here; please try again later.",
+      "rate_limited": "You've sent several messages recently. Wait a few minutes before trying again.",
+      "unauthorized": "Your session has expired. Sign in again to send your message.",
+      "invalid": "Check your message (10 to 3000 characters). If the draft is old, reopen the form.",
+      "failed": "Your message could not be sent. Check your connection and try again; your text is kept here."
+    }
+  },
   "common": {
     "level": "Lvl. {{level}}",
     "xp": "{{count}} XP",
@@ -49,6 +80,7 @@
     "title": "My Garden",
     "quotidien": "My Daily Care",
     "herbarium": "My Herbarium",
+    "addPlant": "Add",
     "reminderTitle_one": "{{count}} watering due today",
     "reminderTitle_other": "{{count}} waterings due today",
     "questsTitle": "Today's challenges",
@@ -134,7 +166,10 @@
     "deleteStoryTitle": "Delete this story?",
     "deleteStoryBody": "This action is permanent, your story will be removed immediately.",
     "deleteStoryCta": "Delete",
-    "deleteStoryError": "Couldn't delete this story right now."
+    "deleteStoryError": "Couldn't delete this story right now.",
+    "deletePost": "Delete",
+    "deleteConfirm": "Delete this post? This cannot be undone.",
+    "deleteError": "Could not delete the post. Please retry."
   },
   "profile": {
     "sendMessage": "Message",
@@ -267,5 +302,13 @@
     "slide2Body": "Track your clones' health day to day and find all your discoveries in your Herbarium.",
     "slide3Title": "Join the Community",
     "slide3Body": "Share your finds, discover others nearby, and earn XP."
+  },
+  "location": {
+    "errorTitle": "Location unavailable",
+    "permission": "Allow PlantAI to access your location in settings, then retry.",
+    "services": "Enable device location, then retry.",
+    "unavailable": "Could not get your position. Try outdoors or check location settings.",
+    "close": "Cancel",
+    "settings": "Open settings"
   }
 }

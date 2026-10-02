@@ -1,8 +1,10 @@
 import { Image } from 'expo-image';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useAuth } from '@/features/auth/AuthProvider';
+import { useDeletePost } from '@/api/hooks/useFeed';
 import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/Icon';
 import type { FeedPost } from '@/api/types';
@@ -21,6 +23,7 @@ type Props = {
   /** Absent (ex. modale profil public) : l'en-tête auteur devient non pressable. */
   onPressAuthor?: (authorId: string) => void;
   sharing?: boolean;
+  onDeleted?: () => void;
 };
 
 export const PostCard = memo(function PostCard({
@@ -30,9 +33,18 @@ export const PostCard = memo(function PostCard({
   onShare,
   onPressAuthor,
   sharing,
+  onDeleted,
 }: Props) {
   const { t, i18n } = useTranslation();
   const { colors, isDark } = useAppTheme();
+  const { user } = useAuth();
+  const deletePost = useDeletePost();
+  const confirmDelete = () => Alert.alert(t('community.deletePost'), t('community.deleteConfirm'), [
+    { text: t('location.close'), style: 'cancel' },
+    { text: t('community.deletePost'), style: 'destructive', onPress: () => {
+      deletePost.mutate(post.id, { onSuccess: () => onDeleted?.(), onError: () => Alert.alert(t('community.deleteError')) });
+    } },
+  ]);
   const language = (i18n.language as SupportedLanguage) ?? 'fr';
   const rarityPalette = post.plant ? (isDark ? RarityColors : RarityColorsLight)[post.plant.rarete] : null;
 
@@ -90,6 +102,13 @@ export const PostCard = memo(function PostCard({
         </View>
       ) : null}
 
+      {user?.id === post.authorId ? (
+        <Pressable onPress={confirmDelete} disabled={deletePost.isPending} accessibilityRole="button" style={styles.actionItem}>
+          <Icon name="delete" size={19} color={ToxicityColors.toxic.text} />
+          <Text style={[styles.actionLabel, { color: ToxicityColors.toxic.text }]}>{t('community.deletePost')}</Text>
+          {deletePost.isPending ? <ActivityIndicator size="small" /> : null}
+        </Pressable>
+      ) : null}
       <View style={styles.actions}>
         <Pressable style={styles.actionItem} onPress={onToggleLike} hitSlop={6}>
           <Icon name="favorite" size={19} color={post.liked ? ToxicityColors.toxic.text : colors.muted} />
