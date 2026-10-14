@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
 import { CircleIconButton } from '@/components/CircleIconButton';
-import { GradientButton } from '@/components/GradientButton';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { Icon } from '@/components/Icon';
 import { useAddToCollection, useIdentify } from '@/api/hooks/useIdentify';
 import { useAddTrackingPhoto } from '@/api/hooks/useMyGarden';
@@ -135,7 +135,7 @@ export function ScanScreen() {
           </View>
           <Text style={[styles.permissionTitle, { color: colors.text }]}>{t('scan.permissionTitle')}</Text>
           <Text style={[styles.permissionBody, { color: colors.muted }]}>{t('scan.permissionBody')}</Text>
-          <GradientButton
+          <PrimaryButton
             label={t('scan.permissionCta')}
             onPress={() => requestPermission()}
             style={styles.permissionCta}
@@ -166,7 +166,7 @@ export function ScanScreen() {
           <CircleIconButton
             icon="flash_on"
             variant="glass"
-            color={flashOn ? '#a3e635' : '#f0f7f2'}
+            color={flashOn ? '#8cc69b' : '#f0f7f2'}
             onPress={() => setFlashOn((prev) => !prev)}
           />
         </View>
@@ -186,7 +186,7 @@ export function ScanScreen() {
 
         {phase === 'analyzing' ? (
           <View style={styles.center}>
-            <ActivityIndicator color="#a3e635" size="large" />
+            <ActivityIndicator color="#8cc69b" size="large" />
             <Text style={styles.analyzingText}>{t('scan.analyzing')}</Text>
           </View>
         ) : null}
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   xpLabel: {
-    color: '#a3e635',
+    color: '#8cc69b',
     fontFamily: FontFamily.numeric,
     fontSize: 10,
   },
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   permissionTitle: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 18,
     textAlign: 'center',
   },

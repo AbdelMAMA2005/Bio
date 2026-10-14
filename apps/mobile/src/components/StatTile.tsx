@@ -17,7 +17,7 @@ export function StatTile({ icon, value, label, iconColor }: Props) {
   const { colors } = useAppTheme();
   return (
     <View style={[styles.tile, { backgroundColor: colors.surface, borderColor: colors.hairline }]}>
-      <Icon name={icon} size={22} color={iconColor ?? '#4ade80'} />
+      <Icon name={icon} size={22} color={iconColor ?? '#4e9a5e'} />
       <Text style={[styles.value, { color: colors.text }]}>{value}</Text>
       <Text style={[styles.label, { color: colors.muted }]}>{label}</Text>
     </View>

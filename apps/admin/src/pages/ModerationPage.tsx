@@ -18,7 +18,7 @@ export function ModerationPage() {
   if (isError || !data) return <p className="error-text">Impossible de charger la file de modération.</p>;
 
   if (data.items.length === 0) {
-    return <p style={{ color: 'var(--muted)' }}>Aucun signalement en attente — la file est vide.</p>;
+    return <p style={{ color: 'var(--muted)' }}>Aucun signalement en attente.</p>;
   }
 
   return (

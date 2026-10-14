@@ -58,7 +58,7 @@ export function QuestsPage() {
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ flex: 1, height: 7, borderRadius: 5, background: 'var(--pill)', overflow: 'hidden', minWidth: 40 }}>
-                  <div style={{ width: `${q.tauxCompletion}%`, height: '100%', background: 'linear-gradient(90deg,#4ade80,#a3e635)', borderRadius: 5 }} />
+                  <div style={{ width: `${q.tauxCompletion}%`, height: '100%', background: 'var(--accent-fill)', borderRadius: 5 }} />
                 </div>
                 <span className="numeric" style={{ fontSize: 11.5, color: 'var(--muted)' }}>{q.tauxCompletion}%</span>
               </div>

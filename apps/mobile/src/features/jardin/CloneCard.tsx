@@ -81,6 +81,9 @@ export const CloneCard = memo(function CloneCard({
         </View>
         <View style={styles.info}>
           <Text style={[styles.name, { color: colors.text }]}>{plant.nomCommun}</Text>
+          <Text style={[styles.latin, { color: colors.muted }]} numberOfLines={1}>
+            {plant.nomScientifique}
+          </Text>
           <View style={styles.healthRow}>
             <Icon name={HealthIcons[etatSante]} size={13} color={healthColor} />
             <Text style={[styles.healthLabel, { color: healthColor }]}>{t(`health.${etatSante}`)}</Text>
@@ -181,8 +184,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   name: {
-    fontFamily: FontFamily.bold,
-    fontSize: 14.5,
+    fontFamily: FontFamily.display,
+    fontSize: 17,
+  },
+  latin: {
+    fontFamily: FontFamily.latin,
+    fontSize: 13,
   },
   healthRow: {
     flexDirection: 'row',

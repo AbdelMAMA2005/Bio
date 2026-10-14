@@ -2,7 +2,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GradientButton } from '@/components/GradientButton';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { Icon } from '@/components/Icon';
 import { SecondaryButton } from '@/components/SecondaryButton';
 import type { DiagnosisResult } from '@/api/mock/diagnosis';
@@ -78,7 +78,7 @@ export function DiagnosisSheet({
               </View>
 
               <View style={styles.actions}>
-                <GradientButton
+                <PrimaryButton
                   label={t('diagnosis.reminderCta', { days: reminderDays })}
                   onPress={onScheduleReminder}
                   loading={schedulingReminder}
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   title: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 18,
     textAlign: 'center',
   },

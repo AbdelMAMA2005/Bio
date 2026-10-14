@@ -6,7 +6,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CircleIconButton } from '@/components/CircleIconButton';
-import { GradientButton } from '@/components/GradientButton';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { Icon } from '@/components/Icon';
 import { SecondaryButton } from '@/components/SecondaryButton';
 import { useTaggableCollection } from '@/api/hooks/useFeed';
@@ -134,7 +134,7 @@ export function PostComposerModal({ visible, onClose, onPublish, publishing }: P
               })}
             </ScrollView>
 
-            <GradientButton
+            <PrimaryButton
               label={t('community.publish')}
               onPress={handlePublish}
               disabled={!imageUri}
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
   },
   headerTitle: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 17,
   },
   content: {
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     borderWidth: 1,
-    borderRadius: Radius.pill,
+    borderRadius: Radius.xs,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
   },

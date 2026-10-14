@@ -1,6 +1,7 @@
 import { Switch } from 'react-native';
 
 import { useAppTheme } from '@/theme';
+import { Accent } from '@/theme/colors';
 
 type Props = {
   value: boolean;
@@ -13,8 +14,8 @@ export function ToggleSwitch({ value, onValueChange }: Props) {
     <Switch
       value={value}
       onValueChange={onValueChange}
-      trackColor={{ false: colors.chip, true: '#4ade80' }}
-      thumbColor={value ? '#a3e635' : isDark ? colors.muted : '#ffffff'}
+      trackColor={{ false: colors.chip, true: Accent }}
+      thumbColor={value ? '#ffffff' : isDark ? colors.muted : '#ffffff'}
       ios_backgroundColor={colors.chip}
     />
   );

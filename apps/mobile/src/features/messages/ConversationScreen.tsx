@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     minHeight: HitTarget,
-    borderRadius: Radius.pill,
+    borderRadius: Radius.xs,
     paddingHorizontal: Spacing.md,
     fontFamily: FontFamily.regular,
     fontSize: 13.5,

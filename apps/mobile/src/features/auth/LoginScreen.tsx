@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { GradientButton } from '@/components/GradientButton';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { LegalLinks } from '@/components/LegalLinks';
 import { SecondaryButton } from '@/components/SecondaryButton';
 import { TextField } from '@/components/TextField';
@@ -92,7 +92,7 @@ export function LoginScreen() {
           <Text style={[styles.forgot, { color: colors.active }]}>{t('auth.forgotPassword')}</Text>
         </Pressable>
 
-        <GradientButton label={t('auth.loginCta')} onPress={handleLogin} loading={isBusy} />
+        <PrimaryButton label={t('auth.loginCta')} onPress={handleLogin} loading={isBusy} />
 
         <View style={styles.dividerRow}>
           <View style={[styles.divider, { backgroundColor: colors.hairline }]} />
@@ -126,7 +126,7 @@ export function LoginScreen() {
 
 const styles = StyleSheet.create({
   title: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 24,
     textAlign: 'center',
     letterSpacing: -0.5,
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   error: {
-    color: '#d24744',
+    color: '#c8504a',
     fontFamily: FontFamily.medium,
     fontSize: 12.5,
   },

@@ -19,15 +19,15 @@ type Props = {
 
 export function SettingRow({ icon, label, hint, trailing, onPress, destructive, showBorder }: Props) {
   const { colors } = useAppTheme();
-  const color = destructive ? '#d24744' : colors.text;
+  const color = destructive ? '#c8504a' : colors.text;
 
   return (
     <Pressable
       onPress={onPress}
       disabled={!onPress}
       style={[styles.row, showBorder && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.hairline }]}>
-      <View style={[styles.iconWrap, { backgroundColor: destructive ? 'rgba(240,100,100,0.12)' : colors.chip }]}>
-        <Icon name={icon} size={19} color={destructive ? '#d24744' : '#4ade80'} />
+      <View style={[styles.iconWrap, { backgroundColor: destructive ? 'rgba(200,80,74,0.12)' : colors.chip }]}>
+        <Icon name={icon} size={19} color={destructive ? '#c8504a' : '#4e9a5e'} />
       </View>
       <View style={styles.textWrap}>
         <Text style={[styles.label, { color }]}>{label}</Text>

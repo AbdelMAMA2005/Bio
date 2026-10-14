@@ -8,13 +8,14 @@ export const Spacing = {
   xxl: 32,
 } as const;
 
+/** Angles nets : pas de formes « pilule » (seuls les avatars et pastilles restent ronds). */
 export const Radius = {
-  sm: 10,
-  md: 14,
-  lg: 18,
-  xl: 20,
-  xxl: 26,
-  pill: 999,
+  xs: 4,
+  sm: 6,
+  md: 8,
+  lg: 10,
+  xl: 12,
+  xxl: 14,
 } as const;
 
 export const HitTarget = 44;

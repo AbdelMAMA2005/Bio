@@ -43,6 +43,9 @@ export const DiscoveryCard = memo(function DiscoveryCard({ discovery, onPress }:
         <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
           {plant.nomCommun}
         </Text>
+        <Text style={[styles.latin, { color: colors.muted }]} numberOfLines={1}>
+          {plant.nomScientifique}
+        </Text>
         <View style={styles.metaRow}>
           <Icon name="location_on" size={12} color={colors.active} />
           <Text style={[styles.metaLabel, { color: colors.muted }]} numberOfLines={1}>
@@ -82,8 +85,12 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   name: {
-    fontFamily: FontFamily.bold,
-    fontSize: 13,
+    fontFamily: FontFamily.display,
+    fontSize: 15,
+  },
+  latin: {
+    fontFamily: FontFamily.latin,
+    fontSize: 12,
   },
   metaRow: {
     flexDirection: 'row',

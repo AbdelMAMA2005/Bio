@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   title: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 24,
     letterSpacing: -0.5,
   },
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
     bottom: Spacing.lg,
     width: HitTarget + 6,
     height: HitTarget + 6,
-    borderRadius: Radius.pill,
+    borderRadius: Radius.xs,
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0px 4px 10px rgba(0,0,0,0.25)',

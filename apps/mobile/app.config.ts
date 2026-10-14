@@ -35,7 +35,7 @@ const config = {
     // Google Sign-In identifie l'APK par ce package + la SHA-1 de sa signature.
     package: 'com.planai',
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
+      backgroundColor: '#2f6e40',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -58,8 +58,8 @@ const config = {
     [
       'expo-splash-screen',
       {
-        backgroundColor: '#eef3ea',
-        dark: { backgroundColor: '#0f1b14' },
+        backgroundColor: '#f6f3ec',
+        dark: { backgroundColor: '#111813' },
         image: './assets/images/splash-icon.png',
         imageWidth: 76,
       },
@@ -84,7 +84,7 @@ const config = {
     ],
     [
       'expo-notifications',
-      { icon: './assets/images/splash-icon.png', color: '#4ade80' },
+      { icon: './assets/images/splash-icon.png', color: '#2f6e40' },
     ],
     [
       'expo-location',

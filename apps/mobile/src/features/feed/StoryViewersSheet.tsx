@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   title: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 16,
     textAlign: 'center',
     marginBottom: Spacing.xs,

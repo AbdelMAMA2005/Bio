@@ -1,8 +1,7 @@
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AccentGradient, AccentOnColor } from '@/theme/colors';
+import { Accent, AccentOnColor } from '@/theme/colors';
 import { FontFamily } from '@/theme/typography';
 
 type Props = {
@@ -17,7 +16,7 @@ type Props = {
 /**
  * Composant Avatar unique et réutilisable pour toute l'app (feed, commentaires, stories,
  * en-têtes, profil, Mon Jardin…) : affiche la vraie photo de profil quand elle existe,
- * sinon un rond dégradé avec l'initiale du nom — jamais un symbole "@" générique. Remplace
+ * sinon un rond vert forêt avec l'initiale du nom — jamais un symbole "@" générique. Remplace
  * l'ancien `AvatarBadge`, qui n'affichait jamais `urlAvatar` (voir rapport.md).
  */
 export function Avatar({ uri, name, size = 42, onPress }: Props) {
@@ -31,13 +30,10 @@ export function Avatar({ uri, name, size = 42, onPress }: Props) {
       transition={150}
     />
   ) : (
-    <LinearGradient
-      colors={AccentGradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <View
       style={[styles.badge, { width: size, height: size, borderRadius: size / 2 }]}>
       <Text style={[styles.initial, { fontSize: size * 0.4 }]}>{initial}</Text>
-    </LinearGradient>
+    </View>
   );
 
   if (!onPress) return content;
@@ -50,14 +46,15 @@ export function Avatar({ uri, name, size = 42, onPress }: Props) {
 
 const styles = StyleSheet.create({
   badge: {
+    backgroundColor: Accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   image: {
-    backgroundColor: 'rgba(143,179,160,0.2)',
+    backgroundColor: 'rgba(154,168,158,0.2)',
   },
   initial: {
     color: AccentOnColor,
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
   },
 });

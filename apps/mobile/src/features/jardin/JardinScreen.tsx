@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   title: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 24,
     letterSpacing: -0.5,
   },

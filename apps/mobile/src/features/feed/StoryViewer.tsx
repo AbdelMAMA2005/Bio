@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.xs,
     paddingVertical: Spacing.sm,
-    borderRadius: Radius.pill,
+    borderRadius: Radius.xs,
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
   viewersLabel: {
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   replyInput: {
     flex: 1,
     minHeight: HitTarget,
-    borderRadius: Radius.pill,
+    borderRadius: Radius.xs,
     paddingHorizontal: Spacing.md,
     color: chrome.text,
     fontFamily: FontFamily.regular,

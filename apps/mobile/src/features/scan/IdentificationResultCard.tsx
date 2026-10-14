@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   xpFloating: {
     position: 'absolute',
     top: -6,
-    color: '#a3e635',
+    color: '#4e9a5e',
     fontFamily: FontFamily.numericBold,
     fontSize: 13,
   },
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   },
   rarityChip: {
     alignSelf: 'flex-start',
-    borderRadius: Radius.pill,
+    borderRadius: Radius.xs,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     marginBottom: 2,
@@ -177,13 +177,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   name: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 18,
   },
   scientific: {
-    fontFamily: FontFamily.regular,
-    fontSize: 12.5,
-    fontStyle: 'italic',
+    fontFamily: FontFamily.latin,
+    fontSize: 14,
   },
   metaRow: {
     flexDirection: 'row',
@@ -203,7 +202,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     alignItems: 'center',
     gap: Spacing.xs,
-    borderRadius: Radius.pill,
+    borderRadius: Radius.xs,
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
   },

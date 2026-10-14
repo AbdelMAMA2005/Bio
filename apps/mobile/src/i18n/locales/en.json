@@ -9,10 +9,10 @@
   "feedback": {
     "sectionTitle": "Help and suggestions",
     "suggestionTitle": "Make a suggestion",
-    "suggestionHint": "An idea to improve PlantAI?",
+    "suggestionHint": "An idea to improve PlanAI?",
     "reportTitle": "Report a problem",
     "reportHint": "Tell us what isn't working",
-    "suggestionBody": "Share your idea with the PlantAI team. Every suggestion helps us improve the app.",
+    "suggestionBody": "Share your idea with the PlanAI team. Every suggestion helps us improve the app.",
     "reportBody": "Describe the problem and the steps to reproduce it. Include what you expected and what happened.",
     "messageLabel": "Your message",
     "suggestionPlaceholder": "I'd like to be able to…",
@@ -21,7 +21,7 @@
     "privacy": "Your message and account email will be shared with the team so we can reply. Do not include passwords.",
     "send": "Send",
     "sentTitle": "Message sent!",
-    "sentBody": "Thank you! Your message has been sent to the PlantAI team.",
+    "sentBody": "Thank you! Your message has been sent to the PlanAI team.",
     "errors": {
       "unavailable": "Sending is temporarily unavailable. Your text is kept here; please try again later.",
       "rate_limited": "You've sent several messages recently. Wait a few minutes before trying again.",
@@ -305,7 +305,7 @@
   },
   "location": {
     "errorTitle": "Location unavailable",
-    "permission": "Allow PlantAI to access your location in settings, then retry.",
+    "permission": "Allow PlanAI to access your location in settings, then retry.",
     "services": "Enable device location, then retry.",
     "unavailable": "Could not get your position. Try outdoors or check location settings.",
     "close": "Cancel",

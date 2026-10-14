@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Dimensions, FlatList, Pressable, StyleSheet, Text, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GradientButton } from '@/components/GradientButton';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { Icon } from '@/components/Icon';
 import { useOnboarding } from '@/features/onboarding/OnboardingProvider';
 import { useAppTheme } from '@/theme';
@@ -89,7 +89,7 @@ export function OnboardingScreen() {
         </View>
 
         <View style={styles.footer}>
-          <GradientButton label={t(isLast ? 'onboarding.getStarted' : 'onboarding.next')} onPress={goNext} />
+          <PrimaryButton label={t(isLast ? 'onboarding.getStarted' : 'onboarding.next')} onPress={goNext} />
         </View>
       </SafeAreaView>
     </View>
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   title: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 22,
     textAlign: 'center',
   },

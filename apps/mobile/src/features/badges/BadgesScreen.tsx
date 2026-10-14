@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
   },
   headerTitle: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 17,
   },
   loader: {

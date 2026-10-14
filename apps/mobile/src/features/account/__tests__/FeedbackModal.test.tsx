@@ -17,9 +17,9 @@ jest.mock('@/components/CircleIconButton', () => {
   const { Button } = require('react-native');
   return { CircleIconButton: ({ onPress }: any) => <Button title="close" onPress={onPress} /> };
 });
-jest.mock('@/components/GradientButton', () => {
+jest.mock('@/components/PrimaryButton', () => {
   const { Button } = require('react-native');
-  return { GradientButton: ({ label, onPress, loading, disabled }: any) => <Button title={label} onPress={onPress} disabled={loading || disabled} /> };
+  return { PrimaryButton: ({ label, onPress, loading, disabled }: any) => <Button title={label} onPress={onPress} disabled={loading || disabled} /> };
 });
 
 const send = sendFeedback as jest.Mock;

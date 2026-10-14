@@ -9,10 +9,10 @@
   "feedback": {
     "sectionTitle": "Aide et suggestions",
     "suggestionTitle": "Faire une suggestion",
-    "suggestionHint": "Une idée pour améliorer PlantAI ?",
+    "suggestionHint": "Une idée pour améliorer PlanAI ?",
     "reportTitle": "Signaler un problème",
     "reportHint": "Dis-nous ce qui ne fonctionne pas",
-    "suggestionBody": "Partage ton idée avec l'équipe PlantAI. Chaque suggestion nous aide à améliorer l'application.",
+    "suggestionBody": "Partage ton idée avec l'équipe PlanAI. Chaque suggestion nous aide à améliorer l'application.",
     "reportBody": "Décris le problème et les étapes pour le reproduire. Indique ce que tu attendais et ce qui s'est passé.",
     "messageLabel": "Ton message",
     "suggestionPlaceholder": "J'aimerais pouvoir…",
@@ -21,7 +21,7 @@
     "privacy": "Ton message et l'e-mail de ton compte seront transmis à l'équipe pour pouvoir te répondre. N'inclus pas de mot de passe.",
     "send": "Envoyer",
     "sentTitle": "Message envoyé !",
-    "sentBody": "Merci ! Ton message a été transmis à l'équipe PlantAI.",
+    "sentBody": "Merci ! Ton message a été transmis à l'équipe PlanAI.",
     "errors": {
       "unavailable": "L'envoi est momentanément indisponible. Ton texte est conservé ici ; réessaie plus tard.",
       "rate_limited": "Tu as envoyé plusieurs messages récemment. Patiente quelques minutes avant de réessayer.",
@@ -305,7 +305,7 @@
   },
   "location": {
     "errorTitle": "Localisation indisponible",
-    "permission": "Autorise la localisation de PlantAI dans les réglages, puis réessaie.",
+    "permission": "Autorise la localisation de PlanAI dans les réglages, puis réessaie.",
     "services": "Active la localisation du téléphone, puis réessaie.",
     "unavailable": "Impossible d’obtenir ta position. Réessaie à l’extérieur ou vérifie les réglages de localisation.",
     "close": "Annuler",

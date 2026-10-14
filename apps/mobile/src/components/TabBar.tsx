@@ -1,13 +1,12 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/Icon';
 import { useAppTheme } from '@/theme';
-import { AccentGradient, AccentOnColor } from '@/theme/colors';
+import { Accent, AccentOnColor } from '@/theme/colors';
 import type { IconName } from '@/theme/icons';
-import { Spacing, TabBarHeight } from '@/theme/spacing';
+import { Radius, Spacing, TabBarHeight } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
 
 const TAB_META: Record<string, { icon: IconName; labelKey: string }> = {
@@ -53,13 +52,9 @@ export function TabBar({ state, navigation }: TabBarProps) {
         if (route.name === 'scan') {
           return (
             <Pressable key={route.key} onPress={onPress} hitSlop={8} style={styles.scanWrap}>
-              <LinearGradient
-                colors={AccentGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.scanButton, { borderColor: isFocused ? '#ffffff' : 'transparent' }]}>
-                <Icon name={meta.icon} size={32} color={AccentOnColor} />
-              </LinearGradient>
+              <View style={[styles.scanButton, { borderColor: isFocused ? colors.text : 'transparent' }]}>
+                <Icon name={meta.icon} size={28} color={AccentOnColor} />
+              </View>
               <Text style={[styles.label, { color, marginTop: 4 }]}>{t(meta.labelKey)}</Text>
             </Pressable>
           );
@@ -69,8 +64,8 @@ export function TabBar({ state, navigation }: TabBarProps) {
           <Pressable key={route.key} onPress={onPress} hitSlop={8} style={styles.tabItem}>
             <View
               style={[
-                styles.pill,
-                { backgroundColor: isFocused ? 'rgba(74,222,128,0.16)' : 'transparent' },
+                styles.iconWrap,
+                { backgroundColor: isFocused ? colors.activeSoft : 'transparent' },
               ]}>
               <Icon name={meta.icon} size={24} color={color} />
             </View>
@@ -90,7 +85,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: Spacing.md,
     paddingHorizontal: Spacing.xl,
-    boxShadow: '0px -4px 14px rgba(0,0,0,0.12)',
   },
   tabItem: {
     alignItems: 'center',
@@ -98,10 +92,10 @@ const styles = StyleSheet.create({
     width: 76,
     paddingTop: 2,
   },
-  pill: {
+  iconWrap: {
     paddingVertical: 4,
-    paddingHorizontal: 18,
-    borderRadius: 14,
+    paddingHorizontal: 14,
+    borderRadius: Radius.sm,
   },
   label: {
     fontFamily: FontFamily.semiBold,
@@ -109,16 +103,15 @@ const styles = StyleSheet.create({
   },
   scanWrap: {
     alignItems: 'center',
-    marginTop: -22,
+    marginTop: -10,
   },
   scanButton: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+    width: 56,
+    height: 56,
+    borderRadius: Radius.xxl,
+    backgroundColor: Accent,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    boxShadow: '0px 10px 16px rgba(163,230,53,0.6)',
-    elevation: 8,
+    borderWidth: 2,
   },
 });

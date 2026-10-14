@@ -35,52 +35,41 @@ export function LoginPage() {
       <div className="login-shell">
         <div className="login-panel">
           <div className="login-brand">
-            <div
-              style={{
-                position: 'absolute',
-                top: -60,
-                right: -50,
-                width: 220,
-                height: 220,
-                borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(163,230,53,.22), transparent 70%)',
-              }}
-            />
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 11, marginBottom: 22 }}>
               <div
                 style={{
                   width: 42,
                   height: 42,
-                  borderRadius: 13,
-                  background: 'linear-gradient(135deg,#4ade80,#a3e635)',
+                  borderRadius: 8,
+                  background: '#f6f3ec',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#13251a',
+                  color: '#1f3a29',
                 }}
               >
                 <Icon name="eco" size={24} />
               </div>
               <div style={{ lineHeight: 1.1 }}>
-                <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.3px' }}>PlanAI</div>
-                <div style={{ fontSize: 11.5, color: '#8fb3a0', fontWeight: 600 }}>Console admin</div>
+                <div className="brand-title" style={{ fontSize: 19 }}>PlanAI</div>
+                <div style={{ fontSize: 11.5, color: '#b9c6bc', fontWeight: 600 }}>Console admin</div>
               </div>
             </div>
-            <div style={{ position: 'relative', fontSize: 22, fontWeight: 800, lineHeight: 1.25, letterSpacing: '-.4px' }}>
-              Pilotez l&rsquo;écosystème PlanAI
+            <div className="login-title" style={{ position: 'relative', fontSize: 24, lineHeight: 1.25 }}>
+              Administration de PlanAI
             </div>
-            <p style={{ position: 'relative', fontSize: 13.5, lineHeight: 1.55, color: '#9fbcab', marginTop: 10 }}>
-              Utilisateurs, référentiel botanique, modération, défis et services
-              d&rsquo;identification — depuis une seule console.
+            <p style={{ position: 'relative', fontSize: 13.5, lineHeight: 1.55, color: '#c9d3cb', marginTop: 10 }}>
+              Comptes, référentiel des espèces, signalements, défis et état des
+              services d&rsquo;identification.
             </p>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, marginTop: 22, fontSize: 12, color: '#8fb3a0' }}>
-              <Icon name="lock" size={16} color="#a3e635" />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, marginTop: 22, fontSize: 12, color: '#b9c6bc' }}>
+              <Icon name="lock" size={16} color="#8cc69b" />
               Accès réservé aux administrateurs
             </div>
           </div>
 
           <form className="login-form" onSubmit={onSubmit}>
-            <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-.3px' }}>Connexion</div>
+            <div className="login-title" style={{ fontSize: 22 }}>Connexion</div>
             <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 3, marginBottom: 22 }}>
               Authentifiez-vous pour accéder à la console
             </div>

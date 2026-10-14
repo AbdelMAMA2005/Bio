@@ -67,7 +67,7 @@ export function PlantsPage() {
                         <div className="truncate" style={{ fontSize: 11.5, color: 'var(--muted)', fontStyle: 'italic' }}>{p.nomScientifique}</div>
                       </div>
                     </div>
-                    <span className="truncate" style={{ fontSize: 12.5, color: 'var(--soft)' }}>{p.famille || '—'}</span>
+                    <span className="truncate" style={{ fontSize: 12.5, color: 'var(--soft)' }}>{p.famille || '-'}</span>
                     <span className="badge-uppercase" style={{ background: rar.bg, color: rar.color, justifySelf: 'start' }}>
                       {p.badgeRarete || 'Commun'}
                     </span>

@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   title: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 20,
   },
   text: {

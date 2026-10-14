@@ -1,19 +1,23 @@
+/**
+ * Inter pour l'interface, Source Serif 4 pour les titres (`display`) et les noms latins
+ * (`latin`, italique) : l'esprit d'une planche d'herbier.
+ */
 export const FontFamily = {
-  regular: 'Outfit_400Regular',
-  medium: 'Outfit_500Medium',
-  semiBold: 'Outfit_600SemiBold',
-  bold: 'Outfit_700Bold',
-  extraBold: 'Outfit_800ExtraBold',
-  numeric: 'SpaceGrotesk_600SemiBold',
-  numericBold: 'SpaceGrotesk_700Bold',
+  regular: 'Inter_400Regular',
+  medium: 'Inter_500Medium',
+  semiBold: 'Inter_600SemiBold',
+  bold: 'Inter_700Bold',
+  display: 'SourceSerif4_600SemiBold',
+  latin: 'SourceSerif4_400Regular_Italic',
+  numeric: 'Inter_600SemiBold',
+  numericBold: 'Inter_700Bold',
 } as const;
 
 export const FontsToLoad = {
-  Outfit_400Regular: require('@expo-google-fonts/outfit/400Regular/Outfit_400Regular.ttf'),
-  Outfit_500Medium: require('@expo-google-fonts/outfit/500Medium/Outfit_500Medium.ttf'),
-  Outfit_600SemiBold: require('@expo-google-fonts/outfit/600SemiBold/Outfit_600SemiBold.ttf'),
-  Outfit_700Bold: require('@expo-google-fonts/outfit/700Bold/Outfit_700Bold.ttf'),
-  Outfit_800ExtraBold: require('@expo-google-fonts/outfit/800ExtraBold/Outfit_800ExtraBold.ttf'),
-  SpaceGrotesk_600SemiBold: require('@expo-google-fonts/space-grotesk/600SemiBold/SpaceGrotesk_600SemiBold.ttf'),
-  SpaceGrotesk_700Bold: require('@expo-google-fonts/space-grotesk/700Bold/SpaceGrotesk_700Bold.ttf'),
+  Inter_400Regular: require('@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf'),
+  Inter_500Medium: require('@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf'),
+  Inter_600SemiBold: require('@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf'),
+  Inter_700Bold: require('@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf'),
+  SourceSerif4_600SemiBold: require('@expo-google-fonts/source-serif-4/600SemiBold/SourceSerif4_600SemiBold.ttf'),
+  SourceSerif4_400Regular_Italic: require('@expo-google-fonts/source-serif-4/400Regular_Italic/SourceSerif4_400Regular_Italic.ttf'),
 };

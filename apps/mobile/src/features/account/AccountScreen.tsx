@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
 import { CircleIconButton } from '@/components/CircleIconButton';
-import { GradientButton } from '@/components/GradientButton';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { LegalLinks } from '@/components/LegalLinks';
 import { Icon } from '@/components/Icon';
 import { SecondaryButton } from '@/components/SecondaryButton';
@@ -177,8 +177,8 @@ export function AccountScreen() {
           <View style={styles.statsRow}>
             <StatTile icon="photo_camera" value={stats.captures} label={t('account.statsCaptures')} />
             <StatTile icon="eco" value={stats.species} label={t('account.statsSpecies')} />
-            <StatTile icon="star" value={stats.rares} label={t('account.statsRares')} iconColor="#c084fc" />
-            <StatTile icon="paid" value={stats.coins} label={t('account.statsCoins')} iconColor="#e0972a" />
+            <StatTile icon="star" value={stats.rares} label={t('account.statsRares')} iconColor="#8f5ba3" />
+            <StatTile icon="paid" value={stats.coins} label={t('account.statsCoins')} iconColor="#b7811a" />
           </View>
 
           {/* Préférences */}
@@ -272,7 +272,7 @@ export function AccountScreen() {
                 {passwordMessage ? (
                   <Text style={[styles.passwordMessage, { color: colors.active }]}>{passwordMessage}</Text>
                 ) : null}
-                <GradientButton label={t('account.updatePassword')} onPress={submitPasswordChange} loading={isBusy} />
+                <PrimaryButton label={t('account.updatePassword')} onPress={submitPasswordChange} loading={isBusy} />
               </View>
             ) : null}
             <SettingRow
@@ -301,7 +301,7 @@ export function AccountScreen() {
                   onChangeText={setDeletePassword}
                 />
                 {deleteError ? <Text style={[styles.passwordMessage, { color: colors.active }]}>{deleteError}</Text> : null}
-                <GradientButton
+                <PrimaryButton
                   label={t('account.deleteConfirmCta')}
                   onPress={confirmDelete}
                   loading={isBusy}
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
   },
   headerTitle: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 17,
   },
   content: {
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 4,
-    backgroundColor: '#a3e635',
+    backgroundColor: '#2f6e40',
   },
   statsRow: {
     flexDirection: 'row',

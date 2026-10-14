@@ -26,7 +26,7 @@ export function Sidebar() {
     <aside className="sidebar">
       <div className="brand">
         <div className="brand-mark">
-          <Icon name="eco" size={22} color="#13251a" />
+          <Icon name="eco" size={22} color="var(--on-accent)" />
         </div>
         <div>
           <div className="brand-title">PlanAI</div>

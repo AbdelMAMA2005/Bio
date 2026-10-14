@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,7 +10,7 @@ export function AuthScreenLayout({ children }: { children: ReactNode }) {
   const { colors } = useAppTheme();
 
   return (
-    <LinearGradient colors={colors.backdropGradient} style={styles.fill}>
+    <View style={[styles.fill, { backgroundColor: colors.screen }]}>
       <SafeAreaView style={styles.fill}>
         <KeyboardAvoidingView
           behavior="padding"
@@ -30,7 +29,7 @@ export function AuthScreenLayout({ children }: { children: ReactNode }) {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 

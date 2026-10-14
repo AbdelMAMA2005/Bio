@@ -15,7 +15,7 @@ export function Switch({ checked, onChange, disabled, label }: Props) {
       disabled={disabled}
       className="switch"
       style={{
-        background: checked ? 'linear-gradient(135deg,#4ade80,#a3e635)' : 'var(--pill)',
+        background: checked ? 'var(--accent-fill)' : 'var(--pill)',
         opacity: disabled ? 0.5 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
       }}

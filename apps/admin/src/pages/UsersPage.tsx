@@ -282,7 +282,7 @@ function InviteAdminModal({ onClose }: { onClose: () => void }) {
       });
       const match = data.items.find((u) => u.email.toLowerCase() === email.toLowerCase());
       if (!match) {
-        setError("Aucun compte avec cet e-mail — la personne doit d'abord créer un compte via l'app PlanAI.");
+        setError("Aucun compte avec cet e-mail. La personne doit d'abord créer un compte via l'app PlanAI.");
         return;
       }
       await updateRole.mutateAsync({ id: match.id, role });

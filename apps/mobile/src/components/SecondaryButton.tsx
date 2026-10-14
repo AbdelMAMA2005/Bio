@@ -19,7 +19,7 @@ type Props = {
 export function SecondaryButton({ label, onPress, icon, loading, disabled, destructive, style }: Props) {
   const { colors } = useAppTheme();
   const isDisabled = disabled || loading;
-  const color = destructive ? '#d24744' : colors.soft;
+  const color = destructive ? '#c8504a' : colors.soft;
 
   return (
     <Pressable
@@ -28,8 +28,8 @@ export function SecondaryButton({ label, onPress, icon, loading, disabled, destr
       style={[
         styles.pressable,
         {
-          backgroundColor: destructive ? 'rgba(240,100,100,0.1)' : colors.chip,
-          borderColor: destructive ? 'rgba(240,100,100,0.3)' : colors.hairline,
+          backgroundColor: destructive ? 'rgba(200,80,74,0.08)' : colors.surface,
+          borderColor: destructive ? 'rgba(200,80,74,0.35)' : colors.border,
         },
         isDisabled && styles.disabled,
         style,

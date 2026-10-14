@@ -23,11 +23,15 @@ export const isSupabaseConfigured = (): boolean => {
   );
 };
 
+// Pré-rendu web (expo-router, output "static") : pas de `window`, donc pas de stockage de
+// session côté serveur. Sur mobile et dans le navigateur, la session est persistée normalement.
+const isServerRender = typeof window === 'undefined';
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
+    storage: isServerRender ? undefined : AsyncStorage,
+    autoRefreshToken: !isServerRender,
+    persistSession: !isServerRender,
     detectSessionInUrl: false,
   },
 });

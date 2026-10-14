@@ -26,7 +26,7 @@ export function ScanToast({ title, subtitle, variant = 'success' }: Props) {
     transform: [{ translateY: (1 - entrance.value) * -14 }],
   }));
 
-  const iconColor = variant === 'error' ? '#d24744' : colors.active;
+  const iconColor = variant === 'error' ? '#c8504a' : colors.active;
 
   return (
     <Animated.View style={[styles.wrap, style]} pointerEvents="none">

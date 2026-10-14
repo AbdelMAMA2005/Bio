@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CircleIconButton } from '@/components/CircleIconButton';
 import { ErrorState } from '@/components/ErrorState';
-import { GradientButton } from '@/components/GradientButton';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { Icon } from '@/components/Icon';
 import { PlantPhoto } from '@/components/PlantPhoto';
 import { RarityBadge } from '@/components/RarityBadge';
@@ -97,6 +97,7 @@ export function PlantDetailScreen({ plantId }: Props) {
           </View>
 
           <Text style={[styles.name, { color: colors.text }]}>{plant.nomCommun}</Text>
+          <Text style={[styles.latin, { color: colors.soft }]}>{plant.nomScientifique}</Text>
           <Text style={[styles.family, { color: colors.muted }]}>{t('plant.familyLabel', { family: plant.famille })}</Text>
 
           <View style={styles.metaRow}>
@@ -147,7 +148,7 @@ export function PlantDetailScreen({ plantId }: Props) {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('plant.aboutTitle')}</Text>
           <Text style={[styles.about, { color: colors.muted }]}>{plant.aPropos || t('plant.aboutUnavailable')}</Text>
 
-          <GradientButton
+          <PrimaryButton
             label={t('plant.viewInHerbarium')}
             onPress={() => router.push({ pathname: '/(tabs)/jardin', params: { tab: 'herbarium' } })}
             style={styles.cta}
@@ -189,7 +190,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    borderRadius: Radius.pill,
+    borderRadius: Radius.xs,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 3,
   },
@@ -198,9 +199,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   name: {
-    fontFamily: FontFamily.extraBold,
-    fontSize: 24,
+    fontFamily: FontFamily.display,
+    fontSize: 26,
     marginTop: 2,
+  },
+  latin: {
+    fontFamily: FontFamily.latin,
+    fontSize: 16,
   },
   family: {
     fontFamily: FontFamily.regular,
@@ -219,7 +224,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    borderRadius: Radius.pill,
+    borderRadius: Radius.xs,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 6,
   },

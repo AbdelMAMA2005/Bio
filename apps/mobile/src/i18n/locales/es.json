@@ -9,10 +9,10 @@
   "feedback": {
     "sectionTitle": "Ayuda y sugerencias",
     "suggestionTitle": "Hacer una sugerencia",
-    "suggestionHint": "¿Una idea para mejorar PlantAI?",
+    "suggestionHint": "¿Una idea para mejorar PlanAI?",
     "reportTitle": "Informar de un problema",
     "reportHint": "Cuéntanos qué no funciona",
-    "suggestionBody": "Comparte tu idea con el equipo de PlantAI. Cada sugerencia nos ayuda a mejorar la aplicación.",
+    "suggestionBody": "Comparte tu idea con el equipo de PlanAI. Cada sugerencia nos ayuda a mejorar la aplicación.",
     "reportBody": "Describe el problema y los pasos para reproducirlo. Explica qué esperabas y qué ocurrió.",
     "messageLabel": "Tu mensaje",
     "suggestionPlaceholder": "Me gustaría poder…",
@@ -21,7 +21,7 @@
     "privacy": "Tu mensaje y el correo de tu cuenta se compartirán con el equipo para poder responderte. No incluyas contraseñas.",
     "send": "Enviar",
     "sentTitle": "¡Mensaje enviado!",
-    "sentBody": "¡Gracias! Tu mensaje se ha enviado al equipo de PlantAI.",
+    "sentBody": "¡Gracias! Tu mensaje se ha enviado al equipo de PlanAI.",
     "errors": {
       "unavailable": "El envío no está disponible temporalmente. Tu texto se conserva aquí; inténtalo más tarde.",
       "rate_limited": "Has enviado varios mensajes recientemente. Espera unos minutos antes de intentarlo de nuevo.",
@@ -303,7 +303,7 @@
   },
   "location": {
     "errorTitle": "Ubicación no disponible",
-    "permission": "Permite la ubicación de PlantAI en ajustes e inténtalo de nuevo.",
+    "permission": "Permite la ubicación de PlanAI en ajustes e inténtalo de nuevo.",
     "services": "Activa la ubicación del teléfono e inténtalo de nuevo.",
     "unavailable": "No se pudo obtener tu posición. Prueba al aire libre o revisa los ajustes.",
     "close": "Cancelar",

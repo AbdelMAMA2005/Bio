@@ -1,10 +1,8 @@
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { useAppTheme } from '@/theme';
-import { StoryGradient } from '@/theme/colors';
 import { FontFamily } from '@/theme/typography';
 
 const SIZE = 62;
@@ -17,7 +15,7 @@ type Props =
       name: string;
       initial: string;
       thumbnailUri?: string;
-      /** `true` si tous les médias de la bulle ont déjà été vus (anneau plein plutôt que dégradé). */
+      /** `true` si tous les médias de la bulle ont déjà été vus (anneau gris plutôt que vert). */
       seen: boolean;
       onPress: () => void;
       /** Badge "+" superposé — uniquement sur "Ta story" quand elle a déjà du contenu. */
@@ -42,12 +40,12 @@ export function StoryBubble(props: Props) {
     );
   }
 
-  const ringColors = props.seen ? ([colors.idle, colors.idle] as const) : StoryGradient;
+  const ringColor = props.seen ? colors.idle : colors.active;
 
   return (
     <View style={styles.wrap}>
       <Pressable onPress={props.onPress}>
-        <LinearGradient colors={ringColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradientRing}>
+        <View style={[styles.ring, { borderColor: ringColor }]}>
           <View style={[styles.avatarInner, { backgroundColor: colors.screen }]}>
             {props.thumbnailUri ? (
               <Image source={{ uri: props.thumbnailUri }} style={styles.avatarImage} />
@@ -55,7 +53,7 @@ export function StoryBubble(props: Props) {
               <Text style={[styles.initial, { color: colors.text }]}>{props.initial.toUpperCase()}</Text>
             )}
           </View>
-        </LinearGradient>
+        </View>
         {props.onPressAdd ? (
           <Pressable
             onPress={props.onPressAdd}
@@ -94,11 +92,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  gradientRing: {
+  ring: {
     width: SIZE,
     height: SIZE,
     borderRadius: SIZE / 2,
-    padding: 2.5,
+    borderWidth: 2,
+    padding: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -115,7 +114,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   initial: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 20,
   },
   addBadge: {

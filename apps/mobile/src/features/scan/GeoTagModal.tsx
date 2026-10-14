@@ -1,7 +1,7 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { GradientButton } from '@/components/GradientButton';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { Icon } from '@/components/Icon';
 import { useAppTheme } from '@/theme';
 import { ToxicityColors } from '@/theme/colors';
@@ -29,7 +29,7 @@ export function GeoTagModal({ visible, busy, onAccept, onDecline }: Props) {
           </View>
           <Text style={[styles.title, { color: colors.text }]}>{t('geoTag.title')}</Text>
           <Text style={[styles.body, { color: colors.muted }]}>{t('geoTag.body')}</Text>
-          <GradientButton loading={busy} label={t('geoTag.accept')} onPress={onAccept} style={styles.acceptButton} />
+          <PrimaryButton loading={busy} label={t('geoTag.accept')} onPress={onAccept} style={styles.acceptButton} />
           <Pressable onPress={onDecline} disabled={busy} hitSlop={8}>
             <Text style={[styles.decline, { color: colors.muted }]}>{t('common.decline')}</Text>
           </Pressable>
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   title: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 17,
     textAlign: 'center',
   },

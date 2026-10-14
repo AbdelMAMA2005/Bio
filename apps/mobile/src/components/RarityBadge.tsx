@@ -27,7 +27,7 @@ export function RarityBadge({ rarete }: Props) {
 const styles = StyleSheet.create({
   badge: {
     alignSelf: 'flex-start',
-    borderRadius: Radius.pill,
+    borderRadius: Radius.xs,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 3,
   },

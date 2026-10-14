@@ -2,17 +2,14 @@ import type { EtatSante, Rarete } from '@planai/shared';
 
 import type { IconName } from '@/theme/icons';
 
-export const AccentGradient = ['#4ade80', '#a3e635'] as const;
-export const AccentOnColor = '#13251a';
-
-export const StoryGradient = ['#4ade80', '#a3e635', '#c084fc'] as const;
-
-type GradientColors = readonly [string, string, ...string[]];
+/**
+ * Direction « herbier naturaliste » : papier crème, vert forêt en couleur pleine, aucun
+ * dégradé. L'accent est identique dans les deux thèmes (texte blanc dessus, 6:1).
+ */
+export const Accent = '#2f6e40';
+export const AccentOnColor = '#ffffff';
 
 export type AppColors = {
-  backdropGradient: GradientColors;
-  scanGradient: GradientColors;
-  headerGradient: GradientColors;
   screen: string;
   surface: string;
   text: string;
@@ -24,7 +21,10 @@ export type AppColors = {
   tabBar: string;
   tabBorder: string;
   chip: string;
+  /** Liens, icônes et éléments actifs (version lisible de l'accent sur le fond du thème). */
   active: string;
+  /** Fond teinté discret derrière un élément actif. */
+  activeSoft: string;
   idle: string;
   statusBarText: string;
 };
@@ -33,61 +33,57 @@ export type ThemeMode = 'dark' | 'light';
 
 export const Palette: Record<ThemeMode, AppColors> = {
   dark: {
-    backdropGradient: ['#1c3b2e', '#0e1c16', '#0a1410'],
-    scanGradient: ['#1d3326', '#16241c', '#0f1b14'],
-    headerGradient: ['#1f3528', '#16241c'],
-    screen: '#0f1b14',
-    surface: '#16261d',
-    text: '#f0f7f2',
-    muted: '#8fb3a0',
-    soft: '#cfe3d6',
-    border: 'rgba(255,255,255,0.08)',
-    hairline: 'rgba(255,255,255,0.06)',
-    glass: 'rgba(13,24,18,0.78)',
-    tabBar: '#13241b',
-    tabBorder: 'rgba(255,255,255,0.08)',
-    chip: '#1d3226',
-    active: '#5aa832',
-    idle: '#6f8a7c',
-    statusBarText: '#f0f7f2',
+    screen: '#111813',
+    surface: '#18221b',
+    text: '#eceee8',
+    muted: '#9aa89e',
+    soft: '#c9d3cb',
+    border: 'rgba(236,238,232,0.11)',
+    hairline: 'rgba(236,238,232,0.06)',
+    glass: 'rgba(17,24,19,0.94)',
+    tabBar: '#151e18',
+    tabBorder: 'rgba(236,238,232,0.09)',
+    chip: '#202c24',
+    active: '#8cc69b',
+    activeSoft: 'rgba(140,198,155,0.14)',
+    idle: '#6e7c72',
+    statusBarText: '#eceee8',
   },
   light: {
-    backdropGradient: ['#cfe4cb', '#b9d2b3', '#aac6a3'],
-    scanGradient: ['#1d3326', '#16241c', '#0f1b14'],
-    headerGradient: ['#dcecd7', '#cde2c8'],
-    screen: '#eef3ea',
+    screen: '#f6f3ec',
     surface: '#ffffff',
-    text: '#15271d',
-    muted: '#5e7a6a',
-    soft: '#33503f',
-    border: 'rgba(0,0,0,0.08)',
-    hairline: 'rgba(0,0,0,0.05)',
-    glass: 'rgba(255,255,255,0.84)',
+    text: '#1c2620',
+    muted: '#5c6b61',
+    soft: '#34443a',
+    border: 'rgba(28,38,32,0.12)',
+    hairline: 'rgba(28,38,32,0.07)',
+    glass: 'rgba(255,255,255,0.94)',
     tabBar: '#ffffff',
-    tabBorder: 'rgba(0,0,0,0.07)',
-    chip: '#e4eede',
-    active: '#5aa832',
-    idle: '#9bb3a4',
-    statusBarText: '#15271d',
+    tabBorder: 'rgba(28,38,32,0.10)',
+    chip: '#ece7dc',
+    active: '#2f6e40',
+    activeSoft: 'rgba(47,110,64,0.10)',
+    idle: '#8a958d',
+    statusBarText: '#1c2620',
   },
 };
 
 export const RarityColors: Record<Rarete, { bg: string; text: string }> = {
-  commun: { bg: 'rgba(143,179,160,0.2)', text: '#8fb3a0' },
-  rare: { bg: 'rgba(56,189,248,0.2)', text: '#38bdf8' },
-  epique: { bg: 'rgba(192,132,252,0.22)', text: '#c084fc' },
+  commun: { bg: 'rgba(154,168,158,0.16)', text: '#b4c0b7' },
+  rare: { bg: 'rgba(122,170,214,0.16)', text: '#9cc3e6' },
+  epique: { bg: 'rgba(190,150,210,0.16)', text: '#d2b1e2' },
 };
 
 export const RarityColorsLight: Record<Rarete, { bg: string; text: string }> = {
-  commun: { bg: 'rgba(143,179,160,0.2)', text: '#5e7a6a' },
-  rare: { bg: 'rgba(56,189,248,0.2)', text: '#1f8fc4' },
-  epique: { bg: 'rgba(192,132,252,0.22)', text: '#9333ea' },
+  commun: { bg: '#ece7dc', text: '#4d5a51' },
+  rare: { bg: '#e3edf6', text: '#2b5f8a' },
+  epique: { bg: '#f0e7f3', text: '#6b3f7a' },
 };
 
 export const HealthColors: Record<EtatSante, string> = {
-  sain: '#3a9d4f',
-  alerte: '#e0972a',
-  malade: '#d24744',
+  sain: '#4e9a5e',
+  alerte: '#b7811a',
+  malade: '#c8504a',
 };
 
 export const HealthIcons: Record<EtatSante, IconName> = {
@@ -96,10 +92,11 @@ export const HealthIcons: Record<EtatSante, IconName> = {
   malade: 'error',
 };
 
+/** Tons moyens lisibles sur les deux thèmes (ces constantes ne dépendent pas du thème). */
 export const ToxicityColors = {
-  safe: { bg: 'rgba(74,222,128,0.16)', text: '#4ade80' },
-  toxic: { bg: 'rgba(240,100,100,0.16)', text: '#f06464' },
-  unknown: { bg: 'rgba(251,191,36,0.16)', text: '#fbbf24' },
+  safe: { bg: 'rgba(78,154,94,0.14)', text: '#4e9a5e' },
+  toxic: { bg: 'rgba(200,80,74,0.14)', text: '#c8504a' },
+  unknown: { bg: 'rgba(183,129,26,0.14)', text: '#b7811a' },
 } as const;
 
-export const AmberAccent = { bg: 'rgba(224,151,42,0.16)', text: '#e0972a' } as const;
+export const AmberAccent = { bg: 'rgba(183,129,26,0.14)', text: '#b7811a' } as const;

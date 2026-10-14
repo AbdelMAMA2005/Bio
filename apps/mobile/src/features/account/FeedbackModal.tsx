@@ -5,7 +5,7 @@ import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, Te
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CircleIconButton } from '@/components/CircleIconButton';
-import { GradientButton } from '@/components/GradientButton';
+import { PrimaryButton } from '@/components/PrimaryButton';
 import { Icon } from '@/components/Icon';
 import { FeedbackError, sendFeedback, type FeedbackKind } from './feedbackApi';
 import { useAppTheme } from '@/theme';
@@ -56,7 +56,7 @@ export function FeedbackModal({ kind, onClose }: { kind: FeedbackKind; onClose: 
                 <Icon name="check_circle" size={56} color={colors.active} />
                 <Text accessibilityRole="header" style={[styles.title, { color: colors.text }]}>{t('feedback.sentTitle')}</Text>
                 <Text style={[styles.body, { color: colors.muted }]}>{t('feedback.sentBody')}</Text>
-                <GradientButton label={t('common.close')} onPress={onClose} />
+                <PrimaryButton label={t('common.close')} onPress={onClose} />
               </View>
             ) : (
               <>
@@ -74,7 +74,7 @@ export function FeedbackModal({ kind, onClose }: { kind: FeedbackKind; onClose: 
                 <Text style={[styles.count, { color: colors.muted }]}>{message.length}/3000 · {t('feedback.minimum')}</Text>
                 <Text style={[styles.body, { color: colors.muted }]}>{t('feedback.privacy')}</Text>
                 {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-                <GradientButton label={t('feedback.send')} onPress={submit} loading={sending} disabled={!valid} />
+                <PrimaryButton label={t('feedback.send')} onPress={submit} loading={sending} disabled={!valid} />
               </>
             )}
           </ScrollView>
@@ -87,12 +87,12 @@ export function FeedbackModal({ kind, onClose }: { kind: FeedbackKind; onClose: 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.lg },
-  title: { fontFamily: FontFamily.extraBold, fontSize: 17, flexShrink: 1, textAlign: 'center' },
+  title: { fontFamily: FontFamily.display, fontSize: 17, flexShrink: 1, textAlign: 'center' },
   content: { padding: Spacing.lg, gap: Spacing.md },
   body: { fontFamily: FontFamily.regular, fontSize: 14, lineHeight: 21 },
   label: { fontFamily: FontFamily.semiBold, fontSize: 14 },
   input: { minHeight: 180, borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.md, fontFamily: FontFamily.regular, fontSize: 15, lineHeight: 23 },
   count: { fontFamily: FontFamily.regular, fontSize: 12, textAlign: 'right' },
-  error: { color: '#d24744', fontFamily: FontFamily.medium, fontSize: 13, lineHeight: 20 },
+  error: { color: '#c8504a', fontFamily: FontFamily.medium, fontSize: 13, lineHeight: 20 },
   success: { gap: Spacing.lg, paddingTop: Spacing.xl },
 });

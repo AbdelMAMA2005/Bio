@@ -1,8 +1,7 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
-import { AccentGradient, AccentOnColor } from '@/theme/colors';
+import { Accent, AccentOnColor } from '@/theme/colors';
 
 type Props = {
   size?: number;
@@ -10,21 +9,15 @@ type Props = {
 
 export function AppLogo({ size = 64 }: Props) {
   return (
-    <LinearGradient
-      colors={AccentGradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[
-        styles.container,
-        { width: size, height: size, borderRadius: size * 0.32 },
-      ]}>
+    <View style={[styles.container, { width: size, height: size, borderRadius: size * 0.22 }]}>
       <Icon name="eco" size={size * 0.55} color={AccentOnColor} />
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: Accent,
     alignItems: 'center',
     justifyContent: 'center',
   },

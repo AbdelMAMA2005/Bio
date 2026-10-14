@@ -100,7 +100,7 @@ export function PublicProfileScreen({ userId }: Props) {
                   <View style={styles.statsRow}>
                     <StatTile icon="photo_camera" value={profile.data.stats.captures} label={t('account.statsCaptures')} />
                     <StatTile icon="eco" value={profile.data.stats.especes} label={t('account.statsSpecies')} />
-                    <StatTile icon="star" value={profile.data.stats.rares} label={t('account.statsRares')} iconColor="#c084fc" />
+                    <StatTile icon="star" value={profile.data.stats.rares} label={t('account.statsRares')} iconColor="#8f5ba3" />
                   </View>
 
                   <SecondaryButton
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     textAlign: 'center',
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 16,
   },
   loader: {
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.lg,
   },
   pseudo: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 19,
   },
   levelCard: {
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 4,
-    backgroundColor: '#a3e635',
+    backgroundColor: '#2f6e40',
   },
   statsRow: {
     flexDirection: 'row',
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(143,179,160,0.25)',
+    borderTopColor: 'rgba(154,168,158,0.25)',
   },
   gridHeaderLabel: {
     fontFamily: FontFamily.semiBold,

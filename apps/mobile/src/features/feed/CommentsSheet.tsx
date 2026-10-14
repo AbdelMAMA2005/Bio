@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   title: {
-    fontFamily: FontFamily.extraBold,
+    fontFamily: FontFamily.display,
     fontSize: 16,
     textAlign: 'center',
     marginBottom: Spacing.xs,
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     minHeight: HitTarget,
-    borderRadius: Radius.pill,
+    borderRadius: Radius.xs,
     paddingHorizontal: Spacing.md,
     fontFamily: FontFamily.regular,
     fontSize: 13.5,

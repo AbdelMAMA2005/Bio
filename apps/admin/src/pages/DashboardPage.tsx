@@ -108,10 +108,10 @@ export function DashboardPage() {
                   style={{
                     width: '100%',
                     height: `${Math.max((c.valeur / maxChart) * 100, 2)}%`,
-                    borderRadius: '7px 7px 3px 3px',
+                    borderRadius: '4px 4px 2px 2px',
                     background:
                       i === data.chart7j.length - 1
-                        ? 'linear-gradient(180deg,#4ade80,#a3e635)'
+                        ? 'var(--accent-fill)'
                         : 'var(--pill)',
                   }}
                 />
@@ -173,7 +173,7 @@ export function DashboardPage() {
                 <span style={{ width: 9, height: 9, borderRadius: '50%', background: serviceStatusColor(s.status), flexShrink: 0 }} />
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600 }}>{s.nom}</span>
                 <span className="numeric" style={{ fontSize: 12, color: 'var(--muted)' }}>
-                  {s.latenceMs != null ? `${s.latenceMs} ms` : '—'}
+                  {s.latenceMs != null ? `${s.latenceMs} ms` : '-'}
                 </span>
                 <span style={{ fontSize: 11.5, fontWeight: 700, color: serviceStatusColor(s.status) }}>
                   {serviceStatusLabel(s.status)}
