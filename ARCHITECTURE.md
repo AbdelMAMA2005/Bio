@@ -13,7 +13,7 @@ Le dépôt reste un monorepo, mais la couche backend historique `apps/api` n'est
 planai/
 ├── apps/
 │   ├── mobile/          # Application React Native (Expo)
-│   ├── admin/           # Console admin web (legacy / migration séparée)
+│   ├── admin/           # Console admin web (React + Vite, branchée sur Supabase)
 │   └── api/             # Code historique, non requis par le mobile
 ├── packages/
 │   └── shared/          # Types TS partagés
@@ -145,39 +145,48 @@ apps/api/
 
 ---
 
-## 3bis. Console admin — `apps/admin` (React + Vite) + module `admin` (`apps/api`)
+## 3bis. Console admin : `apps/admin` (React + Vite) sur Supabase
 
 Espace web séparé de l'app mobile, pour piloter l'application (utilisateurs, référentiel
-plantes, modération, défis, paramètres). Détail complet des endpoints dans
-`API_CONTRACT.md` §10 ; ce qui suit résume les décisions structurantes.
+plantes, modération, défis, paramètres). Depuis octobre 2026, la console parle directement
+au même projet Supabase que le mobile : elle ne dépend plus de `apps/api`.
 
 ```
-apps/admin/
-├── src/
-│   ├── main.tsx / App.tsx      # bootstrap, React Router
-│   ├── theme/                  # design system (variables CSS clair/sombre, repris de
-│   │                             #   maquette/PlanAI-admin-maquette.html), ThemeProvider
-│   ├── api/
-│   │   ├── client.ts           # axios + intercepteur JWT (Bearer + refresh, même schéma
-│   │   │                       #   que apps/mobile/src/api/client.ts)
-│   │   └── hooks/               # useStats(), useUsers(), usePlants(), useModeration()…
-│   ├── components/              # Sidebar, Topbar, Table, Badge, Switch, ProtectedRoute…
-│   └── pages/                   # LoginPage, DashboardPage, UsersPage, PlantsPage,
-│                                 #   ModerationPage, QuestsPage, SettingsPage (7 écrans)
-└── package.json                # scripts dev/build/preview (Vite)
+apps/admin/src/
+├── api/
+│   ├── client.ts     # client Supabase, ApiError (codes Postgres -> 403/404/409), rpc()
+│   └── hooks/        # useStats, useUsers, usePlants, useModeration, useQuests, useSettings
+├── auth/             # AuthProvider : Supabase Auth + vérification du rôle par admin_me()
+├── components/, pages/, theme/
+supabase/
+├── migrations/20261015090000_admin_console.sql        # rôles, RPC admin_*, policies, audit
+├── migrations_a_venir/20261015090100_profiles_private_columns.sql  # e-mail privé (après la sortie mobile)
+├── functions/admin-status/                             # présence des clés de service
+└── tests/admin_console.sql                             # tests SQL (droits + chaque action)
 ```
 
-**Rôles** : `User.role` (`'membre' | 'moderateur' | 'admin'`, nouveau champ — voir §4),
-distinct du booléen `estAdmin` historique (gardé, synchronisé automatiquement quand
-`role` passe à/depuis `'admin'`, pour ne jamais casser l'`AdminGuard` déjà en place sur
-`/plants`). Un `RoleGuard` + décorateur `@Roles(...)` protège individuellement chaque route
-`/admin/*` — `AdminModule` est autonome (réutilise `PlantsModule`/`UserModule` existants
-pour ne jamais dupliquer leur logique métier) et n'est monté nulle part côté mobile.
+**Rôles** : `profiles.role` (`membre | moderateur | admin`) ; `est_admin` historique reste
+synchronisé. `is_staff()` et `is_admin()` (SQL) servent aux policies et aux RPC.
 
-**Pas de 2e système d'auth** : la console se connecte via le `POST /auth/login` déjà
-existant : c'est le `RoleGuard` sur les routes `/admin/*`, pas un mécanisme de connexion
-séparé, qui empêche un `'membre'` d'atteindre la console (`GET /admin/me` sert de
-vérification de session au chargement).
+**Sécurité** : toutes les actions sensibles passent par des RPC `SECURITY DEFINER`
+(`admin_users`, `admin_set_user_role`, `admin_set_user_suspended`, `admin_delete_user`,
+`admin_plants`, `admin_quests`, `admin_moderation`, `admin_moderation_resolve`,
+`admin_stats`, `admin_me`) qui vérifient le rôle côté base. La clé publique utilisée par
+la console ne donne donc aucun droit à elle seule. Les écritures simples (espèces, défis,
+fonctionnalités) passent par la table, autorisées par policy. Chaque action est inscrite
+dans `admin_audit_logs` (par la RPC ou par trigger), journal en lecture seule.
+
+**Suspension et suppression** : elles posent aussi `auth.users.banned_until`, pour que la
+personne ne puisse plus se connecter depuis le mobile.
+
+| Action | Admin | Modérateur |
+| --- | --- | --- |
+| Voir tableau de bord, utilisateurs, espèces, défis, signalements | oui | oui |
+| Suspendre / réactiver un membre | oui | oui (pas un membre de l'équipe) |
+| Changer un rôle, supprimer un compte (RGPD) | oui | non |
+| Créer / modifier / supprimer une espèce | oui | non |
+| Créer un défi / activer ou modifier un défi | oui / oui | non / oui |
+| Fonctionnalités, clés de service, journal d'audit | oui | non |
 
 ---
 

@@ -4,42 +4,38 @@ import userEvent from '@testing-library/user-event';
 import { App } from './App';
 
 /**
- * Test d'intégration RÉEL (pas de mock) : rend l'app complète et parle au VRAI backend
- * (voir vite.config.ts, `environmentOptions.jsdom.url` posé à l'origine du serveur dev
- * pour que le CORS dev — apps/api/src/main.ts, `devLanOrigin` — laisse passer la requête
- * comme un vrai navigateur le ferait).
- *
- * AUCUN identifiant en dur ici (ç'a été l'erreur lors de l'écriture initiale de ce fichier,
- * corrigée avant tout commit — voir rapport.md) : un compte admin de test doit être créé
- * manuellement (POST /auth/register puis promotion role='admin' en base, voir rapport.md
- * §Vérification) et ses identifiants fournis via variables d'environnement
- * VITE_SMOKE_ADMIN_EMAIL / VITE_SMOKE_ADMIN_PASSWORD (voir .env.example). Sans ces
- * variables (cas par défaut), ou si l'API n'est pas démarrée, le test s'ignore
- * silencieusement plutôt que d'échouer toute la suite.
+ * Test d'intégration RÉEL (pas de mock) : rend l'app complète et parle au vrai projet
+ * Supabase (VITE_SUPABASE_URL). Aucun identifiant en dur : un compte de test ayant le
+ * rôle admin doit être fourni via VITE_SMOKE_ADMIN_EMAIL / VITE_SMOKE_ADMIN_PASSWORD
+ * (voir .env.example). Sans ces variables, ou si Supabase est injoignable, le test
+ * s'ignore plutôt que d'échouer toute la suite.
  */
-const API_URL = 'http://localhost:3000';
-const TEST_EMAIL = import.meta.env.VITE_SMOKE_ADMIN_EMAIL as string | undefined;
-const TEST_PASSWORD = import.meta.env.VITE_SMOKE_ADMIN_PASSWORD as string | undefined;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const TEST_EMAIL = import.meta.env.VITE_SMOKE_ADMIN_EMAIL;
+const TEST_PASSWORD = import.meta.env.VITE_SMOKE_ADMIN_PASSWORD;
 
-async function apiIsUp(): Promise<boolean> {
+async function supabaseIsUp(): Promise<boolean> {
+  if (!SUPABASE_URL) return false;
   try {
-    const res = await fetch(API_URL, { method: 'GET' });
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/health`, {
+      headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? '' },
+    });
     return res.ok;
   } catch {
     return false;
   }
 }
 
-describe('Intégration réelle — connexion + tableau de bord', () => {
+describe('Intégration réelle : connexion + tableau de bord', () => {
   it('se connecte pour de vrai, atteint le tableau de bord, et affiche des données réelles', async () => {
     if (!TEST_EMAIL || !TEST_PASSWORD) {
       console.warn(
-        '[smoke] VITE_SMOKE_ADMIN_EMAIL/VITE_SMOKE_ADMIN_PASSWORD non fournies — test ignoré (voir .env.example).',
+        '[smoke] VITE_SMOKE_ADMIN_EMAIL/VITE_SMOKE_ADMIN_PASSWORD non fournies : test ignoré (voir .env.example).',
       );
       return;
     }
-    if (!(await apiIsUp())) {
-      console.warn('[smoke] apps/api indisponible sur ' + API_URL + ' — test ignoré.');
+    if (!(await supabaseIsUp())) {
+      console.warn('[smoke] Supabase injoignable (projet en pause ou VITE_SUPABASE_URL absente) : test ignoré.');
       return;
     }
 
@@ -52,7 +48,7 @@ describe('Intégration réelle — connexion + tableau de bord', () => {
     await userEvent.type(screen.getByLabelText('Mot de passe'), TEST_PASSWORD);
     await userEvent.click(screen.getByRole('button', { name: /se connecter/i }));
 
-    // Écran 2 : tableau de bord — vraies données lues depuis Postgres via l'API.
+    // Écran 2 : tableau de bord, avec les vraies données de Supabase.
     await waitFor(() => expect(screen.getByText('Tableau de bord')).toBeInTheDocument(), {
       timeout: 10_000,
     });

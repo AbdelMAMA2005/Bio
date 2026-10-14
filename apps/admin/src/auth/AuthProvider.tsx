@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -7,8 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { AdminMe } from '@planai/shared';
-import { apiClient, ApiError, setUnauthorizedHandler } from '../api/client';
-import { clearTokens, getAccessToken, setTokens } from '../api/auth-storage';
+import { ApiError, rpc, supabase, toApiError } from '../api/client';
 
 type AuthState =
   | { status: 'checking' }
@@ -24,54 +24,58 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 /**
- * Session admin — réutilise POST /auth/login (pas de 2e système d'auth, voir
- * API_CONTRACT.md §10) puis confirme le rôle via GET /admin/me : un 'membre' authentifié
- * reçoit 403 sur /admin/me (RoleGuard), ce qui suffit à le refuser ici sans dupliquer la
- * logique de rôle côté front.
+ * Session admin : connexion Supabase Auth (même compte que l'app mobile), puis
+ * confirmation du rôle via la RPC admin_me(), qui refuse (42501) tout compte qui n'est
+ * ni admin ni modérateur. Le rôle n'est donc jamais décidé côté navigateur.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'checking' });
 
-  const logout = () => {
-    clearTokens();
+  const logout = useCallback(() => {
+    void supabase.auth.signOut();
     setState({ status: 'anonymous' });
-  };
-
-  useEffect(() => {
-    setUnauthorizedHandler(logout);
-    return () => setUnauthorizedHandler(null);
   }, []);
 
   useEffect(() => {
-    if (!getAccessToken()) {
-      setState({ status: 'anonymous' });
-      return;
-    }
-    apiClient
-      .get<AdminMe>('/admin/me')
-      .then((res) => setState({ status: 'authed', me: res.data }))
-      .catch(() => {
-        clearTokens();
-        setState({ status: 'anonymous' });
-      });
+    let cancelled = false;
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) {
+        if (!cancelled) setState({ status: 'anonymous' });
+        return;
+      }
+      try {
+        const me = await rpc<AdminMe>('admin_me');
+        if (!cancelled) setState({ status: 'authed', me });
+      } catch {
+        await supabase.auth.signOut();
+        if (!cancelled) setState({ status: 'anonymous' });
+      }
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') setState({ status: 'anonymous' });
+    });
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
-  const login = async (email: string, motDePasse: string) => {
-    const { data } = await apiClient.post('/auth/login', { email, motDePasse });
-    setTokens(data.accessToken, data.refreshToken);
+  const login = useCallback(async (email: string, motDePasse: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password: motDePasse });
+    if (error) throw toApiError(error, 'Connexion impossible.');
     try {
-      const me = await apiClient.get<AdminMe>('/admin/me');
-      setState({ status: 'authed', me: me.data });
+      const me = await rpc<AdminMe>('admin_me');
+      setState({ status: 'authed', me });
     } catch (err) {
-      clearTokens();
+      await supabase.auth.signOut();
       if (err instanceof ApiError && err.status === 403) {
         throw new ApiError("Ce compte n'a pas accès à la console admin.", 403);
       }
       throw err;
     }
-  };
+  }, []);
 
-  const value = useMemo<AuthContextValue>(() => ({ state, login, logout }), [state]);
+  const value = useMemo<AuthContextValue>(() => ({ state, login, logout }), [state, login, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

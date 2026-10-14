@@ -2,6 +2,8 @@
 
 > ⚠️ **Migration Supabase active** : la couche applicative mobile s'appuie maintenant sur Supabase (Auth + PostgreSQL + Storage + RLS) au lieu d'un backend NestJS dédié. Ce document est conservé comme archive de référence sur les structures historiques, mais les flux actifs du mobile utilisent désormais le SDK Supabase plutôt que REST NestJS.
 >
+> **Octobre 2026** : la console admin (`apps/admin`) utilise elle aussi Supabase (RPC `admin_*`, voir ARCHITECTURE.md §3bis). La section §10 ci-dessous décrit l'ancienne API NestJS.
+>
 > **Mise à jour du 13/09/2026** : ajout de la console admin web (`apps/admin`) et de son
 > module back `admin` — voir §10. Nouveau champ `User.role` (`'membre'|'moderateur'|
 > 'admin'`), `RoleGuard`, 4 nouvelles tables (`reports`, `quests`, `feature_flags`,

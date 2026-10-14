@@ -9,8 +9,9 @@ import {
   useUpdateUserStatus,
   useUsers,
   type UsersFilter,
+  findUserByEmail,
 } from '../api/hooks/useUsers';
-import { apiClient, ApiError } from '../api/client';
+import { ApiError } from '../api/client';
 import { roleColorVar, roleLabel, statutColors, statutLabel } from '../theme/labels';
 import type { AdminRole, AdminUser } from '@planai/shared';
 import { useAuth } from '../auth/AuthProvider';
@@ -277,10 +278,7 @@ function InviteAdminModal({ onClose }: { onClose: () => void }) {
     setError(null);
     setLoading(true);
     try {
-      const { data } = await apiClient.get<{ items: { id: string; email: string }[] }>('/admin/users', {
-        params: { page: 1, limit: 1, q: email, filtre: 'tous' },
-      });
-      const match = data.items.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      const match = await findUserByEmail(email);
       if (!match) {
         setError("Aucun compte avec cet e-mail. La personne doit d'abord créer un compte via l'app PlanAI.");
         return;

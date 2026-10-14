@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AdminReportGroup } from '@planai/shared';
-import { apiClient } from '../client';
+import { rpc } from '../client';
 import { queryKeys } from '../queryKeys';
 
 export type ModerationQuery = { page: number; limit: number };
@@ -8,33 +8,30 @@ export type ModerationQuery = { page: number; limit: number };
 export function useModeration(params: ModerationQuery) {
   return useQuery({
     queryKey: queryKeys.moderation(params),
-    queryFn: async () => {
-      const { data } = await apiClient.get<{ items: AdminReportGroup[]; total: number }>(
-        '/admin/moderation',
-        { params },
-      );
-      return data;
-    },
+    queryFn: () => rpc<{ items: AdminReportGroup[]; total: number }>('admin_moderation', {
+      p_page: params.page,
+      p_limit: params.limit,
+    }),
     placeholderData: (prev) => prev,
   });
 }
 
-export function useIgnoreReport() {
+function useResolveReport(supprimer: boolean) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      await apiClient.post(`/admin/moderation/${id}/ignore`);
+    mutationFn: (id: string) => rpc<void>('admin_moderation_resolve', { p_report_id: id, p_supprimer: supprimer }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'moderation'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.stats });
+      queryClient.invalidateQueries({ queryKey: queryKeys.auditLog });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'moderation'] }),
   });
 }
 
+export function useIgnoreReport() {
+  return useResolveReport(false);
+}
+
 export function useRemoveReportedContent() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      await apiClient.delete(`/admin/moderation/${id}`);
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'moderation'] }),
-  });
+  return useResolveReport(true);
 }

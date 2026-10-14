@@ -139,3 +139,17 @@ Il faut clarifier avec ton ami **quel projet Supabase est la prod**, puis aligne
 4. Passer le bucket `collections` en privé, avec des URL signées côté mobile.
 5. Supprimer les fichiers inutiles validés.
 6. (Plus gros chantier) Migrer `apps/admin` vers Supabase, puis archiver `apps/api`.
+
+---
+
+## 6. Ajout du 15/10/2026 : faille de sécurité sur les profils (corrigée dans le dépôt)
+
+En migrant la console admin vers Supabase, j'ai trouvé deux problèmes dans `schema_supabase.sql` :
+
+1. **Escalade de privilèges.** La policy « Modification de son propre profil » autorise un utilisateur à modifier **toutes** les colonnes de sa ligne `profiles`. Un simple membre peut donc se donner `role = 'admin'` / `est_admin = true`, ou s'attribuer des pièces et de l'XP, en une requête. C'est vérifié par un test SQL qui échoue sur le schéma actuel.
+2. **E-mails exposés.** Tout utilisateur connecté (et même un visiteur anonyme) peut lire l'e-mail de tous les profils.
+
+Corrections :
+- `supabase/migrations/20261015090000_admin_console.sql` : droits par colonne (seuls `nom_utilisateur` et `url_avatar` restent modifiables), lecture des profils fermée aux anonymes, plus toute la console admin (RPC `admin_*`, policies, journal d'audit). Compatible avec l'app déjà publiée.
+- `supabase/migrations_a_venir/20261015090100_profiles_private_columns.sql` : rend l'e-mail illisible depuis l'app. À appliquer seulement après la sortie de la nouvelle version mobile, qui ne lit plus cette colonne.
+- Tests : `supabase/tests/admin_console.sql` (droits et chaque action de la console).

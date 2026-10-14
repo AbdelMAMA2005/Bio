@@ -11,10 +11,9 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     environmentOptions: {
-      // Même origine que `npm run dev` (port 5174) : le CORS dev de l'API
-      // (apps/api/src/main.ts, `devLanOrigin`) laisse passer localhost:*, mais le test
-      // d'intégration réel (integration.smoke.test.tsx) doit envoyer un Origin plausible,
-      // pas l'URL jsdom par défaut (about:blank), pour se comporter comme un vrai navigateur.
+      // Même origine que `npm run dev` (port 5174) : le test d'intégration réel
+      // (integration.smoke.test.tsx) envoie ainsi un Origin plausible à Supabase plutôt
+      // que l'URL jsdom par défaut (about:blank), comme un vrai navigateur.
       jsdom: { url: 'http://localhost:5174' },
     },
     setupFiles: ['./src/test/setup.ts'],

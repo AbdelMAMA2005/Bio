@@ -5,7 +5,6 @@ type AuthResult = { token: string; refreshToken: string; user: User };
 
 type ProfileRow = {
   id: string;
-  email: string;
   nom_utilisateur: string;
   experience: number;
   niveau: number;
@@ -19,48 +18,57 @@ type AuthUser = {
   user_metadata?: Record<string, unknown>;
 };
 
-function userFromProfile(profile: ProfileRow): User {
+// L'e-mail vient de la session (auth.users) : la colonne profiles.email n'est pas lisible
+// par l'app (supabase/migrations_a_venir/20261015090100_profiles_private_columns.sql).
+const PROFILE_COLUMNS = 'id,nom_utilisateur,experience,niveau,pieces,url_avatar';
+
+function userFromProfile(profile: ProfileRow, email: string): User {
   return {
     id: profile.id,
     pseudo: profile.nom_utilisateur,
-  email: profile.email,
-  niveau: profile.niveau,
-  xp: profile.experience,
+    email,
+    niveau: profile.niveau,
+    xp: profile.experience,
     pieces: profile.pieces,
     urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null,
   };
 }
 
 async function profileForUser(authUser: AuthUser): Promise<User> {
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle<ProfileRow>();
+  const email = authUser.email ?? '';
+  const { data, error } = await supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', authUser.id).maybeSingle<ProfileRow>();
   if (!data && !error) {
     const metadata = authUser.user_metadata ?? {};
     const metadataName = typeof metadata.nom_utilisateur === 'string' ? metadata.nom_utilisateur : undefined;
     const metadataDisplayName = typeof metadata.name === 'string' ? metadata.name : undefined;
     const username = (metadataName ?? metadataDisplayName ?? `User_${authUser.id.slice(0, 6)}`).slice(0, 20);
+    // ignoreDuplicates : ON CONFLICT DO NOTHING, qui ne demande pas le droit de
+    // modifier email/id (seuls nom_utilisateur et url_avatar sont modifiables).
+    const { error: insertError } = await supabase.from('profiles').upsert(
+      {
+        id: authUser.id,
+        email: authUser.email ?? `${authUser.id}@placeholder.invalid`,
+        nom_utilisateur: username,
+      },
+      { onConflict: 'id', ignoreDuplicates: true },
+    );
+    if (insertError) throw insertError;
     const { data: created, error: createError } = await supabase
       .from('profiles')
-      .upsert(
-        {
-          id: authUser.id,
-          email: authUser.email ?? `${authUser.id}@placeholder.invalid`,
-          nom_utilisateur: username,
-        },
-        { onConflict: 'id' },
-      )
-      .select('*')
+      .select(PROFILE_COLUMNS)
+      .eq('id', authUser.id)
       .single<ProfileRow>();
     if (createError || !created) throw createError ?? new Error('Unable to create profile');
-    return userFromProfile(created);
+    return userFromProfile(created, email);
   }
   if (error || !data) throw error ?? new Error('Profile not found');
-  return userFromProfile(data);
+  return userFromProfile(data, email);
 }
 
 async function resultFromSession(session: {
   access_token: string;
   refresh_token: string;
-  user: { id: string };
+  user: AuthUser;
 }): Promise<AuthResult> {
   return {
     token: session.access_token,
