@@ -31,8 +31,8 @@ const config = {
     bundleIdentifier: 'app.planai.mobile',
   },
   android: {
-    // The native Android project is used by EAS, so this must match its
-    // applicationId. Google Sign-In also identifies the installed APK by it.
+    // Pas de dossier android/ versionné : EAS le régénère depuis cette config (prebuild).
+    // Google Sign-In identifie l'APK par ce package + la SHA-1 de sa signature.
     package: 'com.planai',
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
@@ -111,7 +111,7 @@ const config = {
   extra: {
     router: {},
     eas: {
-              "projectId": "c2e1fbf6-4c75-478e-85ed-781d6cbb1509"
+      projectId: 'c2e1fbf6-4c75-478e-85ed-781d6cbb1509',
     },
   },
 };

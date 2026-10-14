@@ -26,7 +26,6 @@ apps/api/.env*
 # Fichiers de dev/CI non nécessaires au build natif
 .github
 .vscode
-.claude
 docker-compose.yml
 .dockerignore
 DOCKER.md

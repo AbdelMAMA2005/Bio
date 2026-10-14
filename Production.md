@@ -20,7 +20,7 @@ npm test -- --runInBand --watch=false
 
 Résultat vérifié : **50 tests passés** et aucune erreur TypeScript.
 
-La publication EAS n'est toutefois pas encore prête : le `projectId` présent dans `apps/mobile/app.config.ts` (`cb285673-015e-457b-9d2c-06a5c7b95d63`) n'est pas accessible au compte Expo connecté. Il faut rattacher l'application à un projet Expo appartenant au bon compte avant de lancer la build finale.
+Le `projectId` EAS de référence est celui de `apps/mobile/app.config.ts` (`c2e1fbf6-4c75-478e-85ed-781d6cbb1509`, owner `adamskader`). C'est le seul fichier de config Expo : il n'y a plus de `app.json`/`eas.json`/`android/` à la racine — toujours lancer `eas build` depuis `apps/mobile`.
 
 ## 1. Créer le projet Supabase de production
 
@@ -127,7 +127,7 @@ npx expo config --type public
 npx eas-cli@latest project:info
 ```
 
-La configuration doit afficher `name: PlanAI`, `slug: mobile`, `android.package: app.planai.mobile` et un `projectId` accessible au compte connecté.
+La configuration doit afficher `name: PlanAI`, `slug: mobile`, `android.package: com.planai` et un `projectId` accessible au compte connecté.
 
 ### Option alternative : récupérer l'accès au projet existant
 
@@ -135,7 +135,7 @@ Le propriétaire du projet Expo doit ajouter le compte de publication comme memb
 
 ## 8. Vérifier l'identité Android
 
-Le package Android de production est `app.planai.mobile`. Il doit être identique dans `apps/mobile/app.config.ts`, Google Play Console et la configuration Google OAuth si Google Sign-In est utilisé.
+Le package Android de production est `com.planai`. Il doit être identique dans `apps/mobile/app.config.ts`, Google Play Console et la configuration Google OAuth si Google Sign-In est utilisé.
 
 Une fois l'application publiée, ne jamais changer ce package. EAS gère l'incrémentation du code de version via `autoIncrement`.
 
@@ -182,7 +182,7 @@ Cette commande produit un **AAB**, le format attendu par Google Play.
 
 Dans Google Play Console :
 
-1. créer l'application avec le package `app.planai.mobile` ;
+1. créer l'application avec le package `com.planai` ;
 2. compléter la fiche, l'icône, les captures et la politique de confidentialité ;
 3. créer une piste **Test fermé** ;
 4. téléverser l'AAB produit par EAS ;

@@ -853,7 +853,7 @@ CREATE POLICY "Audit logs reserves aux admins"
 INSERT INTO storage.buckets (id, name, public)
 VALUES
   ('avatars', 'avatars', TRUE),
-  ('collections', 'collections', TRUE),
+  ('collections', 'collections', FALSE),
   ('posts', 'posts', TRUE),
   ('stories', 'stories', TRUE)
 ON CONFLICT (id) DO UPDATE SET
