@@ -142,6 +142,7 @@
     "feedNear": "Near me · {{distance}}",
     "discoveredAt": "Found {{distance}} from you",
     "emptyNear": "No geotagged posts nearby right now.",
+    "emptyAll": "No posts yet. Share the community's first plant!",
     "takePhoto": "Camera",
     "chooseFromGallery": "Gallery",
     "storyPublished": "Story added!",

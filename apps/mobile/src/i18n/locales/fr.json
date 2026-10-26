@@ -142,6 +142,7 @@
     "feedNear": "Près de moi · {{distance}}",
     "discoveredAt": "Découverte {{distance}} de toi",
     "emptyNear": "Aucune publication géolocalisée à proximité pour le moment.",
+    "emptyAll": "Aucune publication pour le moment. Partage la première plante de la communauté !",
     "takePhoto": "Caméra",
     "chooseFromGallery": "Galerie",
     "storyPublished": "Story ajoutée !",

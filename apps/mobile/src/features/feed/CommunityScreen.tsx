@@ -226,7 +226,7 @@ export function CommunityScreen() {
             ListEmptyComponent={
               <View style={styles.center}>
                 <Icon name="forum" size={44} color={colors.muted} />
-                {locating ? <ActivityIndicator color={colors.active} /> : <Text style={[styles.placeholder, { color: colors.muted }]}>{t('community.emptyNear')}</Text>}
+                {locating ? <ActivityIndicator color={colors.active} /> : <Text style={[styles.placeholder, { color: colors.muted }]}>{t(filter === 'near' ? 'community.emptyNear' : 'community.emptyAll')}</Text>}
               </View>
             }
             renderItem={({ item }) => (
