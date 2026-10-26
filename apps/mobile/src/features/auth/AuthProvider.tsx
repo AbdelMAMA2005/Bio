@@ -12,8 +12,8 @@ import {
   deleteAccount as apiDeleteAccount,
   fetchProfile as apiFetchProfile,
   logout as apiLogout,
+  changePassword as apiChangePassword,
 } from '@/features/auth/authApi';
-import { mockChangePassword } from '@/features/auth/mockAuthApi';
 import { xpTargetForLevel } from '@/features/account/levels';
 import { getSafeSession, supabase } from '@/lib/supabase';
 
@@ -140,8 +140,11 @@ export function AuthProvider({
         // Révocation côté back best-effort (API_CONTRACT.md §1) : la déconnexion locale a
         // lieu dans tous les cas, même si le serveur est injoignable — sinon un utilisateur
         // hors-ligne ne pourrait jamais se déconnecter.
-        await apiLogout();
-        setUser(null);
+        try {
+          await apiLogout();
+        } finally {
+          setUser(null);
+        }
       },
       updateProfile: async (patch) => {
         // PATCH /users/me existe désormais côté back (API_CONTRACT.md §2), repli mock
@@ -170,8 +173,7 @@ export function AuthProvider({
         }
       },
       changePassword: async (current, next) => {
-        // Pas d'endpoint POST /auth/change-password côté back — reste mocké (BACKEND_ISSUES.md §6).
-        await mockChangePassword(current, next);
+        await apiChangePassword(current, next);
       },
       deleteAccount: async (password) => {
         // DELETE /users/me existe désormais côté back, protégé par re-saisie du mot de

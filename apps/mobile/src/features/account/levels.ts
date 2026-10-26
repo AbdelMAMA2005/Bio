@@ -24,3 +24,18 @@ export function levelProgress(niveau: number, xp: number): number {
   if (target <= 0) return 0;
   return Math.min(1, Math.max(0, xp / target));
 }
+
+/**
+ * `profiles.experience` est l'XP cumulée depuis l'inscription (créditée côté serveur par les
+ * défis et les ajouts à la collection). On en déduit le niveau et l'XP déjà gagnée dans ce
+ * niveau, avec la même règle que `addXp` : passer du niveau n au niveau n+1 coûte n × 250 XP.
+ */
+export function levelFromExperience(experience: number): { niveau: number; xp: number } {
+  let niveau = 1;
+  let xp = Math.max(0, Math.floor(experience || 0));
+  while (xp >= xpTargetForLevel(niveau)) {
+    xp -= xpTargetForLevel(niveau);
+    niveau += 1;
+  }
+  return { niveau, xp };
+}

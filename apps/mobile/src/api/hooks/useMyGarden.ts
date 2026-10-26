@@ -1,13 +1,22 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import type { BackendCollectionItem } from '@/api/adapters';
 import { diagnosisFromBackend, toGardenClone } from '@/api/adapters';
 import { queryKeys } from '@/api/queryKeys';
 import type { DiagnosisResult } from '@/api/mock/diagnosis';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { signCollectionPhotos, supabase, uriToBlob, uriToImageDataUrl } from '@/lib/supabase';
+const DEFAULT_WATERING_DAYS = 7;
+
+/** Prochaine échéance d'arrosage selon la fréquence de l'espèce (7 jours si elle est inconnue). */
+export function nextWateringDate(frequencyDays: number | null | undefined, from = Date.now()): string {
+  const days = frequencyDays && frequencyDays > 0 ? frequencyDays : DEFAULT_WATERING_DAYS;
+  return new Date(from + days * 86400000).toISOString();
+}
+
 async function fetchGardenPage(page: number): Promise<{ items: BackendCollectionItem[]; total: number }> {
   const from = (page - 1) * 20;
-  const { data, error, count } = await supabase.from('collection').select('*, plants(*)', { count: 'exact' }).eq('type_collection', 'owned').range(from, from + 19);
+  const { data, error, count } = await supabase.from('collection').select('*, plants(*)', { count: 'exact' }).eq('type_collection', 'owned').order('date_ajout', { ascending: false }).order('id', { ascending: false }).range(from, from + 19);
   if (error) {
     console.error('[garden] Supabase query failed', error);
     throw error;
@@ -19,7 +28,10 @@ async function fetchGardenPage(page: number): Promise<{ items: BackendCollection
 export function useMyGarden() {
   const { user } = useAuth();
   const query = useInfiniteQuery({ queryKey: queryKeys.garden, queryFn: ({ pageParam }) => fetchGardenPage(pageParam), initialPageParam: 1, getNextPageParam: (last, pages) => pages.length * 20 < last.total ? pages.length + 1 : undefined, enabled: !!user });
-  return { ...query, data: query.data?.pages.flatMap((page) => page.items.map((item) => toGardenClone(item, user!.id, ''))) };
+  const userId = user?.id ?? '';
+  // Mémoïsé : useWateringNotifications reprogrammait toutes les notifications à chaque rendu.
+  const data = useMemo(() => query.data?.pages.flatMap((page) => page.items.map((item) => toGardenClone(item, userId, ''))), [query.data, userId]);
+  return { ...query, data };
 }
 
 export function useCheckHealth() {
@@ -52,7 +64,10 @@ export function useAddTrackingPhoto() {
 export function useMarkWatered() {
   const client = useQueryClient();
   return useMutation({ mutationFn: async (collectionId: string) => {
-    const { error } = await supabase.from('collection').update({ prochain_arrosage: new Date(Date.now() + 7 * 86400000).toISOString() }).eq('id', collectionId);
+    const { data: row, error: readError } = await supabase.from('collection').select('plants(frequence_arrosage_jours)').eq('id', collectionId).single();
+    if (readError) throw readError;
+    const plant = (Array.isArray(row.plants) ? row.plants[0] : row.plants) as { frequence_arrosage_jours: number | null } | null;
+    const { error } = await supabase.from('collection').update({ prochain_arrosage: nextWateringDate(plant?.frequence_arrosage_jours) }).eq('id', collectionId);
     if (error) throw error;
   }, onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.garden }) });
 }

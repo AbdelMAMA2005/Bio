@@ -74,8 +74,13 @@ export function AccountScreen() {
   };
 
   const saveProfile = async () => {
-    await updateProfile({ pseudo: pseudoDraft.trim() || user.pseudo });
-    setEditingProfile(false);
+    try {
+      await updateProfile({ pseudo: pseudoDraft.trim() || user.pseudo });
+      setEditingProfile(false);
+    } catch {
+      // Pseudo déjà pris (contrainte unique) ou réseau : on garde le formulaire ouvert.
+      Alert.alert(t('auth.invalidFields'));
+    }
   };
 
   const submitPasswordChange = async () => {

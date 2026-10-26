@@ -1,4 +1,4 @@
-import { levelProgress, levelTitleKey, xpTargetForLevel } from '../levels';
+import { levelFromExperience, levelProgress, levelTitleKey, xpTargetForLevel } from '../levels';
 
 describe('levelTitleKey', () => {
   it('returns beginner below level 5', () => {
@@ -50,5 +50,17 @@ describe('levelProgress', () => {
 
   it('returns 0 when the level target is 0 or negative', () => {
     expect(levelProgress(0, 100)).toBe(0);
+  });
+});
+
+describe('levelFromExperience', () => {
+  it('starts at level 1 with no XP', () => {
+    expect(levelFromExperience(0)).toEqual({ niveau: 1, xp: 0 });
+  });
+
+  it('keeps the XP earned inside the current level', () => {
+    expect(levelFromExperience(249)).toEqual({ niveau: 1, xp: 249 });
+    expect(levelFromExperience(250)).toEqual({ niveau: 2, xp: 0 });
+    expect(levelFromExperience(800)).toEqual({ niveau: 3, xp: 50 });
   });
 });

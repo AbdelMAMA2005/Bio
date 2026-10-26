@@ -50,8 +50,10 @@ export function useUpdatePlant() {
   const onSuccess = useInvalidatePlants();
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: Partial<AdminPlantInput> }) => {
-      const { error } = await supabase.from('plants').update(toRow(input)).eq('id', id);
+      const { data, error } = await supabase.from('plants').update(toRow(input)).eq('id', id).select('id');
       if (error) throw toApiError(error);
+      // RLS : un modérateur ne modifie aucune ligne, sans erreur.
+      if (!data?.length) throw toApiError({ code: '42501', message: "Action réservée à l'administration." });
     },
     onSuccess,
   });
@@ -61,11 +63,12 @@ export function useDeletePlant() {
   const onSuccess = useInvalidatePlants();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('plants').delete().eq('id', id);
+      const { data, error } = await supabase.from('plants').delete().eq('id', id).select('id');
       if (error?.code === '23503') {
         throw toApiError({ code: 'P0001', message: 'Cette espèce est dans des collections : suppression impossible.', status: 409 });
       }
       if (error) throw toApiError(error);
+      if (!data?.length) throw toApiError({ code: '42501', message: "Action réservée à l'administration." });
     },
     onSuccess,
   });

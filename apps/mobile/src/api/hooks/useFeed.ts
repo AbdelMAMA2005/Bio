@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 
 import type { BackendComment, BackendPost, BackendStoryGroup } from '@/api/adapters';
 import { toComment, toFeedPost, toStoryGroup } from '@/api/adapters';
@@ -18,36 +19,56 @@ type ProfileRow = { id: string; nom_utilisateur: string; url_avatar: string | nu
 
 const FEED_PAGE_SIZE = 15;
 
+type PostRow = {
+  id: string;
+  user_id: string;
+  contenu: string;
+  url_image: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  created_at: string;
+  collection?: { plant_id: string; type_collection: 'owned' | 'discovered'; plants: any } | null;
+};
+
+export const POST_COLUMNS = 'id,user_id,contenu,url_image,latitude,longitude,created_at,collection:plant_collection_id(plant_id,type_collection,plants(*))';
+
+function distanceMeters(post: PostRow, coords?: Coordinates): number | null {
+  if (!coords || post.latitude == null || post.longitude == null) return null;
+  const rad = (value: number) => (value * Math.PI) / 180;
+  const a = Math.sin(rad(post.latitude - coords.latitude) / 2) ** 2 + Math.cos(rad(coords.latitude)) * Math.cos(rad(post.latitude)) * Math.sin(rad(post.longitude - coords.longitude) / 2) ** 2;
+  return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/** Auteurs, likes et nombre de commentaires des posts, utilisé par le fil et par le profil public. */
+export async function enrichPosts(posts: PostRow[], userId: string, coords?: Coordinates): Promise<BackendPost[]> {
+  if (posts.length === 0) return [];
+  const postIds = posts.map((post) => post.id);
+  const [{ data: profiles, error: profilesError }, { data: likes, error: likesError }, { data: comments, error: commentsError }] = await Promise.all([
+    supabase.from('profiles').select('id,nom_utilisateur,url_avatar').in('id', [...new Set(posts.map((post) => post.user_id))]),
+    supabase.from('likes').select('post_id,user_id').in('post_id', postIds),
+    supabase.from('comments').select('post_id').in('post_id', postIds),
+  ]);
+  if (profilesError || likesError || commentsError) throw profilesError ?? likesError ?? commentsError;
+  const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+  return posts.flatMap((post) => {
+    const profile = profileMap.get(post.user_id);
+    if (!profile) return [];
+    const postLikes = (likes ?? []).filter((like) => like.post_id === post.id);
+    const commentsCount = (comments ?? []).filter((comment) => comment.post_id === post.id).length;
+    const plant = post.collection?.plants;
+    return [{ id: post.id, idUtilisateur: post.user_id, contenuTexte: post.contenu, imageUrl: post.url_image ? getStoragePublicUrl('posts', post.url_image) : undefined, dateCreation: post.created_at, auteur: { id: profile.id, nomUtilisateur: profile.nom_utilisateur, urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null }, plante: plant && post.collection ? { id: post.collection.plant_id, nomScientifique: plant.nom_scientifique, nomCommun: plant.nom_commun, badgeRarete: plant.badge_rarete, urlImage: plant.url_image } : undefined, typeCollection: post.collection?.type_collection, likesCount: postLikes.length, commentairesCount: commentsCount, estLikedParUtilisateur: postLikes.some((like) => like.user_id === userId), distanceMetres: distanceMeters(post, coords) } satisfies BackendPost];
+  });
+}
+
 async function fetchFeedPage(page: number, coords?: Coordinates, filter?: FeedFilter): Promise<BackendFeedResponse> {
   const userId = await requireUserId();
   const source = filter === 'near' && coords
     ? supabase.rpc('nearby_posts', { p_latitude: coords.latitude, p_longitude: coords.longitude }, { count: 'exact' })
     : supabase.from('posts');
-  const { data: rows, error, count } = await source.select('id,user_id,contenu,url_image,latitude,longitude,created_at,collection:plant_collection_id(plant_id,type_collection,plants(*))', { count: 'exact' }).order('created_at', { ascending: false }).order('id', { ascending: false }).range((page - 1) * FEED_PAGE_SIZE, page * FEED_PAGE_SIZE - 1);
+  const { data: rows, error, count } = await source.select(POST_COLUMNS, { count: 'exact' }).order('created_at', { ascending: false }).order('id', { ascending: false }).range((page - 1) * FEED_PAGE_SIZE, page * FEED_PAGE_SIZE - 1);
   if (error) throw error;
-  const posts = (rows ?? []) as any[];
-  const [{ data: profiles, error: profilesError }, { data: likes, error: likesError }, { data: comments, error: commentsError }] = await Promise.all([
-    supabase.from('profiles').select('id,nom_utilisateur,url_avatar').in('id', [...new Set(posts.map((post) => post.user_id))]),
-    supabase.from('likes').select('post_id,user_id').in('post_id', posts.map((post) => post.id)),
-    supabase.from('comments').select('post_id').in('post_id', posts.map((post) => post.id)),
-  ]);
-  if (profilesError || likesError || commentsError) throw profilesError ?? likesError ?? commentsError;
-  const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
-  const distance = (post: any) => {
-    if (!coords || post.latitude == null || post.longitude == null) return null;
-    const rad = (value: number) => (value * Math.PI) / 180;
-    const a = Math.sin(rad(post.latitude - coords.latitude) / 2) ** 2 + Math.cos(rad(coords.latitude)) * Math.cos(rad(post.latitude)) * Math.sin(rad(post.longitude - coords.longitude) / 2) ** 2;
-    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  };
-  const items = posts.flatMap((post) => {
-    const profile = profileMap.get(post.user_id);
-    const distanceMeters = distance(post);
-    if (!profile) return [];
-    const postLikes = (likes ?? []).filter((like) => like.post_id === post.id);
-    const postComments = (comments ?? []).filter((comment) => comment.post_id === post.id);
-    const plant = post.collection?.plants;
-    return [{ id: post.id, idUtilisateur: post.user_id, contenuTexte: post.contenu, imageUrl: getStoragePublicUrl('posts', post.url_image), dateCreation: post.created_at, auteur: { id: profile.id, nomUtilisateur: profile.nom_utilisateur, urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null }, plante: plant ? { id: post.collection.plant_id, nomScientifique: plant.nom_scientifique, nomCommun: plant.nom_commun, badgeRarete: plant.badge_rarete, urlImage: plant.url_image } : undefined, typeCollection: post.collection?.type_collection, likesCount: postLikes.length, commentairesCount: postComments.length, estLikedParUtilisateur: postLikes.some((like) => like.user_id === userId), distanceMetres: distanceMeters } satisfies BackendPost];
-  });
+  const posts = (rows ?? []) as unknown as PostRow[];
+  const items = await enrichPosts(posts, userId, coords);
   return { items, total: count ?? posts.length, fetchedCount: posts.length };
 }
 
@@ -77,10 +98,9 @@ export function useFeed(coords?: Coordinates, filter?: FeedFilter) {
     enabled,
   });
 
-  return {
-    ...query,
-    data: query.data?.pages.flatMap((p) => p.items.map((post) => toFeedPost(post, ''))),
-  };
+  // Mémoïsé : un nouveau tableau à chaque rendu relancerait les effets qui en dépendent.
+  const data = useMemo(() => query.data?.pages.flatMap((p) => p.items.map((post) => toFeedPost(post, ''))), [query.data]);
+  return { ...query, data };
 }
 
 async function fetchStories(): Promise<StoryGroup[]> {
@@ -107,7 +127,11 @@ async function fetchStories(): Promise<StoryGroup[]> {
     group.entierementVue = group.entierementVue && (story.user_id === userId || seen);
     groups.set(story.user_id, group);
   }
-  return [...groups.values()].map((group) => toStoryGroup(group, ''));
+  // Ma bulle d'abord, puis les stories pas encore vues, les plus récentes en tête.
+  const latest = (group: BackendStoryGroup) => group.medias[group.medias.length - 1]?.dateCreation ?? '';
+  const ordered = [...groups.values()].sort((a, b) =>
+    Number(b.estMoi) - Number(a.estMoi) || Number(a.entierementVue) - Number(b.entierementVue) || latest(b).localeCompare(latest(a)));
+  return ordered.map((group) => toStoryGroup(group, ''));
 }
 
 /**
@@ -156,7 +180,10 @@ export function usePublishStoryMedia() {
       const { error: uploadError } = await supabase.storage.from('stories').upload(path, await uriToBlob(imageUri), { contentType: 'image/jpeg' });
       if (uploadError) throw uploadError;
       const { error } = await supabase.from('stories').insert({ user_id: userId, url_media: path, media_type: 'image' });
-      if (error) throw error;
+      if (error) {
+        await supabase.storage.from('stories').remove([path]);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.stories });
@@ -239,8 +266,11 @@ export function useDeleteStoryMedia() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (mediaId: string) => {
-      const { error } = await supabase.from('stories').delete().eq('id', mediaId);
+      const { data, error } = await supabase.from('stories').delete().eq('id', mediaId).select('url_media');
       if (error) throw error;
+      // Best-effort : le média ne doit pas rester public après la suppression de la story.
+      const paths = (data ?? []).map((row) => row.url_media).filter((path) => path && !path.startsWith('http'));
+      if (paths.length) await supabase.storage.from('stories').remove(paths);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.stories });
@@ -254,12 +284,17 @@ async function fetchStoryViewers(mediaId: string): Promise<StoryViewer[]> {
   // Le back renvoie urlAvatar en URL relative (comme pour les auteurs de post/story) — sans
   // cette résolution, StoryViewersSheet.tsx recevrait un chemin `/uploads/...` inutilisable
   // tel quel par <Avatar>.
-  return data.map((viewer) => ({
-    idUtilisateur: viewer.viewer_id,
-    nomUtilisateur: (Array.isArray(viewer.profiles) ? viewer.profiles[0] : viewer.profiles).nom_utilisateur,
-    urlAvatar: ((Array.isArray(viewer.profiles) ? viewer.profiles[0] : viewer.profiles).url_avatar) ? getStoragePublicUrl('avatars', (Array.isArray(viewer.profiles) ? viewer.profiles[0] : viewer.profiles).url_avatar) : null,
-    dateVue: viewer.created_at,
-  }));
+  // Un compte supprimé n'a plus de profil lisible : on l'ignore au lieu de planter.
+  return (data ?? []).flatMap((viewer) => {
+    const profile = (Array.isArray(viewer.profiles) ? viewer.profiles[0] : viewer.profiles) as ProfileRow | null;
+    if (!profile) return [];
+    return [{
+      idUtilisateur: viewer.viewer_id,
+      nomUtilisateur: profile.nom_utilisateur,
+      urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null,
+      dateVue: viewer.created_at,
+    }];
+  });
 }
 
 /** GET /stories/:mediaId/viewers — réservé à l'auteur du média (403 sinon côté back). */
@@ -283,10 +318,6 @@ export function usePublishPost() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: PublishPostInput) => {
-      const formData = new FormData();
-      formData.append('contenuTexte', input.texte);
-      if (input.collectionItemId) formData.append('collectionId', input.collectionItemId);
-      formData.append('image', { uri: input.imageUri, name: 'post.jpg', type: 'image/jpeg' } as unknown as Blob);
       const userId = await requireUserId();
       const path = `${userId}/${Date.now()}.jpg`;
       const { error: uploadError } = await supabase.storage.from('posts').upload(path, await uriToBlob(input.imageUri), { contentType: 'image/jpeg' });
@@ -298,7 +329,10 @@ export function usePublishPost() {
         coordinates = data;
       }
       const { error } = await supabase.from('posts').insert({ user_id: userId, plant_collection_id: input.collectionItemId ?? null, contenu: input.texte, url_image: path, latitude: coordinates?.latitude ?? null, longitude: coordinates?.longitude ?? null });
-      if (error) throw error;
+      if (error) {
+        await supabase.storage.from('posts').remove([path]);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.feed });
@@ -328,7 +362,7 @@ export function useTaggableCollection() {
 async function fetchComments(postId: string): Promise<FeedComment[]> {
   const { data, error } = await supabase.from('comments').select('id,post_id,user_id,contenu,created_at,profiles(id,nom_utilisateur,url_avatar)').eq('post_id', postId).order('created_at', { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((comment) => { const profile = (Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles) as ProfileRow; return toComment({ id: comment.id, idPost: comment.post_id, idUtilisateur: comment.user_id, contenu: comment.contenu, dateCreation: comment.created_at, auteur: { id: profile.id, nomUtilisateur: profile.nom_utilisateur, urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null } } satisfies BackendComment, ''); });
+  return (data ?? []).flatMap((comment) => { const profile = (Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles) as ProfileRow | null; if (!profile) return []; return [toComment({ id: comment.id, idPost: comment.post_id, idUtilisateur: comment.user_id, contenu: comment.contenu, dateCreation: comment.created_at, auteur: { id: profile.id, nomUtilisateur: profile.nom_utilisateur, urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null } } satisfies BackendComment, '')]; });
 }
 
 export function useComments(postId: string | undefined) {
@@ -362,9 +396,11 @@ export function useDeletePost() {
   return useMutation({
     mutationFn: async (postId: string) => {
       const userId = await requireUserId();
-      const { data, error } = await supabase.from('posts').delete().eq('id', postId).eq('user_id', userId).select('id');
+      const { data, error } = await supabase.from('posts').delete().eq('id', postId).eq('user_id', userId).select('id,url_image');
       if (error) throw error;
       if (!data?.length) throw new Error('Post could not be deleted');
+      const paths = data.map((row) => row.url_image).filter((path) => path && !path.startsWith('http'));
+      if (paths.length) await supabase.storage.from('posts').remove(paths);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.feed });

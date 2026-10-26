@@ -1,10 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 
-import type { BackendPost, BackendPublicProfile } from '@/api/adapters';
+import type { BackendPublicProfile } from '@/api/adapters';
 import { toFeedPost, toPublicProfile } from '@/api/adapters';
+import { enrichPosts, POST_COLUMNS } from '@/api/hooks/useFeed';
 import { queryKeys } from '@/api/queryKeys';
+import { requireUserId } from '@/api/supabaseUser';
 import type { FeedPost } from '@/api/types';
 import type { PublicProfile } from '@planai/shared';
+import { levelFromExperience } from '@/features/account/levels';
 import { getStoragePublicUrl, supabase } from '@/lib/supabase';
 
 async function fetchPublicProfile(userId: string): Promise<PublicProfile> {
@@ -12,7 +15,8 @@ async function fetchPublicProfile(userId: string): Promise<PublicProfile> {
   if (error || !profile) throw error ?? new Error('Profile not found');
   const { data: stats, error: statsError } = await supabase.rpc('get_user_stats', { uid: userId });
   if (statsError) throw statsError;
-  const row: BackendPublicProfile = { id: profile.id, nomUtilisateur: profile.nom_utilisateur, urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null, niveau: profile.niveau, experience: profile.experience, insignes: profile.insignes ?? [], stats: stats ?? { captures: 0, especes: 0, rares: 0 } };
+  const { niveau } = levelFromExperience(profile.experience);
+  const row: BackendPublicProfile = { id: profile.id, nomUtilisateur: profile.nom_utilisateur, urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null, niveau, experience: profile.experience, insignes: profile.insignes ?? [], stats: stats ?? { captures: 0, especes: 0, rares: 0 } };
   return toPublicProfile(row, '');
 }
 
@@ -26,12 +30,12 @@ export function usePublicProfile(userId: string | undefined) {
 }
 
 async function fetchUserPosts(userId: string): Promise<FeedPost[]> {
-  const { data, error } = await supabase.from('posts').select('id,user_id,contenu,url_image,created_at,profiles!posts_user_id_fkey(id,nom_utilisateur,url_avatar),collection:plant_collection_id(id,plant_id,type_collection,plants(*))').eq('user_id', userId).order('created_at', { ascending: false });
+  const viewerId = await requireUserId();
+  const { data, error } = await supabase.from('posts').select(POST_COLUMNS).eq('user_id', userId).order('created_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map((row) => {
-    const profile = (Array.isArray(row.profiles) ? row.profiles[0] : row.profiles) as { id: string; nom_utilisateur: string; url_avatar: string | null };
-    return toFeedPost({ id: row.id, idUtilisateur: row.user_id, contenuTexte: row.contenu, imageUrl: row.url_image ? getStoragePublicUrl('posts', row.url_image) : undefined, dateCreation: row.created_at, auteur: { id: profile.id, nomUtilisateur: profile.nom_utilisateur, urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null }, likesCount: 0, commentairesCount: 0, estLikedParUtilisateur: false, distanceMetres: null } as BackendPost, '');
-  });
+  // Mêmes compteurs que le fil : sans ça, chaque post du profil affichait 0 like et 0 commentaire.
+  const posts = await enrichPosts((data ?? []) as unknown as Parameters<typeof enrichPosts>[0], viewerId);
+  return posts.map((post) => toFeedPost(post, ''));
 }
 
 /** GET /users/:id/posts — grille des publications d'un utilisateur (profil public). */

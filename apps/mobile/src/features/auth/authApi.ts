@@ -1,5 +1,6 @@
 import type { User } from '@planai/shared';
 
+import { levelFromExperience } from '@/features/account/levels';
 import { getStoragePublicUrl, supabase, uriToBlob } from '@/lib/supabase';
 type AuthResult = { token: string; refreshToken: string; user: User };
 
@@ -23,12 +24,14 @@ type AuthUser = {
 const PROFILE_COLUMNS = 'id,nom_utilisateur,experience,niveau,pieces,url_avatar';
 
 function userFromProfile(profile: ProfileRow, email: string): User {
+  // `experience` est cumulée : le niveau stocké n'était jamais recalculé côté serveur.
+  const { niveau, xp } = levelFromExperience(profile.experience);
   return {
     id: profile.id,
     pseudo: profile.nom_utilisateur,
     email,
-    niveau: profile.niveau,
-    xp: profile.experience,
+    niveau,
+    xp,
     pieces: profile.pieces,
     urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null,
   };
@@ -101,7 +104,8 @@ export async function register(pseudo: string, email: string, password: string):
 
 export async function logout(): Promise<void> {
   const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  // Hors ligne, la révocation serveur échoue : on oublie quand même la session locale.
+  if (error) await supabase.auth.signOut({ scope: 'local' });
 }
 export async function fetchProfile(): Promise<User> {
   const { data } = await supabase.auth.getUser();
@@ -130,7 +134,25 @@ export async function uploadAvatar(imageUri: string): Promise<User> {
   return profileForUser(data.user);
 }
 
-export async function deleteAccount(_password: string): Promise<void> {
+/** Vérifie le mot de passe actuel en rouvrant une session (les comptes Google n'en ont pas). */
+async function verifyPassword(password: string): Promise<void> {
+  const { data } = await supabase.auth.getUser();
+  if (!data.user?.email) throw new Error('Not authenticated');
+  const usesPassword = (data.user.identities ?? []).some((identity) => identity.provider === 'email');
+  if (!usesPassword) return;
+  const { error } = await supabase.auth.signInWithPassword({ email: data.user.email, password });
+  if (error) throw error;
+}
+
+export async function changePassword(current: string, next: string): Promise<void> {
+  if (next.length < 8) throw new Error('Password too short');
+  await verifyPassword(current);
+  const { error } = await supabase.auth.updateUser({ password: next });
+  if (error) throw error;
+}
+
+export async function deleteAccount(password: string): Promise<void> {
+  await verifyPassword(password);
   const { error } = await supabase.rpc('delete_my_account');
   if (error) throw error;
 }
