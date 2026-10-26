@@ -1,5 +1,5 @@
 import type { User } from '@planai/shared';
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { queryClient } from '@/api/queryClient';
 import { queryKeys } from '@/api/queryKeys';
@@ -15,6 +15,8 @@ import {
   changePassword as apiChangePassword,
   verifySignupCode as apiVerifySignupCode,
   resendSignupCode as apiResendSignupCode,
+  requestPasswordReset as apiRequestPasswordReset,
+  resetPasswordWithCode as apiResetPasswordWithCode,
 } from '@/features/auth/authApi';
 import { xpTargetForLevel } from '@/features/account/levels';
 import { getSafeSession, supabase } from '@/lib/supabase';
@@ -28,6 +30,9 @@ type AuthContextValue = {
   register: (pseudo: string, email: string, password: string) => Promise<'signedIn' | 'confirm'>;
   confirmEmail: (email: string, code: string) => Promise<void>;
   resendConfirmationCode: (email: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  /** Valide le code reçu par e-mail, change le mot de passe, puis connecte. */
+  resetPassword: (email: string, code: string, newPassword: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (patch: Partial<Pick<User, 'pseudo'>>) => Promise<void>;
@@ -72,12 +77,16 @@ export function AuthProvider({
 }) {
   const [user, setUser] = useState<User | null>(initialUser);
   const [isBusy, setIsBusy] = useState(false);
+  // Pendant une réinitialisation, la session ouverte par le code ne doit pas basculer l'app
+  // vers le jardin avant que le nouveau mot de passe soit enregistré.
+  const resettingPasswordRef = useRef(false);
 
   useEffect(() => {
     let active = true;
     let revision = 0;
     let pending: ReturnType<typeof setTimeout> | undefined;
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (resettingPasswordRef.current) return;
       const currentRevision = ++revision;
       clearTimeout(pending);
       if (!session) {
@@ -140,6 +149,18 @@ export function AuthProvider({
         }
       },
       resendConfirmationCode: (email) => apiResendSignupCode(email),
+      requestPasswordReset: (email) => apiRequestPasswordReset(email),
+      resetPassword: async (email, code, newPassword) => {
+        setIsBusy(true);
+        resettingPasswordRef.current = true;
+        try {
+          const { user: resetUser } = await apiResetPasswordWithCode(email, code, newPassword);
+          setUser(resetUser);
+        } finally {
+          resettingPasswordRef.current = false;
+          setIsBusy(false);
+        }
+      },
       loginWithGoogle: async (idToken) => {
         setIsBusy(true);
         try {

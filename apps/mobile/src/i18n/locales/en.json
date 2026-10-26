@@ -226,6 +226,16 @@
     "kilometers": "{{value}} km away"
   },
   "auth": {
+    "resetTitle": "Forgot password",
+    "resetSubtitle": "Enter your email: we will send you a code to choose a new password.",
+    "resetCodeSubtitle": "Paste the code you received by email and choose your new password.",
+    "resetSendCta": "Get a code",
+    "resetCodeSent": "If an account exists for {{email}}, a code has just been sent.",
+    "resetSendError": "Could not send the code right now. Please retry in a moment.",
+    "newPasswordPlaceholder": "New password",
+    "resetCta": "Change my password",
+    "resetInvalid": "Wrong or expired code. Check it or request a new one.",
+    "resetSamePassword": "Choose a password different from your old one.",
     "confirmTitle": "Confirm your email",
     "confirmSubtitle": "We sent a code to {{email}}. Paste it here to activate your account.",
     "confirmCodePlaceholder": "Confirmation code",

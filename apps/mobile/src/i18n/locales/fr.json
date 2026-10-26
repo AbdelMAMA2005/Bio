@@ -226,6 +226,16 @@
     "kilometers": "à {{value}} km"
   },
   "auth": {
+    "resetTitle": "Mot de passe oublié",
+    "resetSubtitle": "Saisis ton adresse : nous t’enverrons un code pour choisir un nouveau mot de passe.",
+    "resetCodeSubtitle": "Copie le code reçu par e-mail et choisis ton nouveau mot de passe.",
+    "resetSendCta": "Recevoir un code",
+    "resetCodeSent": "Si un compte existe pour {{email}}, un code vient d’y être envoyé.",
+    "resetSendError": "Impossible d’envoyer le code pour le moment. Réessaie dans un instant.",
+    "newPasswordPlaceholder": "Nouveau mot de passe",
+    "resetCta": "Changer mon mot de passe",
+    "resetInvalid": "Code incorrect ou expiré. Vérifie-le ou demande un nouveau code.",
+    "resetSamePassword": "Choisis un mot de passe différent de l’ancien.",
     "confirmTitle": "Confirme ton adresse",
     "confirmSubtitle": "Nous avons envoyé un code à {{email}}. Copie-le ici pour activer ton compte.",
     "confirmCodePlaceholder": "Code de confirmation",

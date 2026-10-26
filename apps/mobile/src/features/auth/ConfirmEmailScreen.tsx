@@ -7,20 +7,10 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { TextField } from '@/components/TextField';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { AuthScreenLayout } from '@/features/auth/AuthScreenLayout';
+import { CODE_MAX_LENGTH, CODE_MIN_LENGTH, RESEND_DELAY_SECONDS, normalizeCode } from '@/features/auth/otp';
 import { useAppTheme } from '@/theme';
 import { Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
-
-/** Supabase envoie un code de 6 chiffres par défaut (jusqu'à 10 selon la configuration). */
-const CODE_MIN_LENGTH = 6;
-const CODE_MAX_LENGTH = 10;
-/** Supabase refuse un nouvel envoi pendant 60 secondes. */
-const RESEND_DELAY_SECONDS = 60;
-
-/** Garde uniquement les chiffres : un code collé depuis l'e-mail peut contenir des espaces. */
-export function normalizeCode(value: string): string {
-  return value.replace(/\D/g, '').slice(0, CODE_MAX_LENGTH);
-}
 
 export function ConfirmEmailScreen({ email }: { email: string }) {
   const { t } = useTranslation();

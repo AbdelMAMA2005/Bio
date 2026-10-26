@@ -95,7 +95,10 @@ export function LoginScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Pressable hitSlop={8} style={styles.forgotWrap}>
+        <Pressable
+          hitSlop={8}
+          style={styles.forgotWrap}
+          onPress={() => router.push({ pathname: '/forgot-password', params: email.trim() ? { email: email.trim() } : {} })}>
           <Text style={[styles.forgot, { color: colors.active }]}>{t('auth.forgotPassword')}</Text>
         </Pressable>
 

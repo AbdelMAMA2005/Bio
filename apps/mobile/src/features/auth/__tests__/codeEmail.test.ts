@@ -1,11 +1,14 @@
-import { isEmailNotConfirmed, register, resendSignupCode, verifySignupCode } from '../authApi';
-import { normalizeCode } from '../ConfirmEmailScreen';
+import { isEmailNotConfirmed, register, requestPasswordReset, resendSignupCode, resetPasswordWithCode, verifySignupCode } from '../authApi';
+import { normalizeCode } from '../otp';
 
 const mockAuth = {
   signUp: jest.fn(),
   verifyOtp: jest.fn(),
   resend: jest.fn(),
   getUser: jest.fn(),
+  resetPasswordForEmail: jest.fn(),
+  updateUser: jest.fn(),
+  signOut: jest.fn(),
 };
 const mockProfile = { id: 'user-1', nom_utilisateur: 'camille', experience: 0, niveau: 1, pieces: 0, url_avatar: null };
 
@@ -68,5 +71,35 @@ describe('normalizeCode', () => {
     expect(normalizeCode(' 123 456 ')).toBe('123456');
     expect(normalizeCode('12-34-56')).toBe('123456');
     expect(normalizeCode('12345678901234')).toBe('1234567890');
+  });
+});
+
+describe('mot de passe oublié par code', () => {
+  it('demande l’envoi d’un code de réinitialisation', async () => {
+    mockAuth.resetPasswordForEmail.mockResolvedValue({ error: null });
+    await requestPasswordReset('camille@example.com');
+    expect(mockAuth.resetPasswordForEmail).toHaveBeenCalledWith('camille@example.com');
+  });
+
+  it('valide le code, enregistre le nouveau mot de passe puis ouvre la session', async () => {
+    mockAuth.verifyOtp.mockResolvedValue({ data: { session }, error: null });
+    mockAuth.updateUser.mockResolvedValue({ error: null });
+    await expect(resetPasswordWithCode('camille@example.com', '123456', 'nouveaumdp')).resolves.toMatchObject({ user: { id: 'user-1' } });
+    expect(mockAuth.verifyOtp).toHaveBeenCalledWith({ email: 'camille@example.com', token: '123456', type: 'recovery' });
+    expect(mockAuth.updateUser).toHaveBeenCalledWith({ password: 'nouveaumdp' });
+  });
+
+  it('referme la session si le nouveau mot de passe est refusé', async () => {
+    mockAuth.verifyOtp.mockResolvedValue({ data: { session }, error: null });
+    mockAuth.updateUser.mockResolvedValue({ error: { message: 'New password should be different from the old password.' } });
+    mockAuth.signOut.mockResolvedValue({ error: null });
+    await expect(resetPasswordWithCode('camille@example.com', '123456', 'ancienmdp')).rejects.toBeTruthy();
+    expect(mockAuth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+
+  it('ne change rien si le code est faux', async () => {
+    mockAuth.verifyOtp.mockResolvedValue({ data: { session: null }, error: { message: 'Token has expired or is invalid' } });
+    await expect(resetPasswordWithCode('camille@example.com', '000000', 'nouveaumdp')).rejects.toBeTruthy();
+    expect(mockAuth.updateUser).not.toHaveBeenCalled();
   });
 });

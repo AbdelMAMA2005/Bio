@@ -119,6 +119,28 @@ export async function resendSignupCode(email: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Mot de passe oublié : Supabase envoie un code par e-mail. Aucune erreur si l'adresse est
+ * inconnue, pour ne pas révéler quels comptes existent.
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) throw error;
+}
+
+/** Valide le code de réinitialisation, enregistre le nouveau mot de passe et ouvre la session. */
+export async function resetPasswordWithCode(email: string, code: string, newPassword: string): Promise<AuthResult> {
+  const { data, error } = await supabase.auth.verifyOtp({ email, token: code, type: 'recovery' });
+  if (error || !data.session) throw error ?? new Error('Invalid reset code');
+  const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+  if (updateError) {
+    // Code valide mais mot de passe refusé : on ne laisse pas une session à moitié ouverte.
+    await supabase.auth.signOut({ scope: 'local' });
+    throw updateError;
+  }
+  return resultFromSession(data.session);
+}
+
 /** Connexion refusée parce que l'adresse n'a pas encore été confirmée. */
 export function isEmailNotConfirmed(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false;

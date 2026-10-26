@@ -226,6 +226,16 @@
     "kilometers": "a {{value}} km"
   },
   "auth": {
+    "resetTitle": "Contraseña olvidada",
+    "resetSubtitle": "Introduce tu correo: te enviaremos un código para elegir una nueva contraseña.",
+    "resetCodeSubtitle": "Pega el código recibido por correo y elige tu nueva contraseña.",
+    "resetSendCta": "Recibir un código",
+    "resetCodeSent": "Si existe una cuenta para {{email}}, se acaba de enviar un código.",
+    "resetSendError": "No se pudo enviar el código ahora. Inténtalo de nuevo en un momento.",
+    "newPasswordPlaceholder": "Nueva contraseña",
+    "resetCta": "Cambiar mi contraseña",
+    "resetInvalid": "Código incorrecto o caducado. Revísalo o pide uno nuevo.",
+    "resetSamePassword": "Elige una contraseña distinta de la anterior.",
     "confirmTitle": "Confirma tu correo",
     "confirmSubtitle": "Enviamos un código a {{email}}. Pégalo aquí para activar tu cuenta.",
     "confirmCodePlaceholder": "Código de confirmación",
