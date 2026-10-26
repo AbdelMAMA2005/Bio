@@ -1,0 +1,27 @@
+<!--
+  Modèle Supabase « Confirm sign up » (Authentication > Emails > Templates).
+  Objet conseillé : Ton code de confirmation PlanAI : {{ .Token }}
+  Le code ({{ .Token }}) se saisit dans l'écran « Confirme ton adresse » de l'app.
+  Le lien de secours sert aux anciennes versions de l'app (V1.0.0) qui n'ont pas cet écran :
+  le retirer quand plus aucune ne sera en circulation.
+-->
+<div style="background:#f6f3ec;padding:32px 16px;font-family:Inter,Arial,sans-serif;color:#1f2a22">
+  <div style="max-width:440px;margin:0 auto;background:#ffffff;border:1px solid #e3ddcf;border-radius:12px;padding:28px">
+    <h1 style="margin:0 0 8px;font-family:Georgia,'Source Serif 4',serif;font-size:22px;font-weight:600;color:#1f2a22">
+      Confirme ton adresse
+    </h1>
+    <p style="margin:0 0 20px;font-size:14px;line-height:1.5;color:#55605a">
+      Bienvenue sur PlanAI. Copie ce code dans l'app pour activer ton compte :
+    </p>
+    <p style="margin:0 0 20px;padding:14px 0;text-align:center;font-size:30px;font-weight:700;letter-spacing:8px;background:#f6f3ec;border-radius:8px;color:#2f6e40">
+      {{ .Token }}
+    </p>
+    <p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#55605a">
+      Ce code expire au bout d'une heure. Si tu n'as pas créé de compte, ignore cet e-mail.
+    </p>
+    <p style="margin:0;font-size:12px;line-height:1.5;color:#8a918c">
+      Ton app ne propose pas de saisir un code ?
+      <a href="{{ .ConfirmationURL }}" style="color:#2f6e40">Confirme ton adresse avec ce lien</a>.
+    </p>
+  </div>
+</div>

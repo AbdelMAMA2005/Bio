@@ -92,14 +92,38 @@ export async function loginWithGoogle(idToken: string): Promise<AuthResult> {
   return resultFromSession(data.session);
 }
 
-export async function register(pseudo: string, email: string, password: string): Promise<AuthResult> {
+/**
+ * Inscription. Renvoie `null` quand l'adresse doit d'abord être confirmée : Supabase envoie
+ * alors un code par e-mail, saisi dans l'écran de confirmation (verifySignupCode).
+ */
+export async function register(pseudo: string, email: string, password: string): Promise<AuthResult | null> {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: { data: { nom_utilisateur: pseudo } },
   });
-  if (error || !data.session) throw error ?? new Error('Email confirmation required');
+  if (error) throw error;
+  return data.session ? resultFromSession(data.session) : null;
+}
+
+/** Confirme l'adresse avec le code reçu par e-mail, puis ouvre la session. */
+export async function verifySignupCode(email: string, code: string): Promise<AuthResult> {
+  const { data, error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
+  if (error || !data.session) throw error ?? new Error('Invalid confirmation code');
   return resultFromSession(data.session);
+}
+
+/** Renvoie un code de confirmation (inscription non confirmée). */
+export async function resendSignupCode(email: string): Promise<void> {
+  const { error } = await supabase.auth.resend({ type: 'signup', email });
+  if (error) throw error;
+}
+
+/** Connexion refusée parce que l'adresse n'a pas encore été confirmée. */
+export function isEmailNotConfirmed(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const { code, message } = error as { code?: unknown; message?: unknown };
+  return code === 'email_not_confirmed' || (typeof message === 'string' && /email not confirmed/i.test(message));
 }
 
 export async function logout(): Promise<void> {

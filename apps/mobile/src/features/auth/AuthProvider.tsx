@@ -13,6 +13,8 @@ import {
   fetchProfile as apiFetchProfile,
   logout as apiLogout,
   changePassword as apiChangePassword,
+  verifySignupCode as apiVerifySignupCode,
+  resendSignupCode as apiResendSignupCode,
 } from '@/features/auth/authApi';
 import { xpTargetForLevel } from '@/features/account/levels';
 import { getSafeSession, supabase } from '@/lib/supabase';
@@ -22,7 +24,10 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   isBusy: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (pseudo: string, email: string, password: string) => Promise<void>;
+  /** `'confirm'` : un code a été envoyé par e-mail, à saisir avec `confirmEmail`. */
+  register: (pseudo: string, email: string, password: string) => Promise<'signedIn' | 'confirm'>;
+  confirmEmail: (email: string, code: string) => Promise<void>;
+  resendConfirmationCode: (email: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (patch: Partial<Pick<User, 'pseudo'>>) => Promise<void>;
@@ -117,14 +122,24 @@ export function AuthProvider({
       register: async (pseudo, email, password) => {
         setIsBusy(true);
         try {
-          const { token, refreshToken, user: registeredUser } = await apiRegister(pseudo, email, password);
-          void token;
-          void refreshToken;
-          setUser(registeredUser);
+          const result = await apiRegister(pseudo, email, password);
+          if (!result) return 'confirm';
+          setUser(result.user);
+          return 'signedIn';
         } finally {
           setIsBusy(false);
         }
       },
+      confirmEmail: async (email, code) => {
+        setIsBusy(true);
+        try {
+          const { user: confirmedUser } = await apiVerifySignupCode(email, code);
+          setUser(confirmedUser);
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      resendConfirmationCode: (email) => apiResendSignupCode(email),
       loginWithGoogle: async (idToken) => {
         setIsBusy(true);
         try {

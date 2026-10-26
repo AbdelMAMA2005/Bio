@@ -10,6 +10,7 @@ import { TextField } from '@/components/TextField';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { AuthScreenLayout } from '@/features/auth/AuthScreenLayout';
 import { useGoogleSignIn } from '@/features/auth/googleAuth';
+import { isEmailNotConfirmed } from '@/features/auth/authApi';
 import { authErrorMessage } from '@/features/auth/authError';
 import { useAppTheme } from '@/theme';
 import { FontFamily } from '@/theme/typography';
@@ -18,7 +19,7 @@ import { Spacing } from '@/theme/spacing';
 export function LoginScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
-  const { login, loginWithGoogle, isBusy } = useAuth();
+  const { login, loginWithGoogle, resendConfirmationCode, isBusy } = useAuth();
   const { signIn: googleSignIn, isConfigured } = useGoogleSignIn();
   const router = useRouter();
 
@@ -41,6 +42,12 @@ export function LoginScreen() {
       await login(trimmedEmail, password);
       router.replace('/jardin');
     } catch (e) {
+      // Inscription jamais confirmée : on renvoie un code et on ouvre l'écran de saisie.
+      if (isEmailNotConfirmed(e)) {
+        await resendConfirmationCode(trimmedEmail).catch(() => undefined);
+        router.push({ pathname: '/confirm-email', params: { email: trimmedEmail } });
+        return;
+      }
       console.error('[handleLogin] échec de la connexion', e);
       const message = authErrorMessage(e, t('auth.genericError'));
       const isInvalidCredentials = message.toLowerCase().includes('invalid login credentials');

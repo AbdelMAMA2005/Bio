@@ -2,9 +2,10 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { AnimatedSplashScreen } from '@/components/AnimatedSplashScreen';
+import { AnimatedSplashScreen, SPLASH_ENTRANCE_MS } from '@/components/AnimatedSplashScreen';
 
-const MIN_SPLASH_DURATION_MS = 1500;
+/** L'animation d'entrée se joue en entier, puis le logo reste visible un court instant. */
+const MIN_SPLASH_DURATION_MS = SPLASH_ENTRANCE_MS + 400;
 
 type Props = {
   appReady: boolean;

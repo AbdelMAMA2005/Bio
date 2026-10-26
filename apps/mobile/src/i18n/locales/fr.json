@@ -226,6 +226,17 @@
     "kilometers": "à {{value}} km"
   },
   "auth": {
+    "confirmTitle": "Confirme ton adresse",
+    "confirmSubtitle": "Nous avons envoyé un code à {{email}}. Copie-le ici pour activer ton compte.",
+    "confirmCodePlaceholder": "Code de confirmation",
+    "confirmCta": "Confirmer",
+    "confirmCodeIncomplete": "Saisis le code complet reçu par e-mail.",
+    "confirmCodeInvalid": "Code incorrect ou expiré. Vérifie-le ou demande un nouveau code.",
+    "confirmResend": "Renvoyer le code",
+    "confirmResendIn": "Renvoyer le code dans {{seconds}} s",
+    "confirmCodeResent": "Un nouveau code vient d’être envoyé.",
+    "confirmCodeResendError": "Impossible d’envoyer un nouveau code pour le moment.",
+    "backToLogin": "Retour à la connexion",
     "loginTitle": "Bon retour parmi nous",
     "loginSubtitle": "Connecte-toi pour retrouver ton jardin",
     "registerTitle": "Créer un compte",
@@ -258,7 +269,6 @@
     "passwordMismatch": "Les mots de passe ne correspondent pas.",
     "registerError": "L'inscription a échoué. Vérifie tes informations et réessaie.",
     "loginAccountHint": "Si tu n'as pas encore de compte, sélectionne « Créer un compte ».",
-    "confirmEmailAfterRegister": "Compte créé. Vérifie ton email pour confirmer ton adresse, puis connecte-toi.",
     "genericError": "Une erreur est survenue. Réessaie."
   },
   "account": {

@@ -62,15 +62,14 @@ export function RegisterScreen() {
       return;
     }
     try {
-      await register(pseudo.trim(), email.trim(), password);
-      router.replace('/jardin');
-    } catch (e) {
-      const message = authErrorMessage(e, t('auth.registerError'));
-      if (message.toLowerCase().includes('email confirmation required')) {
-        setError(t('auth.confirmEmailAfterRegister'));
+      const outcome = await register(pseudo.trim(), email.trim(), password);
+      if (outcome === 'confirm') {
+        router.push({ pathname: '/confirm-email', params: { email: email.trim() } });
       } else {
-        setError(message);
+        router.replace('/jardin');
       }
+    } catch (e) {
+      setError(authErrorMessage(e, t('auth.registerError')));
     }
   };
 

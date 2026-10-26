@@ -226,6 +226,17 @@
     "kilometers": "{{value}} km away"
   },
   "auth": {
+    "confirmTitle": "Confirm your email",
+    "confirmSubtitle": "We sent a code to {{email}}. Paste it here to activate your account.",
+    "confirmCodePlaceholder": "Confirmation code",
+    "confirmCta": "Confirm",
+    "confirmCodeIncomplete": "Enter the full code you received by email.",
+    "confirmCodeInvalid": "Wrong or expired code. Check it or request a new one.",
+    "confirmResend": "Resend the code",
+    "confirmResendIn": "Resend the code in {{seconds}} s",
+    "confirmCodeResent": "A new code has been sent.",
+    "confirmCodeResendError": "Could not send a new code right now.",
+    "backToLogin": "Back to sign in",
     "loginTitle": "Welcome back",
     "loginSubtitle": "Sign in to get back to your garden",
     "registerTitle": "Create an account",
@@ -258,7 +269,6 @@
     "passwordMismatch": "Passwords don't match.",
     "registerError": "Registration failed. Please check your details and try again.",
     "loginAccountHint": "If you do not have an account, select Create an account.",
-    "confirmEmailAfterRegister": "Account created. Check your email to confirm your address, then sign in.",
     "genericError": "Something went wrong. Please try again."
   },
   "account": {

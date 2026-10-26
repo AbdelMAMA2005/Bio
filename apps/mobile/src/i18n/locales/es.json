@@ -226,6 +226,17 @@
     "kilometers": "a {{value}} km"
   },
   "auth": {
+    "confirmTitle": "Confirma tu correo",
+    "confirmSubtitle": "Enviamos un código a {{email}}. Pégalo aquí para activar tu cuenta.",
+    "confirmCodePlaceholder": "Código de confirmación",
+    "confirmCta": "Confirmar",
+    "confirmCodeIncomplete": "Introduce el código completo recibido por correo.",
+    "confirmCodeInvalid": "Código incorrecto o caducado. Revísalo o pide uno nuevo.",
+    "confirmResend": "Reenviar el código",
+    "confirmResendIn": "Reenviar el código en {{seconds}} s",
+    "confirmCodeResent": "Se ha enviado un nuevo código.",
+    "confirmCodeResendError": "No se pudo enviar un nuevo código ahora.",
+    "backToLogin": "Volver al inicio de sesión",
     "loginTitle": "Bienvenido de nuevo",
     "loginSubtitle": "Inicia sesión para volver a tu jardín",
     "registerTitle": "Crear una cuenta",
