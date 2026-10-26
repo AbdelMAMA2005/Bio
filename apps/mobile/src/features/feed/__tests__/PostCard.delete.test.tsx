@@ -2,9 +2,11 @@ import { Alert } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { PostCard } from '../PostCard';
 const mockDelete = jest.fn();
+const mockReport = jest.fn();
 const mockUser = { id: 'owner' };
 jest.mock('@/features/auth/AuthProvider', () => ({ useAuth: () => ({ user: mockUser }) }));
 jest.mock('@/api/hooks/useFeed', () => ({ useDeletePost: () => ({ mutate: mockDelete, isPending: false }) }));
+jest.mock('@/features/feed/useReportContent', () => ({ useReportContent: () => mockReport }));
 jest.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'fr' } }) }));
 jest.mock('@/theme', () => ({ useAppTheme: () => ({ colors: {}, isDark: false }) }));
 jest.mock('@/components/Icon', () => ({ Icon: () => null }));
@@ -15,6 +17,12 @@ beforeEach(() => jest.clearAllMocks());
 it('only exposes deletion for the current author', () => {
   const view = render(<PostCard {...props} post={{ ...post, authorId: 'someone-else' }} />);
   expect(view.queryByText('community.deletePost')).toBeNull();
+});
+it('lets other members report the post, but not its author', () => {
+  const view = render(<PostCard {...props} post={{ ...post, authorId: 'someone-else' }} />);
+  fireEvent.press(view.getByText('community.report'));
+  expect(mockReport).toHaveBeenCalledWith('post', 'post');
+  expect(render(<PostCard {...props} />).queryByText('community.report')).toBeNull();
 });
 it('requires confirmation and closes the viewer only after successful deletion', () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});

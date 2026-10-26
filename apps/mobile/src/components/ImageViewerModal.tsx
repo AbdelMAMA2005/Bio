@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dimensions, FlatList, Modal, Pressable, StyleSheet, Text, View, type ViewToken } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -71,10 +71,11 @@ export function ImageViewerModal({ images, initialIndex = 0, onClose }: Props) {
     opacity: 1 - Math.min(translateY.value / 400, 0.5),
   }));
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+  // FlatList exige une identité stable pour ce callback (un changement lève une erreur).
+  const [onViewableItemsChanged] = useState(() => ({ viewableItems }: { viewableItems: ViewToken[] }) => {
     const first = viewableItems[0];
     if (first && typeof first.index === 'number') setActiveIndex(first.index);
-  }).current;
+  });
 
   const activeDate = images[activeIndex]?.date;
   const isGallery = images.length > 1;

@@ -6,7 +6,16 @@ import { usePageMeta } from '../layout/LayoutContext';
 import { useAdminQuests, useCreateQuest, useUpdateQuest, type CreateQuestInput } from '../api/hooks/useQuests';
 import { useAuth } from '../auth/AuthProvider';
 import { ApiError } from '../api/client';
-import type { AdminQuestType } from '@planai/shared';
+import type { AdminQuestCritere, AdminQuestType } from '@planai/shared';
+
+const CRITERES: { value: AdminQuestCritere; label: string }[] = [
+  { value: 'scans', label: 'Espèces différentes scannées' },
+  { value: 'jardin', label: 'Plantes ajoutées au Jardin' },
+  { value: 'herbier', label: "Plantes ajoutées à l'Herbarium" },
+  { value: 'publications', label: 'Publications dans la Communauté' },
+  { value: 'likes', label: 'Likes reçus sur ses publications' },
+  { value: 'exploration', label: 'Espèces rares découvertes à plus de 1 km' },
+];
 
 export function QuestsPage() {
   usePageMeta('Défis', 'Quotidiens, exploration et récompenses');
@@ -43,7 +52,12 @@ export function QuestsPage() {
             <div key={q.id} className="table-row" style={{ gridTemplateColumns: '2.6fr 1.1fr 1.2fr 1.1fr 70px' }}>
               <div className="cell-user">
                 <Icon name={q.type === 'exploration' ? 'explore' : 'flag'} size={19} color="var(--accent)" />
-                <span className="truncate" style={{ fontSize: 13.5, fontWeight: 600 }}>{q.libelle}</span>
+                <span style={{ minWidth: 0 }}>
+                  <span className="truncate" style={{ display: 'block', fontSize: 13.5, fontWeight: 600 }}>{q.libelle}</span>
+                  <span className="truncate" style={{ display: 'block', fontSize: 11.5, color: 'var(--muted)' }}>
+                    {CRITERES.find((c) => c.value === q.critere)?.label ?? q.critere}
+                  </span>
+                </span>
               </div>
               <span className="badge" style={{ background: 'var(--pill)', color: 'var(--soft)', justifySelf: 'start' }}>
                 {q.type === 'exploration' ? 'Exploration' : 'Quotidien'}
@@ -81,6 +95,7 @@ function CreateQuestModal({ onClose }: { onClose: () => void }) {
     id: '',
     libelle: '',
     type: 'quotidien',
+    critere: 'scans',
     objectif: 1,
     recompenseXp: 10,
     recompensePieces: 0,
@@ -125,6 +140,16 @@ function CreateQuestModal({ onClose }: { onClose: () => void }) {
             </select>
           </div>
         </label>
+        <label style={{ display: 'block' }}>
+          <span className="field-label">Ce qui est compté (par jour)</span>
+          <div className="field-input">
+            <select value={form.critere} onChange={(e) => setForm({ ...form, critere: e.target.value as AdminQuestCritere })}>
+              {CRITERES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          </div>
+        </label>
         <div style={{ display: 'flex', gap: 12 }}>
           <label style={{ flex: 1, display: 'block' }}>
             <span className="field-label">Objectif</span>
@@ -145,12 +170,6 @@ function CreateQuestModal({ onClose }: { onClose: () => void }) {
             </div>
           </label>
         </div>
-
-        <p style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-          ⚠️ La progression réelle sur mobile n&rsquo;existe que pour les 5 défis déjà codés (scan, jardin,
-          publication, likes, exploration). Un nouvel identifiant reste visible mais bloqué à 0 tant qu&rsquo;aucun
-          code dédié ne le calcule.
-        </p>
 
         {error ? <div className="error-text">{error}</div> : null}
 

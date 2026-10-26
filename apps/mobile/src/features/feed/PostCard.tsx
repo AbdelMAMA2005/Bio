@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'rea
 
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useDeletePost } from '@/api/hooks/useFeed';
+import { useReportContent } from '@/features/feed/useReportContent';
 import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/Icon';
 import type { FeedPost } from '@/api/types';
@@ -39,6 +40,7 @@ export const PostCard = memo(function PostCard({
   const { colors, isDark } = useAppTheme();
   const { user } = useAuth();
   const deletePost = useDeletePost();
+  const report = useReportContent();
   const confirmDelete = () => Alert.alert(t('community.deletePost'), t('community.deleteConfirm'), [
     { text: t('location.close'), style: 'cancel' },
     { text: t('community.deletePost'), style: 'destructive', onPress: () => {
@@ -107,6 +109,11 @@ export const PostCard = memo(function PostCard({
           <Icon name="delete" size={19} color={ToxicityColors.toxic.text} />
           <Text style={[styles.actionLabel, { color: ToxicityColors.toxic.text }]}>{t('community.deletePost')}</Text>
           {deletePost.isPending ? <ActivityIndicator size="small" /> : null}
+        </Pressable>
+      ) : user ? (
+        <Pressable onPress={() => report('post', post.id)} accessibilityRole="button" style={styles.actionItem}>
+          <Icon name="flag" size={18} color={colors.muted} />
+          <Text style={[styles.actionLabel, { color: colors.muted }]}>{t('community.report')}</Text>
         </Pressable>
       ) : null}
       <View style={styles.actions}>

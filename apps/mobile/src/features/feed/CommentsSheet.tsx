@@ -8,6 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/Icon';
 import { useAddComment, useComments } from '@/api/hooks/useFeed';
+import { useAuth } from '@/features/auth/AuthProvider';
+import { useReportContent } from '@/features/feed/useReportContent';
 import type { SupportedLanguage } from '@/i18n';
 import { formatRelativeDate } from '@/utils/format';
 import { useAppTheme } from '@/theme';
@@ -31,6 +33,8 @@ export function CommentsSheet({ postId, onClose }: Props) {
   const language = (i18n.language as SupportedLanguage) ?? 'fr';
   const comments = useComments(postId ?? undefined);
   const addComment = useAddComment();
+  const { user } = useAuth();
+  const report = useReportContent();
   const [text, setText] = useState('');
 
   const close = () => {
@@ -78,7 +82,11 @@ export function CommentsSheet({ postId, onClose }: Props) {
                           {formatRelativeDate(item.createdAt, language)}
                         </Text>
                       </View>
-                      <Text style={[styles.commentText, { color: colors.text }]}>{item.text}</Text>
+                      <Pressable
+                        onLongPress={item.authorId !== user?.id ? () => report('comment', item.id) : undefined}
+                        accessibilityHint={item.authorId !== user?.id ? t('community.report') : undefined}>
+                        <Text style={[styles.commentText, { color: colors.text }]}>{item.text}</Text>
+                      </Pressable>
                     </View>
                   </View>
                 )}

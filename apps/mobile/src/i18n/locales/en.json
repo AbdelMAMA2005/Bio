@@ -169,7 +169,14 @@
     "deleteStoryError": "Couldn't delete this story right now.",
     "deletePost": "Delete",
     "deleteConfirm": "Delete this post? This cannot be undone.",
-    "deleteError": "Could not delete the post. Please retry."
+    "deleteError": "Could not delete the post. Please retry.",
+    "report": "Report",
+    "reportTitle": "Report this content",
+    "reportBody": "Why are you reporting it? The moderation team will review it.",
+    "reportInappropriate": "Inappropriate",
+    "reportSpam": "Spam",
+    "reportSent": "Thanks, your report has been sent.",
+    "reportError": "Could not send the report. Please retry."
   },
   "profile": {
     "sendMessage": "Message",

@@ -14,6 +14,7 @@ import { Icon } from '@/components/Icon';
 import { useDeleteStoryMedia, useRecordStoryView, useStories, useToggleStoryLike } from '@/api/hooks/useFeed';
 import { useSendMessage } from '@/api/hooks/useMessages';
 import { StoryViewersSheet } from '@/features/feed/StoryViewersSheet';
+import { useReportContent } from '@/features/feed/useReportContent';
 import type { SupportedLanguage } from '@/i18n';
 import { formatRelativeDate } from '@/utils/format';
 import { Palette, AccentOnColor, ToxicityColors } from '@/theme/colors';
@@ -52,6 +53,7 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
   const recordView = useRecordStoryView();
   const toggleLike = useToggleStoryLike();
   const deleteMedia = useDeleteStoryMedia();
+  const report = useReportContent();
   const sendMessage = useSendMessage();
   const liveStories = useStories();
   const [position, setPosition] = useState(() => ({
@@ -87,10 +89,13 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [media.id, group.estMoi]);
 
-  useEffect(() => {
+  // Réponse remise à zéro quand on change de média (pendant le rendu, sans effet en cascade).
+  const [replyMediaId, setReplyMediaId] = useState(media.id);
+  if (replyMediaId !== media.id) {
+    setReplyMediaId(media.id);
     setReplyText('');
     setReplySent(false);
-  }, [media.id]);
+  }
 
   const handleDelete = () => {
     Alert.alert(t('community.deleteStoryTitle'), t('community.deleteStoryBody'), [
@@ -252,7 +257,17 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
                     <Icon name="delete_forever" size={22} color={chrome.text} />
                   )}
                 </Pressable>
-              ) : null}
+              ) : (
+                <Pressable
+                  onPress={() => {
+                    setPaused(true);
+                    report('story', media.id, () => setPaused(false));
+                  }}
+                  hitSlop={10}
+                  style={styles.closeButton}>
+                  <Icon name="flag" size={20} color={chrome.text} />
+                </Pressable>
+              )}
               <Pressable onPress={onClose} hitSlop={10} style={styles.closeButton}>
                 <Icon name="close" size={22} color={chrome.text} />
               </Pressable>
@@ -332,7 +347,7 @@ function useStoryProgress(durationMs: number, onComplete: () => void, paused: bo
   const elapsedRef = useRef(0);
 
   useEffect(() => {
-    progress.value = 0;
+    progress.set(0);
     elapsedRef.current = 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
@@ -345,9 +360,9 @@ function useStoryProgress(durationMs: number, onComplete: () => void, paused: bo
     }
     startedAtRef.current = Date.now();
     const remaining = Math.max(durationMs - elapsedRef.current, 0);
-    progress.value = withTiming(1, { duration: remaining, easing: Easing.linear }, (finished) => {
+    progress.set(withTiming(1, { duration: remaining, easing: Easing.linear }, (finished) => {
       if (finished) scheduleOnRN(onComplete);
-    });
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paused, resetKey]);
 

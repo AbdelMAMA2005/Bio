@@ -152,6 +152,8 @@ export type AdminToxicite = 'green' | 'orange' | 'red';
 export type AdminReportTargetType = 'post' | 'story' | 'comment';
 export type AdminReportStatut = 'ouvert' | 'ignore' | 'supprime';
 export type AdminQuestType = 'quotidien' | 'exploration';
+/** Ce que compte un défi pour progresser (colonne quests.critere). */
+export type AdminQuestCritere = 'scans' | 'jardin' | 'herbier' | 'publications' | 'likes' | 'exploration';
 export type AdminServiceStatus = 'ok' | 'degrade' | 'down';
 
 export interface AdminUser {
@@ -224,6 +226,7 @@ export interface AdminQuest {
   id: string;
   libelle: string;
   type: AdminQuestType;
+  critere: AdminQuestCritere;
   objectif: number;
   recompenseXp: number;
   recompensePieces: number;

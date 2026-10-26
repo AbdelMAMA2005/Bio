@@ -42,10 +42,11 @@ export function OnboardingScreen() {
     listRef.current?.scrollToIndex({ index: index + 1 });
   };
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+  // FlatList exige une identité stable pour ce callback (un changement lève une erreur).
+  const [onViewableItemsChanged] = useState(() => ({ viewableItems }: { viewableItems: ViewToken[] }) => {
     const first = viewableItems[0];
     if (first?.index !== null && first?.index !== undefined) setIndex(first.index);
-  }).current;
+  });
 
   return (
     <View style={[styles.fill, { backgroundColor: colors.screen }]}>

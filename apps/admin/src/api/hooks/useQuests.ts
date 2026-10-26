@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AdminQuest, AdminQuestType } from '@planai/shared';
+import type { AdminQuest, AdminQuestCritere, AdminQuestType } from '@planai/shared';
 import { rpc, supabase, toApiError } from '../client';
 import { queryKeys } from '../queryKeys';
 
@@ -14,6 +14,7 @@ export type CreateQuestInput = {
   id: string;
   libelle: string;
   type: AdminQuestType;
+  critere: AdminQuestCritere;
   objectif: number;
   recompenseXp: number;
   recompensePieces: number;
@@ -24,6 +25,7 @@ function toRow(input: Partial<CreateQuestInput> & { actif?: boolean }) {
   if (input.id !== undefined) row.id = input.id;
   if (input.libelle !== undefined) row.libelle = input.libelle;
   if (input.type !== undefined) row.type = input.type;
+  if (input.critere !== undefined) row.critere = input.critere;
   if (input.objectif !== undefined) row.objectif = input.objectif;
   if (input.recompenseXp !== undefined) row.recompense_xp = input.recompenseXp;
   if (input.recompensePieces !== undefined) row.recompense_pieces = input.recompensePieces;

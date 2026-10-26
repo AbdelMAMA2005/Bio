@@ -30,10 +30,15 @@ INSERT INTO public.stories (id, user_id, url_media) VALUES
 INSERT INTO storage.objects (bucket_id, name) VALUES ('posts', 'bbbbbbbb-0000-4000-8000-000000000001/p.jpg');
 
 DO $$ BEGIN
-  -- Aloès « Rare » = 50 XP, 9 Monstera « Commun » = 225 XP : 275 XP, niveau 2.
-  IF (SELECT experience FROM public.profiles WHERE id = auth.uid()) <> 275
-     OR (SELECT niveau FROM public.profiles WHERE id = auth.uid()) <> 2 THEN
-    RAISE EXCEPTION 'ÉCHEC : l''ajout à la collection doit créditer l''XP et recalculer le niveau';
+  -- Aloès « Rare » = 50 XP, Monstera « Commun » = 25 XP. Depuis la migration
+  -- 20261026150000, les 8 Monstera suivants ne rapportent plus rien.
+  IF (SELECT experience FROM public.profiles WHERE id = auth.uid()) <> 75 THEN
+    RAISE EXCEPTION 'ÉCHEC : l''ajout à la collection doit créditer l''XP';
+  END IF;
+  -- Niveau n -> n+1 : n × 250 XP.
+  IF public.level_for_experience(249) <> 1 OR public.level_for_experience(250) <> 2
+     OR public.level_for_experience(800) <> 3 THEN
+    RAISE EXCEPTION 'ÉCHEC : calcul du niveau';
   END IF;
 END $$;
 

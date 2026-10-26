@@ -27,7 +27,7 @@ type CollectionType = 'owned' | 'discovered';
 export function ScanScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
-  const { user, addXp } = useAuth();
+  const { user, refreshUser } = useAuth();
   const router = useRouter();
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -105,7 +105,8 @@ export function ScanScreen() {
       }
       const { collectionId } = await addToCollection.mutateAsync({ plant: result.plant, type, geoTagged, ...coords });
       if (photoUri) addTrackingPhoto.mutate({ collectionId, uri: photoUri });
-      addXp(result.xpAwarded);
+      // L'XP est créditée par la base (une seule fois par espèce et par type) : on relit le profil.
+      void refreshUser();
       setPendingType(null);
       setToast({
         title: t(type === 'owned' ? 'toast.addedToJardinTitle' : 'toast.addedToHerbariumTitle'),

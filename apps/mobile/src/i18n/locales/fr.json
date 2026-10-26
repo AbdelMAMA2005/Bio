@@ -169,7 +169,14 @@
     "deleteStoryError": "Impossible de supprimer cette story pour le moment.",
     "deletePost": "Supprimer",
     "deleteConfirm": "Supprimer cette publication ? Cette action est définitive.",
-    "deleteError": "La publication n’a pas pu être supprimée. Réessaie."
+    "deleteError": "La publication n’a pas pu être supprimée. Réessaie.",
+    "report": "Signaler",
+    "reportTitle": "Signaler ce contenu",
+    "reportBody": "Pour quelle raison ? L’équipe de modération examinera ton signalement.",
+    "reportInappropriate": "Inapproprié",
+    "reportSpam": "Spam",
+    "reportSent": "Merci, ton signalement a été envoyé.",
+    "reportError": "Le signalement n’a pas pu être envoyé. Réessaie."
   },
   "profile": {
     "sendMessage": "Message",

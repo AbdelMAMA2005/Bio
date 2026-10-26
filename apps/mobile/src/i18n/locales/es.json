@@ -169,7 +169,14 @@
     "deleteStoryError": "No se pudo eliminar esta story en este momento.",
     "deletePost": "Eliminar",
     "deleteConfirm": "¿Eliminar esta publicación? Esta acción es definitiva.",
-    "deleteError": "No se pudo eliminar la publicación. Inténtalo de nuevo."
+    "deleteError": "No se pudo eliminar la publicación. Inténtalo de nuevo.",
+    "report": "Denunciar",
+    "reportTitle": "Denunciar este contenido",
+    "reportBody": "¿Por qué lo denuncias? El equipo de moderación lo revisará.",
+    "reportInappropriate": "Inapropiado",
+    "reportSpam": "Spam",
+    "reportSent": "Gracias, tu denuncia ha sido enviada.",
+    "reportError": "No se pudo enviar la denuncia. Inténtalo de nuevo."
   },
   "profile": {
     "sendMessage": "Mensaje",
