@@ -258,8 +258,13 @@ git checkout -b dev && git push -u origin dev
 ## 8. Base de données et Edge Functions
 
 - **Migrations** : chaque changement de schéma est un nouveau fichier daté dans
-  `supabase/migrations/`, rejouable et sans perte de données. Application : SQL Editor du
-  projet ou `npx supabase db push`. Ne jamais lancer `schema_supabase.sql` sur la prod.
+  `supabase/migrations/`, rejouable et sans perte de données. Le projet de production n'a
+  pas d'historique de migrations (`supabase_migrations.schema_migrations` absente) :
+  `supabase db push` les rejouerait toutes. Les appliquer une par une depuis le SQL Editor.
+  Ne jamais lancer `schema_supabase.sql` sur la prod.
+- **Appliquées en production** : toutes celles de `supabase/migrations/` au 27/10/2026,
+  sauf `20261014120000_private_collections_bucket` (après la sortie de la nouvelle version
+  mobile, comme `supabase/migrations_a_venir/`).
 - **Tests SQL** : `supabase/tests/*.sql` s'exécutent avec `psql -v ON_ERROR_STOP=1` sur une
   base de test (schéma + migrations appliqués) et annulent tout à la fin (`ROLLBACK`).
 - **Edge Functions** : `npx supabase functions deploy <nom> --project-ref <ref>`. Toujours
