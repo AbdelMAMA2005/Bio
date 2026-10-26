@@ -387,6 +387,23 @@ export function useAddComment() {
   });
 }
 
+/** Modifie la légende de sa propre publication (seule colonne modifiable, voir la RLS de posts). */
+export function useUpdatePost() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ postId, texte }: { postId: string; texte: string }) => {
+      const userId = await requireUserId();
+      const { data, error } = await supabase.from('posts').update({ contenu: texte }).eq('id', postId).eq('user_id', userId).select('id');
+      if (error) throw error;
+      if (!data?.length) throw new Error('Post could not be updated');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed });
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+    },
+  });
+}
+
 export function useDeletePost() {
   const queryClient = useQueryClient();
   return useMutation({

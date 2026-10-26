@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/features/auth/AuthProvider';
-import { useDeletePost } from '@/api/hooks/useFeed';
+import { useDeletePost, useUpdatePost } from '@/api/hooks/useFeed';
+import { PostEditModal } from '@/features/feed/PostEditModal';
 import { useReportContent } from '@/features/feed/useReportContent';
 import { Avatar } from '@/components/Avatar';
 import { Icon } from '@/components/Icon';
@@ -41,6 +42,11 @@ export const PostCard = memo(function PostCard({
   const { user } = useAuth();
   const deletePost = useDeletePost();
   const report = useReportContent();
+  const updatePost = useUpdatePost();
+  const [editing, setEditing] = useState(false);
+  const saveCaption = (texte: string) => updatePost.mutate({ postId: post.id, texte }, {
+    onSuccess: () => setEditing(false),
+  });
   const confirmDelete = () => Alert.alert(t('community.deletePost'), t('community.deleteConfirm'), [
     { text: t('location.close'), style: 'cancel' },
     { text: t('community.deletePost'), style: 'destructive', onPress: () => {
@@ -105,11 +111,17 @@ export const PostCard = memo(function PostCard({
       ) : null}
 
       {user?.id === post.authorId ? (
-        <Pressable onPress={confirmDelete} disabled={deletePost.isPending} accessibilityRole="button" style={styles.actionItem}>
-          <Icon name="delete" size={19} color={ToxicityColors.toxic.text} />
-          <Text style={[styles.actionLabel, { color: ToxicityColors.toxic.text }]}>{t('community.deletePost')}</Text>
-          {deletePost.isPending ? <ActivityIndicator size="small" /> : null}
-        </Pressable>
+        <View style={styles.ownerActions}>
+          <Pressable onPress={() => { updatePost.reset(); setEditing(true); }} accessibilityRole="button" style={styles.actionItem}>
+            <Icon name="edit" size={18} color={colors.muted} />
+            <Text style={[styles.actionLabel, { color: colors.muted }]}>{t('community.editPost')}</Text>
+          </Pressable>
+          <Pressable onPress={confirmDelete} disabled={deletePost.isPending} accessibilityRole="button" style={styles.actionItem}>
+            <Icon name="delete" size={19} color={ToxicityColors.toxic.text} />
+            <Text style={[styles.actionLabel, { color: ToxicityColors.toxic.text }]}>{t('community.deletePost')}</Text>
+            {deletePost.isPending ? <ActivityIndicator size="small" /> : null}
+          </Pressable>
+        </View>
       ) : user ? (
         <Pressable onPress={() => report('post', post.id)} accessibilityRole="button" style={styles.actionItem}>
           <Icon name="flag" size={18} color={colors.muted} />
@@ -135,11 +147,25 @@ export const PostCard = memo(function PostCard({
           )}
         </Pressable>
       </View>
+      {editing ? (
+        <PostEditModal
+          visible
+          initialCaption={post.caption}
+          saving={updatePost.isPending}
+          error={updatePost.isError ? t('community.editPostError') : null}
+          onClose={() => setEditing(false)}
+          onSave={saveCaption}
+        />
+      ) : null}
     </View>
   );
 });
 
 const styles = StyleSheet.create({
+  ownerActions: {
+    flexDirection: 'row',
+    gap: Spacing.lg,
+  },
   card: {
     borderWidth: 1,
     borderRadius: Radius.xl,

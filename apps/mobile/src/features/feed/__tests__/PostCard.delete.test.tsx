@@ -3,15 +3,24 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { PostCard } from '../PostCard';
 const mockDelete = jest.fn();
 const mockReport = jest.fn();
+const mockUpdate = jest.fn();
 const mockUser = { id: 'owner' };
 jest.mock('@/features/auth/AuthProvider', () => ({ useAuth: () => ({ user: mockUser }) }));
-jest.mock('@/api/hooks/useFeed', () => ({ useDeletePost: () => ({ mutate: mockDelete, isPending: false }) }));
+jest.mock('@/api/hooks/useFeed', () => ({
+  useDeletePost: () => ({ mutate: mockDelete, isPending: false }),
+  useUpdatePost: () => ({ mutate: mockUpdate, reset: jest.fn(), isPending: false, isError: false }),
+}));
+jest.mock('@/features/feed/PostEditModal', () => {
+  const { Button } = jest.requireActual<typeof import('react-native')>('react-native');
+  return { PostEditModal: ({ visible, onSave }: { visible: boolean; onSave: (caption: string) => void }) =>
+    visible ? <Button title="save-edit" onPress={() => onSave('Nouvelle légende')} /> : null };
+});
 jest.mock('@/features/feed/useReportContent', () => ({ useReportContent: () => mockReport }));
 jest.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'fr' } }) }));
 jest.mock('@/theme', () => ({ useAppTheme: () => ({ colors: {}, isDark: false }) }));
 jest.mock('@/components/Icon', () => ({ Icon: () => null }));
 jest.mock('@/components/Avatar', () => ({ Avatar: () => null }));
-const post: any = { id: 'post', authorId: 'owner', authorName: 'Owner', createdAt: new Date().toISOString(), distanceMeters: null, likes: 0, comments: 0 };
+const post: any = { id: 'post', authorId: 'owner', authorName: 'Owner', caption: 'Ancienne légende', createdAt: new Date().toISOString(), distanceMeters: null, likes: 0, comments: 0 };
 const props = { post, onToggleLike: jest.fn(), onOpenComments: jest.fn(), onShare: jest.fn() };
 beforeEach(() => jest.clearAllMocks());
 it('only exposes deletion for the current author', () => {
@@ -37,4 +46,12 @@ it('requires confirmation and closes the viewer only after successful deletion',
   mockDelete.mock.calls[0][1].onSuccess();
   expect(onDeleted).toHaveBeenCalledTimes(1);
   alert.mockRestore();
+});
+
+it('lets the author edit the caption, and only the author', () => {
+  const view = render(<PostCard {...props} />);
+  fireEvent.press(view.getByText('community.editPost'));
+  fireEvent.press(view.getByText('save-edit'));
+  expect(mockUpdate).toHaveBeenCalledWith({ postId: 'post', texte: 'Nouvelle légende' }, expect.any(Object));
+  expect(render(<PostCard {...props} post={{ ...post, authorId: 'someone-else' }} />).queryByText('community.editPost')).toBeNull();
 });
