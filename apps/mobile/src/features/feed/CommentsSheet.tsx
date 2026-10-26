@@ -23,8 +23,7 @@ type Props = {
 };
 
 /**
- * Lecture/ajout de vrais commentaires (GET/POST /feed/posts/:id/comments, déjà présents
- * côté back mais jamais branchés côté front avant le 24/07/2026 — voir rapport.md).
+ * Lecture/ajout des commentaires d'un post (table comments).
  */
 export function CommentsSheet({ postId, onClose }: Props) {
   const { t, i18n } = useTranslation();

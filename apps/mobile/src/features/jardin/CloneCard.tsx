@@ -51,8 +51,8 @@ export const CloneCard = memo(function CloneCard({
   const isSick = etatSante === 'malade';
   // Le bouton ne réapparaît que sur une plante ACTUELLEMENT malade avec un diagnostic
   // sauvegardé : une vérification ultérieure qui la déclare saine/guérie masque le bouton
-  // (rien d'actionnable à revoir), mais le diagnostic reste en base (voir rapport.md —
-  // etatSante et dernierDiagnostic sont toujours mis à jour ensemble côté back, donc pas
+  // (rien d'actionnable à revoir), mais le diagnostic reste en base (etatSante et
+  // dernierDiagnostic sont toujours mis à jour ensemble par diagnose-health, donc pas
   // de risque d'afficher un diagnostic "malade" périmé pendant que l'état est déjà sain).
   const hasSavedDiagnosis = isSick && !!clone.savedDiagnosis;
 

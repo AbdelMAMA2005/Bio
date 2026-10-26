@@ -2,7 +2,7 @@
 
 ## Démarrer l'app sur son téléphone
 
-> Le projet mobile est désormais branché directement sur Supabase. Il n'y a plus de backend NestJS local à lancer pour le développement standard.
+> Le mobile et la console admin sont branchés directement sur Supabase : aucun serveur à lancer en local.
 
 ### 0. Prérequis
 
@@ -34,6 +34,21 @@ Le client est initialisé dans [apps/mobile/src/lib/supabase.ts](apps/mobile/src
 Pour les cas de réseau, de cache Metro ou de configuration OAuth, voir [demarrage.md](demarrage.md).
 
 ---
+
+## Tests et contrôles
+
+```bash
+npm test                # tout : mobile, admin, Edge Functions et SQL
+npm run test:mobile     # Jest (apps/mobile)
+npm run test:admin      # Vitest (apps/admin)
+npm run test:functions  # tests unitaires des Edge Functions
+npm run test:sql        # droits, RPC et triggers sur un PostgreSQL jetable (Docker requis)
+npm run verifier:prod   # sécurité de la prod vue de l'extérieur (clé publique seulement)
+```
+
+Le test d'intégration réel de la console admin (`apps/admin/src/integration.smoke.test.tsx`)
+s'active en renseignant `VITE_SMOKE_ADMIN_EMAIL` et `VITE_SMOKE_ADMIN_PASSWORD` (compte de
+test ayant le rôle admin) dans `apps/admin/.env`.
 
 ## Présentation
 

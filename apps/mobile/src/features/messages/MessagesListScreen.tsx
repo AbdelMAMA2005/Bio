@@ -15,7 +15,7 @@ import { Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
 import type { Conversation } from '@planai/shared';
 
-/** Liste des conversations privées — voir GET /messages/conversations (API_CONTRACT.md). */
+/** Liste des conversations privées (useConversations). */
 export function MessagesListScreen() {
   const { t, i18n } = useTranslation();
   const { colors } = useAppTheme();

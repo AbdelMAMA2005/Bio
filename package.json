@@ -11,13 +11,20 @@
     "mobile:start": "cd apps/mobile && npx expo start",
     "mobile:android": "cd apps/mobile && npx expo run:android",
     "mobile:build:apk": "cd apps/mobile && npx eas-cli build --platform android --profile preview",
-    "mobile:typecheck": "cd apps/mobile && npx tsc --noEmit"
+    "mobile:typecheck": "cd apps/mobile && npx tsc --noEmit",
+    "admin:dev": "npm run dev -w apps/admin",
+    "admin:build": "npm run build -w apps/admin",
+    "test:mobile": "npm test -w apps/mobile",
+    "test:admin": "npm test -w apps/admin",
+    "test:functions": "./scripts/tests_functions.sh",
+    "test:sql": "./scripts/tests_sql.sh",
+    "test": "npm run test:mobile && npm run test:admin && npm run test:functions && npm run test:sql",
+    "verifier:prod": "./scripts/verifier_prod.sh"
   },
   "overrides": {
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-test-renderer": "19.2.3",
-    "multer": "2.3.0"
+    "react-test-renderer": "19.2.3"
   },
   "dependencies": {
     "expo": "~57.0.24",

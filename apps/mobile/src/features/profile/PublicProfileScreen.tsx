@@ -30,8 +30,7 @@ type Props = {
 /**
  * Profil public d'un autre utilisateur (tap sur son avatar depuis le feed, les commentaires
  * ou une story) : en-tête (avatar, pseudo, niveau/XP, statistiques), bouton Message, puis la
- * grille de ses publications façon Instagram — voir GET /users/:id/public-profile et
- * GET /users/:id/posts (API_CONTRACT.md).
+ * grille de ses publications façon Instagram (usePublicProfile, useUserPosts).
  */
 export function PublicProfileScreen({ userId }: Props) {
   const { t } = useTranslation();

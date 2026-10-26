@@ -25,7 +25,7 @@ function readStored<T extends string>(key: string, fallback: T): T {
 }
 
 /**
- * Choix clair/sombre + densité persistés (localStorage) — mission ADMIN.md §2. Posés sur
+ * Choix clair/sombre + densité persistés (localStorage). Posés sur
  * `document.documentElement` (`data-theme`/`data-density`) pour que les variables CSS de
  * theme/global.css s'appliquent à toute la page, pas seulement à un wrapper interne.
  */

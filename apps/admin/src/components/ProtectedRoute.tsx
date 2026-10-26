@@ -3,9 +3,8 @@ import type { ReactNode } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 
 /**
- * Route guard côté front (mission ADMIN.md §3, écran 1) : redirige vers /login sans
- * session admin valide. Défense en profondeur, pas la seule protection — chaque endpoint
- * /admin/* refuse déjà un membre/anonyme côté serveur (RoleGuard, voir API_CONTRACT.md §10).
+ * Route guard côté front : redirige vers /login sans session admin valide. Défense en
+ * profondeur, pas la seule protection : chaque RPC admin_* vérifie le rôle côté base.
  */
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { state } = useAuth();

@@ -16,8 +16,8 @@ type Props = {
 };
 
 /**
- * Liste "vu par" d'un média de ma propre story (GET /stories/:mediaId/viewers, réservé à
- * l'auteur — 403 côté back sinon). Comportement WhatsApp : jamais affichée sur la story de
+ * Liste "vu par" d'un média de ma propre story (RLS de story_views : lisible par
+ * l'auteur uniquement). Comportement WhatsApp : jamais affichée sur la story de
  * quelqu'un d'autre, jamais de compteur/liste inventés.
  */
 export function StoryViewersSheet({ mediaId, onClose }: Props) {

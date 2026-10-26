@@ -5,7 +5,7 @@ type Props = {
   className?: string;
 };
 
-/** Material Symbols Rounded, chargée globalement via index.html (mission ADMIN.md §2). */
+/** Material Symbols Rounded, chargée globalement via index.html. */
 export function Icon({ name, size = 20, color, className }: Props) {
   return (
     <span

@@ -14,15 +14,6 @@ const supabaseAnonKey =
     ? configuredSupabaseAnonKey
     : 'placeholder-anon-key';
 
-export const isSupabaseConfigured = (): boolean => {
-  return (
-    !!configuredSupabaseUrl &&
-    configuredSupabaseUrl !== 'https://your-project.supabase.co' &&
-    !!configuredSupabaseAnonKey &&
-    configuredSupabaseAnonKey !== 'your-anon-key'
-  );
-};
-
 // Pré-rendu web (expo-router, output "static") : pas de `window`, donc pas de stockage de
 // session côté serveur. Sur mobile et dans le navigateur, la session est persistée normalement.
 const isServerRender = typeof window === 'undefined';

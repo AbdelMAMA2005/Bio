@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Icon } from '@/components/Icon';
 import { SecondaryButton } from '@/components/SecondaryButton';
-import type { DiagnosisResult } from '@/api/mock/diagnosis';
+import type { DiagnosisResult } from '@/api/types';
 import type { SupportedLanguage } from '@/i18n';
 import { useAppTheme } from '@/theme';
 import { AmberAccent, ToxicityColors } from '@/theme/colors';

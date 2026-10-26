@@ -27,7 +27,7 @@
 - [ ] CI GitHub Actions : lint + tests sur chaque PR — **Abdel**
 - [x] README : instructions d'installation et de lancement — **Djawad**
 
-> NOTE : le backend legacy `apps/api` est conservé uniquement comme archive de référence. Les tâches backend historiques sont désormais considérées comme migrées vers Supabase.
+> NOTE : l'ancien backend NestJS a été supprimé (octobre 2026) ; les tâches backend historiques ont été migrées vers Supabase.
 
 ### Base de données
 
@@ -117,7 +117,7 @@
 ### Back-end
 
 - [ ] Module `quests` : défis quotidiens (scanner 3 plantes, publier un conseil, 5 likes…) — **Abdel**
-- [x] Défis « Exploration » avec Geo-Tag (plante rare à + de 1 km…) — **Abdel** (implémenté 10/09/2026, voir API_CONTRACT.md §6)
+- [x] Défis « Exploration » avec Geo-Tag (plante rare à + de 1 km…) — **Abdel** (implémenté 10/09/2026)
 - [ ] Récompenses : XP, pièces virtuelles, badges exclusifs — **Abdel**
 - [ ] Calcul de niveau (paliers d'XP) — **Abdel**
 

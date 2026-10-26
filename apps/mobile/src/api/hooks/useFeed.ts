@@ -73,14 +73,13 @@ async function fetchFeedPage(page: number, coords?: Coordinates, filter?: FeedFi
 }
 
 /**
- * Pagination réelle (`page`/`limit`, voir API_CONTRACT.md §5) via `useInfiniteQuery` : le fil
- * ne charge plus jamais tous les posts d'un coup — seulement `FEED_PAGE_SIZE` par page,
- * `fetchNextPage()` déclenché par `onEndReached` dans CommunityScreen.tsx.
+ * Pagination via `useInfiniteQuery` : `FEED_PAGE_SIZE` posts par page, `fetchNextPage()`
+ * déclenché par `onEndReached` dans CommunityScreen.tsx.
  *
- * `coords`, si fourni (position actuelle de l'appareil), permet au back de calculer une
- * vraie distance par post. `filter: 'near'` (avec `coords`) fait en plus filtrer les posts
- * réellement en base (cahier des charges §3.3) — voir `feed.service.ts#getFeed`, pas un
- * post-filtrage côté front qui manquerait les posts proches hors de la première page.
+ * `coords`, si fourni (position actuelle de l'appareil), sert à calculer une vraie distance
+ * par post. `filter: 'near'` (avec `coords`) filtre en plus les posts en base via la RPC
+ * nearby_posts (cahier des charges §3.3), pas un post-filtrage côté front qui manquerait
+ * les posts proches hors de la première page.
  * Désactivée (aucun appel réseau) si `filter === 'near'` sans position connue : on ne
  * réaffiche jamais silencieusement "tout le fil" à la place d'un "près de moi" honnêtement
  * vide faute de position.
@@ -99,7 +98,7 @@ export function useFeed(coords?: Coordinates, filter?: FeedFilter) {
   });
 
   // Mémoïsé : un nouveau tableau à chaque rendu relancerait les effets qui en dépendent.
-  const data = useMemo(() => query.data?.pages.flatMap((p) => p.items.map((post) => toFeedPost(post, ''))), [query.data]);
+  const data = useMemo(() => query.data?.pages.flatMap((p) => p.items.map((post) => toFeedPost(post))), [query.data]);
   return { ...query, data };
 }
 
@@ -131,13 +130,13 @@ async function fetchStories(): Promise<StoryGroup[]> {
   const latest = (group: BackendStoryGroup) => group.medias[group.medias.length - 1]?.dateCreation ?? '';
   const ordered = [...groups.values()].sort((a, b) =>
     Number(b.estMoi) - Number(a.estMoi) || Number(a.entierementVue) - Number(b.entierementVue) || latest(b).localeCompare(latest(a)));
-  return ordered.map((group) => toStoryGroup(group, ''));
+  return ordered.map((group) => toStoryGroup(group));
 }
 
 /**
- * Bulles groupées par auteur (comportement "statuts WhatsApp" — voir API_CONTRACT.md §5) :
+ * Bulles groupées par auteur (comportement "statuts WhatsApp") :
  * plusieurs médias du même utilisateur reviennent dans UNE seule entrée `StoryGroup`, déjà
- * triée non-vues d'abord côté back.
+ * triée : ma bulle, puis les non vues, les plus récentes en tête.
  */
 export function useStories() {
   return useQuery({
@@ -167,9 +166,8 @@ export function useToggleLike() {
 }
 
 /**
- * POST /stories (multipart, champ `image`) — ajoute un média à la story du jour de
- * l'utilisateur ; s'empile dans sa bulle existante côté back plutôt que d'en créer une
- * nouvelle (voir StoriesService#getGroupedStories).
+ * Ajoute un média à la story de l'utilisateur (bucket `stories` + table stories) ; il
+ * s'empile dans sa bulle existante (regroupement par auteur dans fetchStories).
  */
 export function usePublishStoryMedia() {
   const queryClient = useQueryClient();
@@ -192,8 +190,8 @@ export function usePublishStoryMedia() {
 }
 
 /**
- * POST /stories/:mediaId/view — une seule vue par (média, viewer), sans effet si l'appelant
- * est l'auteur du média (voir StoriesService#recordView). Invalide `stories` pour que
+ * Enregistre une vue : une seule par (média, viewer), jamais pour l'auteur du média
+ * (StoryViewer ne l'appelle pas sur sa propre story). Invalide `stories` pour que
  * `vuParMoi`/l'anneau de la bulle reflètent la vue tout de suite.
  */
 export function useRecordStoryView() {
@@ -211,7 +209,7 @@ export function useRecordStoryView() {
 }
 
 /**
- * POST /stories/:mediaId/like (toggle) — mise à jour optimiste immédiate de `aimeParMoi`/
+ * Like de story (bascule) — mise à jour optimiste immédiate de `aimeParMoi`/
  * `likesCount` dans le cache `stories` dès le tap (StoryViewer lit ce cache en direct, voir
  * StoryViewer.tsx, plutôt qu'un instantané figé) : corrige le bug où il fallait quitter et
  * rouvrir la story pour voir l'effet d'un like. Rollback sur `onError`, refetch propre sur
@@ -297,7 +295,7 @@ async function fetchStoryViewers(mediaId: string): Promise<StoryViewer[]> {
   });
 }
 
-/** GET /stories/:mediaId/viewers — réservé à l'auteur du média (403 sinon côté back). */
+/** Liste des spectateurs d'un média : lisible par son auteur uniquement (RLS de story_views). */
 export function useStoryViewers(mediaId: string | undefined) {
   return useQuery({
     queryKey: queryKeys.storyViewers(mediaId ?? ''),
@@ -309,10 +307,8 @@ export function useStoryViewers(mediaId: string | undefined) {
 type PublishPostInput = { imageUri: string; texte: string; collectionItemId?: string };
 
 /**
- * POST /feed/posts (multipart, champ `image`) — envoie la vraie photo prise dans le
- * composeur, plus `contenuTexte`/`collectionId` en champs multipart. Avant le 24/07/2026,
- * aucun endpoint d'upload générique n'existait pour le feed : seul le texte était publié
- * (voir rapport.md).
+ * Publie un post : la photo va dans le bucket `posts`, puis la ligne est créée avec la
+ * position héritée de la plante taguée (si elle est géotaguée).
  */
 export function usePublishPost() {
   const queryClient = useQueryClient();
@@ -362,7 +358,7 @@ export function useTaggableCollection() {
 async function fetchComments(postId: string): Promise<FeedComment[]> {
   const { data, error } = await supabase.from('comments').select('id,post_id,user_id,contenu,created_at,profiles(id,nom_utilisateur,url_avatar)').eq('post_id', postId).order('created_at', { ascending: true });
   if (error) throw error;
-  return (data ?? []).flatMap((comment) => { const profile = (Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles) as ProfileRow | null; if (!profile) return []; return [toComment({ id: comment.id, idPost: comment.post_id, idUtilisateur: comment.user_id, contenu: comment.contenu, dateCreation: comment.created_at, auteur: { id: profile.id, nomUtilisateur: profile.nom_utilisateur, urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null } } satisfies BackendComment, '')]; });
+  return (data ?? []).flatMap((comment) => { const profile = (Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles) as ProfileRow | null; if (!profile) return []; return [toComment({ id: comment.id, idPost: comment.post_id, idUtilisateur: comment.user_id, contenu: comment.contenu, dateCreation: comment.created_at, auteur: { id: profile.id, nomUtilisateur: profile.nom_utilisateur, urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null } } satisfies BackendComment)]; });
 }
 
 export function useComments(postId: string | undefined) {

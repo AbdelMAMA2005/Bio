@@ -1,7 +1,11 @@
 import type { CollectionItem, Plante, StoryGroup as SharedStoryGroup, StoryMedia as SharedStoryMedia } from '@planai/shared';
 
-import type { DiagnosisResult } from '@/api/mock/diagnosis';
 import type { IconName } from '@/theme/icons';
+
+/** Résultat d'un diagnostic santé (Edge Function diagnose-health), affiché par DiagnosisSheet. */
+export type DiagnosisResult =
+  | { status: 'healthy'; confidence: number }
+  | { status: 'disease'; diseaseIcon: string; diseaseName: string; confidence: number; treatment: string };
 
 export type ConseilsEntretien = {
   light: string;
@@ -42,7 +46,7 @@ export type GardenClone = {
   /**
    * Dernier diagnostic sauvegardé (`item.dernierDiagnostic`, déjà converti). `undefined` si
    * jamais diagnostiquée. Le bouton "Voir le diagnostic" (CloneCard) n'est affiché que si
-   * `item.etatSante === 'malade'` ET ce champ présent — voir rapport.md pour le choix
+   * `item.etatSante === 'malade'` ET ce champ présent
    * (le bouton se masque si la plante redevient saine, mais la donnée reste en base).
    */
   savedDiagnosis?: { result: DiagnosisResult; date: string };
@@ -110,7 +114,7 @@ export type Quest = {
   done: boolean;
   rewardXp?: number;
   rewardCoins?: number;
-  /** 'exploration' : défi géolocalisé (voir API_CONTRACT.md §6), affiché avec une icône dédiée. */
+  /** 'exploration' : défi géolocalisé, affiché avec une icône dédiée. */
   type: 'quotidien' | 'exploration';
 };
 

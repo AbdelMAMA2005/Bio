@@ -54,8 +54,8 @@ describe('Intégration réelle : connexion + tableau de bord', () => {
     });
     await waitFor(() => expect(screen.getByText('Utilisateurs actifs')).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText('Santé des services')).toBeInTheDocument());
-    // Au moins un service de santé réellement pingé doit apparaître (API NestJS toujours "OK").
-    expect(await screen.findByText('API NestJS')).toBeInTheDocument();
+    // La base est interrogée à chaque chargement : son état apparaît toujours.
+    expect(await screen.findByText('Base de données')).toBeInTheDocument();
 
     // Navigation réelle vers Utilisateurs (le compte de test doit s'y trouver).
     await userEvent.click(screen.getByRole('link', { name: /utilisateurs/i }));

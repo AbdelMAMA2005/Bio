@@ -16,7 +16,7 @@ const discovery = {
  * Variante web (Metro résout ce fichier automatiquement pour la cible web, voir
  * googleAuth.native.ts pour iOS/Android) : flux OAuth implicite classique via popup
  * navigateur, valable sur web (contrairement au natif, Google n'exige pas le SDK
- * natif ici). Le back (POST /auth/google) vérifie ce idToken directement.
+ * natif ici). Supabase Auth (signInWithIdToken) vérifie ce idToken directement.
  */
 export function useGoogleSignIn(): { isConfigured: boolean; signIn: () => Promise<string | null> } {
   const redirectUri = AuthSession.makeRedirectUri();

@@ -45,7 +45,7 @@ function firstUnseenIndex(group: StoryGroup): number {
  * les pieds de l'utilisateur en cours de lecture) — mais l'état affiché de chaque média
  * (like, vues) est relu en direct depuis le cache react-query `stories` (voir `liveMedia`
  * ci-dessous) : sans ça, un like posé depuis le visualiseur ne s'affichait qu'après avoir
- * quitté et rouvert la story (voir rapport.md).
+ * quitté et rouvert la story.
  */
 export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
   const { t, i18n } = useTranslation();
@@ -199,14 +199,14 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
           second GestureHandlerRootView imbriqué ici, le tap droite/gauche et le swipe bas
           (composedGesture ci-dessous) restent silencieusement inertes sur Android alors
           qu'ils fonctionnent sur iOS (même bug que ImageViewerModal.tsx — voir doc
-          react-native-gesture-handler, section Android de l'installation, et rapport.md). */}
+          react-native-gesture-handler, section Android de l'installation). */}
       <GestureHandlerRootView style={styles.fill}>
         <View style={styles.fill}>
           {media.mediaType === 'image' ? (
             <Image source={{ uri: media.urlMedia }} style={StyleSheet.absoluteFill} contentFit="contain" />
           ) : (
             // Lecture vidéo non disponible dans cette passe (aucune librairie expo-video/expo-av
-            // installée — voir rapport.md) : on affiche la première frame comme une image plutôt
+            // installée) : on affiche la première frame comme une image plutôt
             // que de planter ou de faire semblant de lire une vidéo.
             <Image source={{ uri: media.urlMedia }} style={StyleSheet.absoluteFill} contentFit="contain" />
           )}

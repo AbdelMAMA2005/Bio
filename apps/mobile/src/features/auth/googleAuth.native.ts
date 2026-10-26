@@ -25,7 +25,7 @@ type GoogleSigninModule = typeof import('@react-native-google-signin/google-sign
  * `webClientId` est le client OAuth "Application Web" — c'est TOUJOURS lui qui
  * apparaît comme audience du idToken renvoyé, même sur iOS/Android (le
  * iosClientId/package Android+SHA-1 ne servent qu'à l'écran de consentement natif,
- * jamais à l'audience du token) : le back (apps/api) n'a donc besoin de vérifier
+ * jamais à l'audience du token) : Supabase Auth n'a donc besoin de vérifier
  * qu'un seul GOOGLE_CLIENT_ID, celui-ci.
  */
 const runningInExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;

@@ -79,7 +79,7 @@ export function CommunityScreen() {
     }
   };
 
-  // Le filtre "near" n'interroge jamais le back sans position connue (voir useFeed.ts,
+  // Le filtre "near" n'interroge jamais la base sans position connue (voir useFeed.ts,
   // `enabled: filter !== 'near' || !!coords`) : sans ce garde-fou, la requête resterait
   // indéfiniment "en attente" (React Query) et l'écran afficherait un spinner permanent au
   // lieu d'un vide honnête (permission refusée, position indisponible...).

@@ -16,12 +16,11 @@ type BackendQuest = {
 };
 
 /**
- * Les défis eux-mêmes sont un catalogue fixe (5 défis, dont 1 Exploration géolocalisé,
- * voir apps/api/src/modules/quests/quest-catalog.ts) — seule leur PROGRESSION change
- * réellement par utilisateur. On garde donc des libellés traduits localement par
- * id plutôt que d'afficher le `libelle` français brut renvoyé par le back (pas
+ * Le catalogue des défis vit dans la table quests (5 défis d'origine, d'autres créés
+ * depuis la console admin) ; la progression est calculée par la RPC get_daily_quests. On garde donc des libellés traduits localement par
+ * id plutôt que d'afficher le `libelle` français brut renvoyé par la RPC get_daily_quests (pas
  * adapté aux utilisateurs EN/ES), avec repli sur ce libelle si jamais un id
- * inconnu apparaissait (nouveau défi pas encore traduit côté front).
+ * inconnu apparaissait (défi créé depuis la console).
  */
 const LABEL_KEY_BY_QUEST_ID: Record<string, string> = {
   'scan-3': 'quests.scan3',
@@ -61,7 +60,7 @@ export function useQuests() {
     queryKey: queryKeys.quests,
     queryFn: async () => {
       const quests = await fetchQuestsFromApi();
-      // Un défi peut venir de se compléter (XP/pièces crédités côté back à
+      // Un défi peut venir de se compléter (XP/pièces crédités par la base à
       // l'instant) : on resynchronise le profil pour que le solde affiché soit
       // toujours la vraie valeur serveur, jamais une estimation locale.
       refreshUser().catch(() => {});

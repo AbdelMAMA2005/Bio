@@ -88,7 +88,7 @@ export function ImageViewerModal({ images, initialIndex = 0, onClose }: Props) {
           second GestureHandlerRootView imbriqué ici, le pinch-to-zoom (Gesture.Pinch,
           ZoomableImage plus bas) reste silencieusement inerte sur Android alors qu'il
           fonctionne sur iOS (voir doc react-native-gesture-handler, section Android de
-          l'installation, et rapport.md). */}
+          l'installation). */}
       <GestureHandlerRootView style={styles.fill}>
         <View style={styles.fill}>
           <GestureDetector gesture={closeGesture}>

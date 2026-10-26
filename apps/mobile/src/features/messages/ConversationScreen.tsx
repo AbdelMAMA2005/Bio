@@ -24,8 +24,8 @@ type Props = {
 
 /**
  * Historique d'une conversation privée avec `peerId`, y compris les réponses aux statuts
- * (aperçu du média cité au-dessus du message) — voir GET/POST /messages/with/:userId
- * (API_CONTRACT.md). Ouvrir cet écran marque côté back les messages reçus comme lus.
+ * (aperçu du média cité au-dessus du message). Ouvrir cet écran marque les messages reçus
+ * comme lus (useMessagesWith).
  */
 export function ConversationScreen({ peerId }: Props) {
   const { t, i18n } = useTranslation();

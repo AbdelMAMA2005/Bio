@@ -54,8 +54,4 @@ export async function setAppLanguage(language: SupportedLanguage) {
   await i18n.changeLanguage(language);
 }
 
-export function getCurrentLanguage(): SupportedLanguage {
-  return isSupportedLanguage(i18n.language) ? i18n.language : DEFAULT_LANGUAGE;
-}
-
 export default i18n;

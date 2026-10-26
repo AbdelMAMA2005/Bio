@@ -23,8 +23,11 @@ INSERT INTO public.collection (user_id, plant_id, type_collection) VALUES
   (auth.uid(), '11111111-1111-1111-1111-111111111111', 'discovered'),
   (auth.uid(), '22222222-2222-2222-2222-222222222222', 'discovered'),
   (auth.uid(), '33333333-3333-3333-3333-333333333333', 'owned');
+-- Scan enregistré par l'Edge Function identify-plant (droits serveur, pas ceux du membre).
+RESET ROLE;
 INSERT INTO public.identification_logs (user_id, plant_id, score_confiance) VALUES
-  (auth.uid(), '11111111-1111-1111-1111-111111111111', 90);
+  ('eeeeeeee-0000-4000-8000-000000000001', '11111111-1111-1111-1111-111111111111', 90);
+SET LOCAL ROLE authenticated;
 INSERT INTO public.posts (id, user_id, contenu, url_image) VALUES
   ('ffffffff-0000-4000-8000-000000000002', auth.uid(), 'Belle fougère', 'x.jpg');
 

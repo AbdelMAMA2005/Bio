@@ -36,10 +36,10 @@ async function fetchConversations(): Promise<Conversation[]> {
     return { id: conversation.id, autreUtilisateur: { id: peer.id, nomUtilisateur: peer.nom_utilisateur, urlAvatar: peer.url_avatar ? getStoragePublicUrl('avatars', peer.url_avatar) : null }, dernierMessage: lastMessage ? { contenu: lastMessage.contenu, dateEnvoi: lastMessage.created_at, estDeMoi: lastMessage.sender_id === userId, storyPreview: previews.get(lastMessage.story_id) ?? null } : null, nonLusCount: count ?? 0 };
   }));
   const result = rows.filter((row): row is BackendConversation => row !== null);
-  return result.map((conversation) => toConversation(conversation, ''));
+  return result.map((conversation) => toConversation(conversation));
 }
 
-/** GET /messages/conversations — liste des conversations, triée par activité récente. */
+/** Liste des conversations, triée par activité récente. */
 export function useConversations() {
   return useQuery({
     queryKey: queryKeys.conversations,
@@ -60,12 +60,12 @@ async function fetchMessagesWith(peerId: string): Promise<ChatMessage[]> {
     fetchStoryPreviews((data ?? []).map((message) => message.story_id)),
     supabase.from('messages').update({ lu: true }).eq('conversation_id', conversation.id).eq('sender_id', peerId).eq('lu', false),
   ]);
-  return (data ?? []).map((message) => toChatMessage({ id: message.id, idConversation: message.conversation_id, idExpediteur: message.sender_id, contenu: message.contenu, dateEnvoi: message.created_at, lu: message.sender_id === peerId ? true : message.lu, storyPreview: previews.get(message.story_id) ?? null } satisfies BackendMessage, ''));
+  return (data ?? []).map((message) => toChatMessage({ id: message.id, idConversation: message.conversation_id, idExpediteur: message.sender_id, contenu: message.contenu, dateEnvoi: message.created_at, lu: message.sender_id === peerId ? true : message.lu, storyPreview: previews.get(message.story_id) ?? null } satisfies BackendMessage));
 }
 
 /**
- * GET /messages/with/:userId — historique avec `peerId`. Le back marque les messages
- * reçus comme lus au passage (voir MessagesService#getMessagesWith) : on invalide aussi
+ * Historique avec `peerId`. Les messages reçus sont marqués lus au passage
+ * (fetchMessagesWith) : on invalide aussi
  * la liste des conversations pour que le badge "non lus" s'efface immédiatement.
  */
 export function useMessagesWith(peerId: string | undefined) {
@@ -84,7 +84,7 @@ export function useMessagesWith(peerId: string | undefined) {
 type SendMessageInput = { peerId: string; contenu: string; storyId?: string };
 
 /**
- * POST /messages/with/:userId — envoie un message privé, avec citation de statut
+ * Envoie un message privé, avec citation de statut
  * optionnelle (`storyId`, réponse depuis StoryViewer.tsx). Invalide l'historique de la
  * conversation ET la liste des conversations (nouvel aperçu du dernier message).
  */
@@ -115,7 +115,7 @@ export function useSendMessage() {
         fetchStoryPreviews([data.story_id]),
         supabase.from('conversations').update({ dernier_message: contenu, date_dernier_message: data.created_at }).eq('id', conversation.id),
       ]);
-      return toChatMessage({ id: data.id, idConversation: data.conversation_id, idExpediteur: data.sender_id, contenu: data.contenu, dateEnvoi: data.created_at, lu: data.lu, storyPreview: previews.get(data.story_id) ?? null } satisfies BackendMessage, '');
+      return toChatMessage({ id: data.id, idConversation: data.conversation_id, idExpediteur: data.sender_id, contenu: data.contenu, dateEnvoi: data.created_at, lu: data.lu, storyPreview: previews.get(data.story_id) ?? null } satisfies BackendMessage);
     },
     onSuccess: (_message, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.messagesWith(variables.peerId) });

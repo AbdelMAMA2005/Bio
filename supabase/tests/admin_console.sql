@@ -172,4 +172,6 @@ DO $$ DECLARE v_actions text[]; BEGIN
   RAISE NOTICE 'Tous les tests de la console admin passent.';
 END $$;
 
+RESET ROLE;
+SELECT 'OK : admin_console' AS resultat;
 ROLLBACK;

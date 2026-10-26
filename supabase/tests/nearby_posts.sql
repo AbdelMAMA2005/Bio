@@ -1,13 +1,10 @@
--- Tests roll back all fixtures. Requires at least one existing profile.
+-- Tests roll back all fixtures. Lancer avec psql -v ON_ERROR_STOP=1.
 BEGIN;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM public.profiles) THEN
-    RAISE EXCEPTION 'An existing profile is required for this test';
-  END IF;
-END $$;
+INSERT INTO auth.users (id, email, raw_user_meta_data) VALUES
+  ('77777777-0000-4000-8000-000000000001', 'nearby@test.dev', '{"nom_utilisateur":"nearby_test"}');
 INSERT INTO public.posts (id, user_id, contenu, url_image, latitude, longitude)
 SELECT ('00000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
-  (SELECT id FROM public.profiles LIMIT 1), 'nearby migration test', 'test.jpg',
+  '77777777-0000-4000-8000-000000000001'::uuid, 'nearby migration test', 'test.jpg',
   CASE WHEN n = 18 THEN 48.8566 ELSE 0 END,
   CASE WHEN n = 18 THEN 2.3522 ELSE 0 END
 FROM generate_series(1, 18) n;
@@ -25,4 +22,6 @@ DO $$ BEGIN
     RAISE EXCEPTION 'Anonymous access must be disabled';
   END IF;
 END $$;
+RESET ROLE;
+SELECT 'OK : nearby_posts' AS resultat;
 ROLLBACK;

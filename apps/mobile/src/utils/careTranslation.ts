@@ -3,16 +3,15 @@ import type { SupportedLanguage } from '@/i18n';
 
 /**
  * `best_light_condition` / `best_soil_type` / `propagation_methods` viennent de Plant.id en
- * anglais brut, non traduits par le paramètre `language=fr` de la requête d'identification
- * (voir `apps/api/.../identification.service.ts`) : ce paramètre ne couvre que les noms
+ * anglais brut, non traduits par le paramètre `language=fr` de la requête d'identification : ce paramètre ne couvre que les noms
  * d'espèce/la description chez Plant.id, pas ces champs catégoriels. `arrosage` n'est PAS
- * concerné : déjà calculé en français côté back (`common/watering.ts`).
+ * concerné : déjà rédigé en français par identify-plant.
  *
  * Dictionnaire heuristique du vocabulaire horticole anglais le plus courant renvoyé par
  * Plant.id pour ces 3 champs — traduction phrase la plus longue en premier (pour matcher
  * "rich in organic matter" avant "organic matter"). Une tournure non couverte par le
  * dictionnaire reste affichée telle quelle (anglais) plutôt qu'une traduction partielle
- * hasardeuse — voir rapport.md pour la couverture réelle et ses limites.
+ * hasardeuse.
  */
 
 const LIGHT_FR: Record<string, string> = {
@@ -109,7 +108,7 @@ function translatePhrase(text: string | undefined, dictionary: Record<string, st
 
 function translateMultiplication(text: string | undefined): string | undefined {
   if (!text || text === '—') return text;
-  // `propagation_methods.join(', ')` côté back : chaque terme se traduit indépendamment
+  // une liste séparée par des virgules : chaque terme se traduit indépendamment
   // plutôt que la phrase entière (vocabulaire fermé, contrairement à light/soil).
   return text
     .split(', ')
@@ -120,8 +119,7 @@ function translateMultiplication(text: string | undefined): string | undefined {
 /**
  * `arrosage` n'est jamais touché (déjà français). `light`/`soil`/`multiplication` sont
  * traduits uniquement pour l'interface française — l'anglais Plant.id est déjà correct
- * pour une UI en anglais ; l'espagnol n'a pas de dictionnaire pour l'instant (repli anglais,
- * voir rapport.md).
+ * pour une UI en anglais ; l'espagnol n'a pas de dictionnaire pour l'instant (repli anglais).
  */
 export function translateCareAdvice(care: ConseilsEntretien, language: SupportedLanguage): ConseilsEntretien {
   if (language !== 'fr') return care;

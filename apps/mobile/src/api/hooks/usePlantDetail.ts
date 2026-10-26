@@ -3,8 +3,7 @@ import { useMyGarden } from '@/api/hooks/useMyGarden';
 import { ownPhotoUrl, type PlantDetail } from '@/api/types';
 
 /**
- * Pas d'endpoint GET /collection/:id ou GET /plants/:id côté back (voir API_CONTRACT.md
- * §4) : on retrouve la plante en cherchant dans le Jardin/Herbarium déjà chargés (mêmes
+ * On retrouve la plante en cherchant dans le Jardin/Herbarium déjà chargés (mêmes
  * requêtes que les écrans Quotidien/Herbarium, donc pas d'appel réseau supplémentaire
  * une fois ces listes en cache).
  */

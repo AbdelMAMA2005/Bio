@@ -27,7 +27,7 @@ type AuthContextValue = {
   logout: () => Promise<void>;
   updateProfile: (patch: Partial<Pick<User, 'pseudo'>>) => Promise<void>;
   /**
-   * POST /users/me/avatar — remplace la photo de profil. Met à jour `user` immédiatement
+   * Remplace la photo de profil (bucket `avatars`). Met à jour `user` immédiatement
    * (affichage partout dans l'app) ET invalide les caches react-query dont des entrées
    * portent un instantané de l'ancien avatar (feed, stories) pour qu'elles se rafraîchissent
    * elles aussi, pas seulement les écrans qui lisent `user` directement.
@@ -38,7 +38,7 @@ type AuthContextValue = {
   addXp: (amount: number) => void;
   /**
    * Relit /users/me et remplace l'état local par la vérité serveur — utilisé
-   * après toute action dont le crédit XP/pièces est décidé côté back sans que
+   * après toute action dont le crédit XP/pièces est décidé par la base sans que
    * le front connaisse déjà le montant exact (ex. défis quotidiens complétés).
    */
   refreshUser: () => Promise<void>;
@@ -137,7 +137,7 @@ export function AuthProvider({
         }
       },
       logout: async () => {
-        // Révocation côté back best-effort (API_CONTRACT.md §1) : la déconnexion locale a
+        // Révocation de la session best-effort : la déconnexion locale a
         // lieu dans tous les cas, même si le serveur est injoignable — sinon un utilisateur
         // hors-ligne ne pourrait jamais se déconnecter.
         try {
@@ -147,8 +147,6 @@ export function AuthProvider({
         }
       },
       updateProfile: async (patch) => {
-        // PATCH /users/me existe désormais côté back (API_CONTRACT.md §2), repli mock
-        // activable via EXPO_PUBLIC_USE_MOCK_API.
         await apiUpdateProfile(patch);
         setUser((prev) => {
           if (!prev) return prev;
@@ -176,8 +174,7 @@ export function AuthProvider({
         await apiChangePassword(current, next);
       },
       deleteAccount: async (password) => {
-        // DELETE /users/me existe désormais côté back, protégé par re-saisie du mot de
-        // passe (API_CONTRACT.md §2), repli mock activable via EXPO_PUBLIC_USE_MOCK_API.
+        // RPC delete_my_account, après vérification du mot de passe (authApi.deleteAccount).
         await apiDeleteAccount(password);
         await apiLogout().catch(() => undefined);
         setUser(null);

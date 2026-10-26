@@ -7,8 +7,7 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-nativ
 import { useCheckHealth, useMarkWatered, useMyGarden, useAddTrackingPhoto } from '@/api/hooks/useMyGarden';
 import { useQuests } from '@/api/hooks/useQuests';
 import { useCreateReminder } from '@/api/hooks/useReminders';
-import type { DiagnosisResult } from '@/api/mock/diagnosis';
-import type { GardenClone } from '@/api/types';
+import type { DiagnosisResult, GardenClone } from '@/api/types';
 import { ErrorState } from '@/components/ErrorState';
 import { usePreferences } from '@/features/account/usePreferences';
 import { CloneCard } from '@/features/jardin/CloneCard';
@@ -66,7 +65,7 @@ export function QuotidienView() {
   const handleCheckHealth = useCallback(
     async (collectionId: string, idPlante: string, plantName: string) => {
       // Cahier des charges : "L'utilisateur prend une photo d'une feuille malade" — sans
-      // cette étape, le back n'a aucune image à analyser pour une plante qui n'a pas encore
+      // cette étape, diagnose-health n'a aucune image à analyser pour une plante qui n'a pas encore
       // de photo de suivi (cas le plus courant juste après l'ajout au Jardin), et échoue.
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) return;
@@ -85,7 +84,7 @@ export function QuotidienView() {
     [checkHealth, showToast, t],
   );
 
-  // Rouvre le diagnostic déjà sauvegardé (POST /collection/:id/diagnosis, réécrit à chaque
+  // Rouvre le diagnostic déjà sauvegardé (collection.dernier_diagnostic, réécrit à chaque
   // analyse) sans relancer d'appel réseau ni de nouvelle photo — bouton "Voir le
   // diagnostic", visible uniquement sur une plante actuellement malade (voir CloneCard.tsx).
   const handleViewDiagnosis = useCallback((clone: GardenClone) => {
@@ -112,7 +111,7 @@ export function QuotidienView() {
     setSchedulingReminder(true);
     try {
       await scheduleReminderNotification(diagnosis.plantName, 5, t('diagnosis.treatmentTitle'));
-      // Persistance côté back best-effort : la notification locale (ci-dessus) est déjà
+      // Persistance en base best-effort : la notification locale (ci-dessus) est déjà
       // programmée et fait foi côté utilisateur même si cet appel échoue (back down, etc.).
       createReminder.mutate({
         collectionId: diagnosis.collectionId,

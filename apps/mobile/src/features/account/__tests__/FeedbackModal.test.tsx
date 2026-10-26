@@ -14,11 +14,11 @@ jest.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) =>
 jest.mock('@/theme', () => ({ useAppTheme: () => ({ colors: { screen: '#fff', text: '#111', muted: '#666', active: '#080', surface: '#fff', hairline: '#ddd' } }) }));
 jest.mock('@/components/Icon', () => ({ Icon: () => null }));
 jest.mock('@/components/CircleIconButton', () => {
-  const { Button } = require('react-native');
+  const { Button } = jest.requireActual<typeof import('react-native')>('react-native');
   return { CircleIconButton: ({ onPress }: any) => <Button title="close" onPress={onPress} /> };
 });
 jest.mock('@/components/PrimaryButton', () => {
-  const { Button } = require('react-native');
+  const { Button } = jest.requireActual<typeof import('react-native')>('react-native');
   return { PrimaryButton: ({ label, onPress, loading, disabled }: any) => <Button title={label} onPress={onPress} disabled={loading || disabled} /> };
 });
 

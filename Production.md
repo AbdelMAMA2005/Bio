@@ -6,7 +6,7 @@ Ce guide décrit la mise en production de l'application mobile Expo avec :
 - **Expo EAS** pour construire l'application Android ;
 - **Google Play Console** pour distribuer l'AAB.
 
-Le mobile n'a pas besoin de lancer `apps/api` en production. Le dossier `apps/api` reste une archive legacy et n'est pas déployé par cette procédure.
+Il n'y a pas de serveur applicatif à déployer : le mobile et la console admin parlent directement à Supabase.
 
 ## État actuel
 

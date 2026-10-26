@@ -13,26 +13,26 @@ describe.each([
 ] as const)('%s photo history', (_name, convert) => {
   it('reads Supabase photo objects and preserves their capture dates', () => {
     const photo = { url: 'https://storage.example/photo.jpg', date: '2026-09-30T12:00:00Z' };
-    expect(convert({ ...item, historiquePhotos: [photo] }, 'user-1', '').item.historiquePhotos)
+    expect(convert({ ...item, historiquePhotos: [photo] }, 'user-1').item.historiquePhotos)
       .toEqual([photo]);
   });
 
   it('supports mixed legacy URLs and current objects', () => {
-    const photo = { url: '/uploads/new.jpg', date: '2026-09-30T12:00:00Z' };
-    expect(convert({ ...item, historiquePhotos: ['/uploads/old.jpg', photo] }, 'user-1', 'https://api.example').item.historiquePhotos)
+    const photo = { url: 'https://cdn.example/new.jpg', date: '2026-09-30T12:00:00Z' };
+    expect(convert({ ...item, historiquePhotos: ['https://cdn.example/old.jpg', photo] }, 'user-1').item.historiquePhotos)
       .toEqual([
-        { url: 'https://api.example/uploads/old.jpg', date: item.dateAjout },
-        { ...photo, url: 'https://api.example/uploads/new.jpg' },
+        { url: 'https://cdn.example/old.jpg', date: item.dateAjout },
+        photo,
       ]);
   });
 
   it('skips invalid stored entries and falls back to the collection date', () => {
     const historiquePhotos = [null, {}, { url: 123 }, '', { url: 'https://storage.example/photo.jpg' }] as unknown as BackendCollectionItem['historiquePhotos'];
-    expect(convert({ ...item, historiquePhotos }, 'user-1', '').item.historiquePhotos)
+    expect(convert({ ...item, historiquePhotos }, 'user-1').item.historiquePhotos)
       .toEqual([{ url: 'https://storage.example/photo.jpg', date: item.dateAjout }]);
   });
 
   it('handles missing history', () => {
-    expect(convert(item, 'user-1', '').item.historiquePhotos).toEqual([]);
+    expect(convert(item, 'user-1').item.historiquePhotos).toEqual([]);
   });
 });

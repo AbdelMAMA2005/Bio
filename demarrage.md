@@ -25,7 +25,7 @@ npx expo start
 
 - Expo démarre en mode LAN ou Metro standard.
 - L'application utilise le SDK Supabase pour l'authentification et les données.
-- Aucun backend NestJS n'est requis pour le flux mobile standard.
+- Aucun serveur local n'est requis : l'app parle directement à Supabase.
 
 ## 3. Connecter le téléphone
 

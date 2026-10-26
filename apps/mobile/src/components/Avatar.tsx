@@ -17,7 +17,7 @@ type Props = {
  * Composant Avatar unique et réutilisable pour toute l'app (feed, commentaires, stories,
  * en-têtes, profil, Mon Jardin…) : affiche la vraie photo de profil quand elle existe,
  * sinon un rond vert forêt avec l'initiale du nom — jamais un symbole "@" générique. Remplace
- * l'ancien `AvatarBadge`, qui n'affichait jamais `urlAvatar` (voir rapport.md).
+ * l'ancien `AvatarBadge`, qui n'affichait jamais `urlAvatar`.
  */
 export function Avatar({ uri, name, size = 42, onPress }: Props) {
   const initial = (name?.trim().charAt(0) || '?').toUpperCase();

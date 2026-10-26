@@ -16,7 +16,7 @@ export type ShareOutcome = 'shared' | 'cancelled';
  * `FileSystem.downloadAsync` est dépréciée et lève désormais une erreur à l'exécution).
  * Limite connue : `Sharing.shareAsync` n'a pas de paramètre "texte" séparé de l'image (ni
  * iOS ni Android) — la légende du post ne peut donc pas voyager AVEC l'image par cette voie ;
- * voir rapport.md pour le détail. Repli sur `Share.share` (texte natif, tous réseaux) si le
+ * Repli sur `Share.share` (texte natif, tous réseaux) si le
  * post n'a pas d'image ou si `expo-sharing` est indisponible (web).
  *
  * Ne lève que pour un échec réel (téléchargement impossible, aucune app cible…) — un partage

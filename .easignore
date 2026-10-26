@@ -1,7 +1,7 @@
 # EAS Build tar l'intégralité du monorepo (racine du dépôt git) avant upload — ce fichier
 # réduit le poids/temps de cet upload en excluant tout ce qui n'est pas nécessaire à la
 # compilation native + au bundle JS de apps/mobile. N'affecte PAS le poids final de
-# l'APK/AAB (voir section "Réduction du poids de l'app" de rapport.md pour ça) : uniquement
+# l'APK/AAB : uniquement
 # le temps d'upload/le cache de build côté serveur EAS.
 
 # Docs de cadrage / specs (PDF, maquette HTML) — déjà hors dépôt, filet de sécurité
@@ -12,24 +12,9 @@ Cahier de charge/
 *.md
 !apps/mobile/README.md
 
-# apps/api : jamais utilisé pour builder apps/mobile (pas d'import cross-app côté JS natif).
-# On garde package.json pour que la résolution des workspaces npm ne casse pas l'install,
-# on exclut tout le reste (code, tests, uploads, build intermédiaire).
-apps/api/src
-apps/api/test
-apps/api/uploads
-apps/api/dist
-apps/api/coverage
-apps/api/Dockerfile
-apps/api/.env*
-
 # Fichiers de dev/CI non nécessaires au build natif
 .github
 .vscode
-docker-compose.yml
-.dockerignore
-DOCKER.md
-DOCKER_CONFIGURATION.md
 
 # Tests, coverage, scripts hors mobile
 **/__tests__

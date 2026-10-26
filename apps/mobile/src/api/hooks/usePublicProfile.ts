@@ -17,10 +17,10 @@ async function fetchPublicProfile(userId: string): Promise<PublicProfile> {
   if (statsError) throw statsError;
   const { niveau } = levelFromExperience(profile.experience);
   const row: BackendPublicProfile = { id: profile.id, nomUtilisateur: profile.nom_utilisateur, urlAvatar: profile.url_avatar ? getStoragePublicUrl('avatars', profile.url_avatar) : null, niveau, experience: profile.experience, insignes: profile.insignes ?? [], stats: stats ?? { captures: 0, especes: 0, rares: 0 } };
-  return toPublicProfile(row, '');
+  return toPublicProfile(row);
 }
 
-/** GET /users/:id/public-profile — profil + stats d'un autre utilisateur. */
+/** Profil + stats (RPC get_user_stats) d'un autre utilisateur. */
 export function usePublicProfile(userId: string | undefined) {
   return useQuery({
     queryKey: queryKeys.publicProfile(userId ?? ''),
@@ -35,10 +35,10 @@ async function fetchUserPosts(userId: string): Promise<FeedPost[]> {
   if (error) throw error;
   // Mêmes compteurs que le fil : sans ça, chaque post du profil affichait 0 like et 0 commentaire.
   const posts = await enrichPosts((data ?? []) as unknown as Parameters<typeof enrichPosts>[0], viewerId);
-  return posts.map((post) => toFeedPost(post, ''));
+  return posts.map((post) => toFeedPost(post));
 }
 
-/** GET /users/:id/posts — grille des publications d'un utilisateur (profil public). */
+/** Grille des publications d'un utilisateur (profil public). */
 export function useUserPosts(userId: string | undefined) {
   return useQuery({
     queryKey: queryKeys.userPosts(userId ?? ''),

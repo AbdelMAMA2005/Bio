@@ -7,8 +7,8 @@ import { useRegisterDeviceToken, useUnregisterDeviceToken } from '@/api/hooks/us
 const runningInExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 /**
- * Demande la permission de notifications et enregistre le token Expo Push côté back
- * (POST /notifications/device) tant que la préférence "notifications" de l'utilisateur
+ * Demande la permission de notifications et enregistre le token Expo Push
+ * (table device_tokens) tant que la préférence "notifications" de l'utilisateur
  * (usePreferences, AccountScreen) est active ; le retire (DELETE) sinon. Best-effort de
  * bout en bout : ni la demande de permission ni l'appel back ne doivent bloquer l'app —
  * les notifications d'arrosage réelles viennent de useWateringNotifications

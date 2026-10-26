@@ -9,12 +9,11 @@ import type {
   StoryMediaType,
   StoryPreview,
   Toxicite,
-  User,
 } from '@planai/shared';
 
-import type { DiagnosisResult } from '@/api/mock/diagnosis';
 import type {
   ConseilsEntretien,
+  DiagnosisResult,
   FeedComment,
   FeedPost,
   GardenClone,
@@ -26,14 +25,9 @@ import type {
 } from '@/api/types';
 
 /**
- * Le backend réel (apps/api, voir API_CONTRACT.md pour le détail vérifié) parle un format
- * brut différent des types internes de packages/shared : toxicité/santé en
- * 'green'|'orange'|'red' au lieu de 'toxique'|'non_toxique'|'incertaine' côté front,
- * rareté en chaîne libre ("Commun", toujours cette valeur en pratique) au lieu d'un enum,
- * conseilsEntretien en objet {lumiere,sol,arrosage,multiplication} au lieu du JSON string
- * attendu par le front, etc. Ce fichier isole TOUTE la traduction à un seul endroit pour
- * que le reste du front reste écrit contre les types "propres" de packages/shared, sans
- * jamais voir les valeurs brutes du back.
+ * Traduction des lignes Supabase (colonnes snake_case, valeurs brutes 'green'|'orange'|'red',
+ * rareté en chaîne libre, conseils d'entretien en objet) vers les types « propres » de
+ * packages/shared utilisés par les écrans. Toute la conversion est regroupée ici.
  */
 
 // ----- Toxicité -----
@@ -73,7 +67,7 @@ export type BackendConseilsEntretien = {
 /**
  * Alimenté par de vraies données Plant.id (champs structurés `best_light_condition`,
  * `best_soil_type`, `watering`, `propagation_methods` — voir
- * IdentificationService.processPlantIdResponse et common/watering.ts côté back).
+ * l'Edge Function identify-plant).
  * Plant.id n'a pas de champ "température" ni "habitat" structuré (vérifié
  * empiriquement) : la grille de conseils d'entretien montre à la place l'arrosage
  * et le mode de multiplication, seuls signaux réels et différenciants par espèce.
@@ -125,49 +119,7 @@ export function toPlantWithIcon(id: string, backend: BackendPlantFields): PlantW
   return { ...plante, icon: iconForPlant() };
 }
 
-// ----- Utilisateur -----
-
-export type BackendUser = {
-  id: string;
-  email: string;
-  nomUtilisateur: string;
-  experience: number;
-  niveau: number;
-  insignes?: string[];
-  pieces?: number;
-  urlAvatar?: string | null;
-};
-
-export function userFromBackend(backend: BackendUser, apiBaseUrl: string): User {
-  return {
-    id: backend.id,
-    pseudo: backend.nomUtilisateur,
-    email: backend.email,
-    niveau: backend.niveau,
-    xp: backend.experience,
-    pieces: backend.pieces ?? 0,
-    urlAvatar: backend.urlAvatar ? resolveUploadUrl(backend.urlAvatar, apiBaseUrl) : null,
-  };
-}
-
-// ----- Identification (POST /identification) -----
-
-export type BackendIdentifyResponse = {
-  plantId: string;
-  nomScientifique: string;
-  nomCommun: string;
-  famille: string | null;
-  toxicite: BackendToxicity;
-  badgeRarete: string | null;
-  aPropos: string | null;
-  conseilsEntretien: BackendConseilsEntretien;
-  urlImage: string | null;
-  xpGagne: number;
-  /** Score de confiance réel de Plant.id (0-100) — voir API_CONTRACT.md §3. */
-  confiance: number;
-};
-
-// ----- Collection (GET /collection) -----
+// ----- Collection (table collection + plants) -----
 
 export type BackendDernierDiagnostic = {
   maladieNom: string | null;
@@ -195,26 +147,22 @@ export type BackendCollectionItem = {
   longitude: number | null;
   historiquePhotos?: (string | CollectionPhoto)[];
   dernierDiagnostic?: BackendDernierDiagnostic | null;
-  /** Calculé côté back (CollectionService#computeProchainArrosage), voir API_CONTRACT.md §4. */
+  /** Prochaine échéance d'arrosage (collection.prochain_arrosage), fixée à l'ajout puis à chaque arrosage. */
   prochainArrosage: string;
 };
-
-export function resolveUploadUrl(url: string, apiBaseUrl: string): string {
-  return url.startsWith('http') ? url : `${apiBaseUrl}${url}`;
-}
 
 /**
  * Supabase stocke des objets { url, date }; les anciens historiques contiennent
  * uniquement des URLs. Conserver la date de chaque photo lorsqu'elle est disponible.
  */
-function resolveHistoriquePhotos(item: BackendCollectionItem, apiBaseUrl: string): CollectionPhoto[] {
+function resolveHistoriquePhotos(item: BackendCollectionItem): CollectionPhoto[] {
   if (!Array.isArray(item.historiquePhotos)) return [];
   return item.historiquePhotos.flatMap((photo) => {
     const url = typeof photo === 'string' ? photo : photo?.url;
     if (typeof url !== 'string' || !url.trim()) return [];
     const date = typeof photo === 'object' && typeof photo?.date === 'string' && photo.date
       ? photo.date : item.dateAjout;
-    return [{ url: resolveUploadUrl(url, apiBaseUrl), date }];
+    return [{ url: url, date }];
   });
 }
 
@@ -231,8 +179,8 @@ function etatSanteFromBackend(value: BackendCollectionItem['etatSante']): NonNul
 }
 
 /**
- * Convertit le diagnostic sauvegardé (POST /collection/:id/diagnosis, réécrit à chaque
- * nouvelle analyse — voir DiagnosisService#diagnosePlantHealth) vers le même type
+ * Convertit le diagnostic sauvegardé (collection.dernier_diagnostic, réécrit à chaque
+ * analyse par l'Edge Function diagnose-health) vers le même type
  * `DiagnosisResult` que `diagnosisFromBackend`, pour que le bouton "Voir le diagnostic"
  * réutilise exactement le même `DiagnosisSheet` sans relancer d'analyse. `undefined` si la
  * plante n'a jamais été diagnostiquée (jamais de diagnostic fictif affiché).
@@ -263,8 +211,7 @@ function savedDiagnosisFromBackend(
 }
 
 /**
- * Convertit `prochainArrosage` (ISO, calculé côté back — voir
- * CollectionService#computeProchainArrosage) en badge de présentation
+ * Convertit `prochainArrosage` (ISO, collection.prochain_arrosage) en badge de présentation
  * `WateringSchedule`, en comparant des dates tronquées au jour (pas l'horodatage brut) :
  * une échéance à 23h59 aujourd'hui doit afficher "aujourd'hui", pas "dans -1 jour".
  * Une échéance déjà dépassée (retard d'arrosage) affiche aussi "aujourd'hui" — c'est le
@@ -280,12 +227,11 @@ export function wateringScheduleFromDate(prochainArrosage: string): WateringSche
 }
 
 /**
- * Le back ne renvoie pas d'indice de lumière (pas de module dédié branché sur la
- * liste) : on affiche une valeur de repli plutôt que d'inventer une donnée.
- * `prochainArrosage` (voir wateringScheduleFromDate) et `historiquePhotos` sont en
- * revanche bien renvoyés par GET /collection (voir API_CONTRACT.md §4).
+ * Aucune donnée d'exposition par plante en base : on affiche une valeur de repli plutôt
+ * que d'inventer une donnée. `prochainArrosage` (voir wateringScheduleFromDate) et
+ * `historiquePhotos` viennent de la ligne de collection.
  */
-export function toGardenClone(item: BackendCollectionItem, userId: string, apiBaseUrl: string): GardenClone {
+export function toGardenClone(item: BackendCollectionItem, userId: string): GardenClone {
   return {
     item: {
       id: item.id,
@@ -296,7 +242,7 @@ export function toGardenClone(item: BackendCollectionItem, userId: string, apiBa
       etatSante: etatSanteFromBackend(item.etatSante),
       latitude: item.latitude ?? undefined,
       longitude: item.longitude ?? undefined,
-      historiquePhotos: resolveHistoriquePhotos(item, apiBaseUrl),
+      historiquePhotos: resolveHistoriquePhotos(item),
       dernierDiagnostic: item.dernierDiagnostic ?? null,
       prochainArrosage: item.prochainArrosage,
     },
@@ -307,7 +253,7 @@ export function toGardenClone(item: BackendCollectionItem, userId: string, apiBa
   };
 }
 
-export function toHerbariumDiscovery(item: BackendCollectionItem, userId: string, apiBaseUrl: string): HerbariumDiscovery {
+export function toHerbariumDiscovery(item: BackendCollectionItem, userId: string): HerbariumDiscovery {
   return {
     item: {
       id: item.id,
@@ -317,7 +263,7 @@ export function toHerbariumDiscovery(item: BackendCollectionItem, userId: string
       type: 'discovered',
       latitude: item.latitude ?? undefined,
       longitude: item.longitude ?? undefined,
-      historiquePhotos: resolveHistoriquePhotos(item, apiBaseUrl),
+      historiquePhotos: resolveHistoriquePhotos(item),
       dernierDiagnostic: item.dernierDiagnostic ?? null,
     },
     plant: toPlantWithIcon(item.idPlante, item),
@@ -327,7 +273,7 @@ export function toHerbariumDiscovery(item: BackendCollectionItem, userId: string
   };
 }
 
-// ----- Diagnostic (POST /collection/:id/diagnosis) -----
+// ----- Diagnostic (Edge Function diagnose-health) -----
 
 export type BackendDiagnosisResponse = {
   estSain: boolean;
@@ -370,7 +316,7 @@ export function diagnosisFromBackend(backend: BackendDiagnosisResponse): Diagnos
   };
 }
 
-// ----- Badges (dérivés de GET/PATCH /users/me → insignes: string[]) -----
+// ----- Badges (repli sur profiles.insignes si la RPC get_my_badges est absente) -----
 
 export type BadgeCatalogEntry = { id: string; nom: string; description: string };
 
@@ -396,7 +342,7 @@ export function badgesFromInsignes(
   }));
 }
 
-// ----- Feed (GET/POST /feed) -----
+// ----- Fil communautaire (table posts) -----
 
 export type BackendPost = {
   id: string;
@@ -406,28 +352,22 @@ export type BackendPost = {
   dateCreation: string;
   auteur: { id: string; nomUtilisateur: string; urlAvatar?: string | null };
   plante?: { id: string; nomScientifique: string; nomCommun: string; badgeRarete?: string | null; urlImage?: string | null };
-  /** Type réel de la collection taguée ('owned'/'discovered') — voir API_CONTRACT.md §5. */
+  /** Type réel de la collection taguée ('owned'/'discovered'). */
   typeCollection?: 'owned' | 'discovered';
   likesCount: number;
   commentairesCount: number;
   estLikedParUtilisateur: boolean;
-  /** Distance réelle (mètres) depuis la position fournie à GET /feed, null si indisponible. */
+  /** Distance réelle (mètres) depuis la position de l'appareil, null si indisponible. */
   distanceMetres: number | null;
 };
 
-export function toFeedPost(post: BackendPost, apiBaseUrl: string): FeedPost {
-  const resolvedImageUrl = post.imageUrl
-    ? post.imageUrl.startsWith('http')
-      ? post.imageUrl
-      : `${apiBaseUrl}${post.imageUrl}`
-    : undefined;
-
+export function toFeedPost(post: BackendPost): FeedPost {
   return {
     id: post.id,
     authorId: post.auteur.id,
     authorInitial: post.auteur.nomUtilisateur.charAt(0).toUpperCase(),
     authorName: post.auteur.nomUtilisateur,
-    authorAvatarUrl: post.auteur.urlAvatar ? resolveUploadUrl(post.auteur.urlAvatar, apiBaseUrl) : null,
+    authorAvatarUrl: post.auteur.urlAvatar ? post.auteur.urlAvatar : null,
     createdAt: post.dateCreation,
     plant: post.plante
       ? toPlantWithIcon(post.plante.id, {
@@ -439,21 +379,21 @@ export function toFeedPost(post: BackendPost, apiBaseUrl: string): FeedPost {
         })
       : undefined,
     // Type réel de la collection taguée (jardin perso vs découverte sauvage),
-    // pas une valeur fixe (voir API_CONTRACT.md §5).
+    // pas une valeur fixe.
     tagType: post.plante ? post.typeCollection ?? 'owned' : undefined,
-    imageUri: resolvedImageUrl,
+    imageUri: post.imageUrl,
     caption: post.contenuTexte,
     likes: post.likesCount,
     liked: post.estLikedParUtilisateur,
     comments: post.commentairesCount,
-    // Distance réelle calculée côté back (haversine) à partir de la position de
-    // l'appelant transmise à GET /feed — null si la position n'est pas fournie ou
+    // Distance réelle (haversine, calculée dans useFeed) depuis la position de
+    // l'appareil — null si la position n'est pas fournie ou
     // si le post n'a pas de Geo-Tag hérité de sa collection taguée.
     distanceMeters: post.distanceMetres,
   };
 }
 
-// ----- Stories (GET/POST /stories, comportement "statuts WhatsApp") -----
+// ----- Stories (comportement "statuts WhatsApp") -----
 
 export type BackendStoryMedia = {
   id: string;
@@ -476,22 +416,22 @@ export type BackendStoryGroup = {
   medias: BackendStoryMedia[];
 };
 
-function toStoryMedia(media: BackendStoryMedia, apiBaseUrl: string): StoryMedia {
-  return { ...media, urlMedia: resolveUploadUrl(media.urlMedia, apiBaseUrl) };
+function toStoryMedia(media: BackendStoryMedia): StoryMedia {
+  return { ...media, urlMedia: media.urlMedia };
 }
 
-export function toStoryGroup(group: BackendStoryGroup, apiBaseUrl: string): StoryGroup {
+export function toStoryGroup(group: BackendStoryGroup): StoryGroup {
   return {
     idUtilisateur: group.idUtilisateur,
     nomUtilisateur: group.nomUtilisateur,
     urlAvatar: group.urlAvatar,
     estMoi: group.estMoi,
     entierementVue: group.entierementVue,
-    medias: group.medias.map((media) => toStoryMedia(media, apiBaseUrl)),
+    medias: group.medias.map((media) => toStoryMedia(media)),
   };
 }
 
-// ----- Commentaires (GET/POST /feed/posts/:id/comments) -----
+// ----- Commentaires -----
 
 export type BackendComment = {
   id: string;
@@ -502,7 +442,7 @@ export type BackendComment = {
   auteur: { id: string; nomUtilisateur: string; urlAvatar?: string | null };
 };
 
-// ----- Messagerie privée (GET/POST /messages/*) -----
+// ----- Messagerie privée -----
 
 export type BackendStoryPreview = { id: string; urlMedia: string; mediaType: StoryMediaType };
 
@@ -523,32 +463,32 @@ export type BackendConversation = {
   nonLusCount: number;
 };
 
-function toStoryPreview(preview: BackendStoryPreview | null, apiBaseUrl: string): StoryPreview | null {
+function toStoryPreview(preview: BackendStoryPreview | null): StoryPreview | null {
   if (!preview) return null;
-  return { ...preview, urlMedia: resolveUploadUrl(preview.urlMedia, apiBaseUrl) };
+  return { ...preview, urlMedia: preview.urlMedia };
 }
 
-export function toChatMessage(message: BackendMessage, apiBaseUrl: string): ChatMessage {
-  return { ...message, storyPreview: toStoryPreview(message.storyPreview, apiBaseUrl) };
+export function toChatMessage(message: BackendMessage): ChatMessage {
+  return { ...message, storyPreview: toStoryPreview(message.storyPreview) };
 }
 
-export function toConversation(conversation: BackendConversation, apiBaseUrl: string): Conversation {
+export function toConversation(conversation: BackendConversation): Conversation {
   return {
     id: conversation.id,
     autreUtilisateur: {
       ...conversation.autreUtilisateur,
       urlAvatar: conversation.autreUtilisateur.urlAvatar
-        ? resolveUploadUrl(conversation.autreUtilisateur.urlAvatar, apiBaseUrl)
+        ? conversation.autreUtilisateur.urlAvatar
         : null,
     },
     dernierMessage: conversation.dernierMessage
-      ? { ...conversation.dernierMessage, storyPreview: toStoryPreview(conversation.dernierMessage.storyPreview, apiBaseUrl) }
+      ? { ...conversation.dernierMessage, storyPreview: toStoryPreview(conversation.dernierMessage.storyPreview) }
       : null,
     nonLusCount: conversation.nonLusCount,
   };
 }
 
-// ----- Profil public (GET /users/:id/public-profile) -----
+// ----- Profil public -----
 
 export type BackendPublicProfile = {
   id: string;
@@ -560,20 +500,20 @@ export type BackendPublicProfile = {
   stats: { captures: number; especes: number; rares: number };
 };
 
-export function toPublicProfile(profile: BackendPublicProfile, apiBaseUrl: string): PublicProfile {
+export function toPublicProfile(profile: BackendPublicProfile): PublicProfile {
   return {
     ...profile,
-    urlAvatar: profile.urlAvatar ? resolveUploadUrl(profile.urlAvatar, apiBaseUrl) : null,
+    urlAvatar: profile.urlAvatar ? profile.urlAvatar : null,
   };
 }
 
-export function toComment(comment: BackendComment, apiBaseUrl: string): FeedComment {
+export function toComment(comment: BackendComment): FeedComment {
   return {
     id: comment.id,
     authorId: comment.auteur.id,
     authorInitial: comment.auteur.nomUtilisateur.charAt(0).toUpperCase(),
     authorName: comment.auteur.nomUtilisateur,
-    authorAvatarUrl: comment.auteur.urlAvatar ? resolveUploadUrl(comment.auteur.urlAvatar, apiBaseUrl) : null,
+    authorAvatarUrl: comment.auteur.urlAvatar ? comment.auteur.urlAvatar : null,
     createdAt: comment.dateCreation,
     text: comment.contenu,
   };

@@ -13,7 +13,7 @@ const LayoutContext = createContext<LayoutContextValue | null>(null);
 
 /**
  * Titre/sous-titre contextuels de la barre supérieure + recherche globale — mission
- * ADMIN.md §3 ("barre supérieure : titre et sous-titre contextuels ... recherche globale
+ * La maquette ("barre supérieure : titre et sous-titre contextuels ... recherche globale
  * fonctionnelle, filtre réellement la table affichée"). Un seul champ de recherche dans le
  * topbar, sa valeur est lue directement par la page affichée (UsersPage/PlantsPage) comme
  * paramètre `q` de leur requête réelle — jamais un filtre en mémoire côté client sur des

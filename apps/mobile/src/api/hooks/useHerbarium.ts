@@ -16,6 +16,6 @@ export function useHerbarium() {
   const { user } = useAuth();
   const query = useInfiniteQuery({ queryKey: queryKeys.herbarium, queryFn: ({ pageParam }) => fetchHerbariumPage(pageParam), initialPageParam: 1, getNextPageParam: (last, pages) => pages.length * 20 < last.total ? pages.length + 1 : undefined, enabled: !!user });
   const userId = user?.id ?? '';
-  const data = useMemo(() => query.data?.pages.flatMap((page) => page.items.map((item) => toHerbariumDiscovery(item, userId, ''))), [query.data, userId]);
+  const data = useMemo(() => query.data?.pages.flatMap((page) => page.items.map((item) => toHerbariumDiscovery(item, userId))), [query.data, userId]);
   return { ...query, data };
 }

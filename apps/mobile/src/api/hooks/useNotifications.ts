@@ -6,8 +6,7 @@ import { supabase } from '@/lib/supabase';
 type RegisterDeviceInput = { expoPushToken: string; plateforme: string };
 
 /**
- * POST /notifications/device (voir API_CONTRACT.md §9) : persiste le token Expo Push
- * côté back pour un futur envoi serveur. Les notifications d'arrosage réelles restent
+ * Persiste le token Expo Push (table device_tokens) pour un futur envoi serveur. Les notifications d'arrosage réelles restent
  * programmées localement (useWateringNotifications, expo-notifications) — cet appel ne
  * fait qu'enregistrer l'appareil, best-effort (son échec ne doit jamais empêcher les
  * notifications locales déjà programmées).

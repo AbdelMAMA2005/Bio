@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import type { BackendCollectionItem } from '@/api/adapters';
 import { diagnosisFromBackend, toGardenClone } from '@/api/adapters';
 import { queryKeys } from '@/api/queryKeys';
-import type { DiagnosisResult } from '@/api/mock/diagnosis';
+import type { DiagnosisResult } from '@/api/types';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { signCollectionPhotos, supabase, uriToBlob, uriToImageDataUrl } from '@/lib/supabase';
 const DEFAULT_WATERING_DAYS = 7;
@@ -30,7 +30,7 @@ export function useMyGarden() {
   const query = useInfiniteQuery({ queryKey: queryKeys.garden, queryFn: ({ pageParam }) => fetchGardenPage(pageParam), initialPageParam: 1, getNextPageParam: (last, pages) => pages.length * 20 < last.total ? pages.length + 1 : undefined, enabled: !!user });
   const userId = user?.id ?? '';
   // Mémoïsé : useWateringNotifications reprogrammait toutes les notifications à chaque rendu.
-  const data = useMemo(() => query.data?.pages.flatMap((page) => page.items.map((item) => toGardenClone(item, userId, ''))), [query.data, userId]);
+  const data = useMemo(() => query.data?.pages.flatMap((page) => page.items.map((item) => toGardenClone(item, userId))), [query.data, userId]);
   return { ...query, data };
 }
 

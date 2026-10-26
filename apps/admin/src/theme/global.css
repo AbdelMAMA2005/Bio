@@ -1,9 +1,9 @@
 /**
  * Direction « herbier naturaliste » (alignée sur l'app mobile) : papier crème, vert forêt
  * plein, angles nets, aucun dégradé. Base historique : maquette/PlanAI-admin-maquette.html
- * (canvas "PlanAI Admin"), voir rapport.md pour comment ce fichier a été extrait/décodé.
+ * (canvas "PlanAI Admin").
  * Toutes les couleurs sémantiques viennent d'ici, jamais codées en dur dans un composant
- * (mission ADMIN.md §5) — contraste vérifié >= 4.5:1 sur les pastilles teintées, dans les
+ * — contraste vérifié >= 4.5:1 sur les pastilles teintées, dans les
  * DEUX thèmes (mêmes valeurs que la maquette, déjà vérifiées à la conception).
  */
 
