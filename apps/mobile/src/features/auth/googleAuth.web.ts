@@ -37,6 +37,9 @@ export function useGoogleSignIn(): { isConfigured: boolean; signIn: () => Promis
       scopes: ['openid', 'profile', 'email'],
       redirectUri,
       responseType: AuthSession.ResponseType.IdToken,
+      // PKCE ne s'applique qu'au flux par code : Google rejette code_challenge_method
+      // sur une demande d'id_token (erreur 400 invalid_request).
+      usePKCE: false,
       extraParams: { nonce: hashedNonce ?? '' },
     },
     discovery,
