@@ -86,8 +86,8 @@ export async function login(email: string, password: string): Promise<AuthResult
   return resultFromSession(data.session);
 }
 
-export async function loginWithGoogle(idToken: string): Promise<AuthResult> {
-  const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken });
+export async function loginWithGoogle(idToken: string, nonce?: string): Promise<AuthResult> {
+  const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken, nonce });
   if (error || !data.session) throw error ?? new Error('Unable to sign in with Google');
   return resultFromSession(data.session);
 }

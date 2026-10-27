@@ -33,7 +33,7 @@ type AuthContextValue = {
   requestPasswordReset: (email: string) => Promise<void>;
   /** Valide le code reçu par e-mail, change le mot de passe, puis connecte. */
   resetPassword: (email: string, code: string, newPassword: string) => Promise<void>;
-  loginWithGoogle: (idToken: string) => Promise<void>;
+  loginWithGoogle: (idToken: string, nonce?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (patch: Partial<Pick<User, 'pseudo'>>) => Promise<void>;
   /**
@@ -161,10 +161,10 @@ export function AuthProvider({
           setIsBusy(false);
         }
       },
-      loginWithGoogle: async (idToken) => {
+      loginWithGoogle: async (idToken, nonce) => {
         setIsBusy(true);
         try {
-          const { token, refreshToken, user: googleUser } = await apiLoginWithGoogle(idToken);
+          const { token, refreshToken, user: googleUser } = await apiLoginWithGoogle(idToken, nonce);
           void token;
           void refreshToken;
           setUser(googleUser);

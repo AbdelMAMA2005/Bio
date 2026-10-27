@@ -24,7 +24,7 @@ describe('showDialog', () => {
     it('confirme une action avec confirm()', () => {
       const onDelete = jest.fn();
       const onCancel = jest.fn();
-      (global as { window: Window }).window.confirm = jest.fn(() => true);
+      (globalThis as unknown as { window: Window }).window.confirm = jest.fn(() => true);
       showDialog('Supprimer ?', 'Définitif.', [{ text: 'Annuler', style: 'cancel', onPress: onCancel }, { text: 'Supprimer', style: 'destructive', onPress: onDelete }]);
       expect(window.confirm).toHaveBeenCalledWith('Supprimer ?\n\nDéfinitif.');
       expect(onDelete).toHaveBeenCalled();

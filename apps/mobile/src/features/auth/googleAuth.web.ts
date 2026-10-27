@@ -1,7 +1,9 @@
 import * as AuthSession from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
+import type { GoogleCredential } from '@/features/auth/googleAuth.native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -18,9 +20,16 @@ const discovery = {
  * navigateur, valable sur web (contrairement au natif, Google n'exige pas le SDK
  * natif ici). Supabase Auth (signInWithIdToken) vérifie ce idToken directement.
  */
-export function useGoogleSignIn(): { isConfigured: boolean; signIn: () => Promise<string | null> } {
+export function useGoogleSignIn(): { isConfigured: boolean; signIn: () => Promise<GoogleCredential | null> } {
   const redirectUri = AuthSession.makeRedirectUri();
+  // Google reçoit l'empreinte SHA-256 du nonce et Supabase le nonce brut, qu'il hache à
+  // son tour pour la comparer au jeton : sans lui, signInWithIdToken refuse le jeton.
   const nonce = useMemo(() => Crypto.randomUUID(), []);
+  const [hashedNonce, setHashedNonce] = useState<string | null>(null);
+
+  useEffect(() => {
+    void Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, nonce).then(setHashedNonce);
+  }, [nonce]);
 
   const [, , promptAsync] = AuthSession.useAuthRequest(
     {
@@ -28,16 +37,17 @@ export function useGoogleSignIn(): { isConfigured: boolean; signIn: () => Promis
       scopes: ['openid', 'profile', 'email'],
       redirectUri,
       responseType: AuthSession.ResponseType.IdToken,
-      extraParams: { nonce },
+      extraParams: { nonce: hashedNonce ?? '' },
     },
     discovery,
   );
 
-  const signIn = async (): Promise<string | null> => {
+  const signIn = async (): Promise<GoogleCredential | null> => {
     const result = await promptAsync();
     if (result.type !== 'success') return null; // annulé/dismiss
-    return result.params.id_token ?? null;
+    const idToken = result.params.id_token;
+    return idToken ? { idToken, nonce } : null;
   };
 
-  return { isConfigured: !!WEB_CLIENT_ID, signIn };
+  return { isConfigured: !!WEB_CLIENT_ID && hashedNonce !== null, signIn };
 }

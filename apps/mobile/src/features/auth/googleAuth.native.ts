@@ -7,6 +7,9 @@ const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '';
 
 type GoogleSigninModule = typeof import('@react-native-google-signin/google-signin');
 
+/** idToken Google, et le nonce brut quand il a été envoyé à Google (flux web). */
+export type GoogleCredential = { idToken: string; nonce?: string };
+
 /**
  * Variante native (iOS/Android — Metro résout ce fichier automatiquement, voir
  * googleAuth.web.ts pour la cible web) : le SDK natif Google Sign-In est désormais
@@ -53,7 +56,7 @@ function ensureConfigured(mod: GoogleSigninModule) {
   configured = true;
 }
 
-export function useGoogleSignIn(): { isConfigured: boolean; signIn: () => Promise<string | null> } {
+export function useGoogleSignIn(): { isConfigured: boolean; signIn: () => Promise<GoogleCredential | null> } {
   const envConfigured = Platform.OS === 'ios' ? !!(WEB_CLIENT_ID && IOS_CLIENT_ID) : !!WEB_CLIENT_ID;
   const mod = envConfigured ? loadGoogleSignin() : null;
   const isConfigured = envConfigured && mod !== null;
@@ -62,7 +65,7 @@ export function useGoogleSignIn(): { isConfigured: boolean; signIn: () => Promis
     if (mod) ensureConfigured(mod);
   }, [mod]);
 
-  const signIn = async (): Promise<string | null> => {
+  const signIn = async (): Promise<GoogleCredential | null> => {
     if (!mod) {
       throw new Error('Google Sign-In indisponible (nécessite un build de développement, absent dans Expo Go).');
     }
@@ -78,7 +81,7 @@ export function useGoogleSignIn(): { isConfigured: boolean; signIn: () => Promis
     if (!idToken) {
       throw new Error('Google Sign-In n\'a renvoyé aucun idToken (vérifier webClientId).');
     }
-    return idToken;
+    return { idToken };
   };
 
   return { isConfigured, signIn };

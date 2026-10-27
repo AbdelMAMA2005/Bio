@@ -59,10 +59,10 @@ export function LoginScreen() {
     if (!isConfigured) return; // bouton désactivé dans ce cas, voir plus bas.
     setError(null);
     try {
-      const idToken = await googleSignIn();
-      if (!idToken) return; // annulé par l'utilisateur
+      const credential = await googleSignIn();
+      if (!credential) return; // annulé par l'utilisateur
 
-      await loginWithGoogle(idToken);
+      await loginWithGoogle(credential.idToken, credential.nonce);
       router.replace('/jardin');
     } catch (e) {
       console.error('[handleGoogle] échec de la connexion Google', e);
