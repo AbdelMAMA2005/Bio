@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useDeletePost, useUpdatePost } from '@/api/hooks/useFeed';
@@ -16,6 +16,7 @@ import { useAppTheme } from '@/theme';
 import { RarityColors, RarityColorsLight, ToxicityColors } from '@/theme/colors';
 import { Radius, Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
+import { showDialog } from '@/utils/dialogs';
 
 type Props = {
   post: FeedPost;
@@ -47,10 +48,10 @@ export const PostCard = memo(function PostCard({
   const saveCaption = (texte: string) => updatePost.mutate({ postId: post.id, texte }, {
     onSuccess: () => setEditing(false),
   });
-  const confirmDelete = () => Alert.alert(t('community.deletePost'), t('community.deleteConfirm'), [
+  const confirmDelete = () => showDialog(t('community.deletePost'), t('community.deleteConfirm'), [
     { text: t('location.close'), style: 'cancel' },
     { text: t('community.deletePost'), style: 'destructive', onPress: () => {
-      deletePost.mutate(post.id, { onSuccess: () => onDeleted?.(), onError: () => Alert.alert(t('community.deleteError')) });
+      deletePost.mutate(post.id, { onSuccess: () => onDeleted?.(), onError: () => showDialog(t('community.deleteError')) });
     } },
   ]);
   const language = (i18n.language as SupportedLanguage) ?? 'fr';

@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Dimensions, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -21,6 +21,7 @@ import { Palette, AccentOnColor, ToxicityColors } from '@/theme/colors';
 import { HitTarget, Radius, Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
 import type { StoryGroup, StoryMedia } from '@/api/types';
+import { showDialog } from '@/utils/dialogs';
 
 const IMAGE_DURATION_MS = 5000;
 const SWIPE_DOWN_THRESHOLD = 90;
@@ -98,7 +99,7 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
   }
 
   const handleDelete = () => {
-    Alert.alert(t('community.deleteStoryTitle'), t('community.deleteStoryBody'), [
+    showDialog(t('community.deleteStoryTitle'), t('community.deleteStoryBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('community.deleteStoryCta'),
@@ -106,7 +107,7 @@ export function StoryViewer({ groups, initialGroupIndex, onClose }: Props) {
         onPress: () => {
           deleteMedia.mutate(media.id, {
             onSuccess: onClose,
-            onError: () => Alert.alert(t('community.deleteStoryError')),
+            onError: () => showDialog(t('community.deleteStoryError')),
           });
         },
       },

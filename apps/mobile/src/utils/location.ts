@@ -1,6 +1,7 @@
 import * as Location from 'expo-location';
-import { Alert, Linking, Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import i18n from '@/i18n';
+import { showDialog } from '@/utils/dialogs';
 
 export async function getCurrentCoordinates() {
   const permission = await Location.requestForegroundPermissionsAsync();
@@ -22,7 +23,7 @@ export async function getCurrentCoordinates() {
 
 export function showLocationError(error: unknown) {
   const reason = error instanceof Error ? error.message : '';
-  Alert.alert(i18n.t('location.errorTitle'), i18n.t(reason === 'permission' ? 'location.permission' : reason === 'services' ? 'location.services' : 'location.unavailable'), [
+  showDialog(i18n.t('location.errorTitle'), i18n.t(reason === 'permission' ? 'location.permission' : reason === 'services' ? 'location.services' : 'location.unavailable'), [
     { text: i18n.t('location.close'), style: 'cancel' },
     { text: i18n.t('location.settings'), onPress: () => { Linking.openSettings().catch(() => {}); } },
   ]);

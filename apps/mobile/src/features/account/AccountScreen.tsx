@@ -2,7 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
@@ -28,6 +28,7 @@ import { useAppTheme } from '@/theme';
 import { AccentOnColor } from '@/theme/colors';
 import { Radius, Spacing } from '@/theme/spacing';
 import { FontFamily } from '@/theme/typography';
+import { showDialog } from '@/utils/dialogs';
 
 export function AccountScreen() {
   const { t, i18n } = useTranslation();
@@ -79,7 +80,7 @@ export function AccountScreen() {
       setEditingProfile(false);
     } catch {
       // Pseudo déjà pris (contrainte unique) ou réseau : on garde le formulaire ouvert.
-      Alert.alert(t('auth.invalidFields'));
+      showDialog(t('auth.invalidFields'));
     }
   };
 
@@ -97,7 +98,7 @@ export function AccountScreen() {
 
   const confirmDelete = () => {
     setDeleteError(null);
-    Alert.alert(t('account.deleteConfirmTitle'), t('account.deleteConfirmBody'), [
+    showDialog(t('account.deleteConfirmTitle'), t('account.deleteConfirmBody'), [
       { text: t('account.cancel'), style: 'cancel' },
       {
         text: t('account.deleteConfirmCta'),

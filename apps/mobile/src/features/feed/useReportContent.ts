@@ -1,8 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Alert } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
+import { showDialog } from '@/utils/dialogs';
 
 export type ReportTarget = 'post' | 'comment' | 'story';
 
@@ -23,7 +23,7 @@ export function useReportContent() {
   // Android affiche au plus trois boutons dans une Alert : deux motifs et Annuler.
   // `onDismiss` est appelé dès que la boîte se ferme (ex. reprendre la lecture d'une story).
   return (type: ReportTarget, id: string, onDismiss?: () => void) =>
-    Alert.alert(t('community.reportTitle'), t('community.reportBody'), [
+    showDialog(t('community.reportTitle'), t('community.reportBody'), [
       { text: t('common.cancel'), style: 'cancel', onPress: onDismiss },
       ...(['reportInappropriate', 'reportSpam'] as const).map((key) => ({
         text: t(`community.${key}`),
@@ -32,8 +32,8 @@ export function useReportContent() {
           mutation.mutate(
             { type, id, motif: t(`community.${key}`) },
             {
-              onSuccess: () => Alert.alert(t('community.reportSent')),
-              onError: () => Alert.alert(t('community.reportError')),
+              onSuccess: () => showDialog(t('community.reportSent')),
+              onError: () => showDialog(t('community.reportError')),
             },
           );
         },
